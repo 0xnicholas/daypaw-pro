@@ -81,3 +81,29 @@ run 的调用方句柄：id、result（类型化 Promise）、status()、cancel(
 ### 幂等键（Idempotency Key）
 
 step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知的依据。
+
+## 管理面（Manager 域）
+
+### Agent Manager（Manager）
+
+四支柱③：人的观测与控制窗口——看 run（registry / timeline / trace）并施加少量控制（resolve / cancel / 重跑）。是人的窗口，不是其他支柱的数据管道。
+
+### Manager Host
+
+按需拉起、伺服 Manager UI 的最小进程：开同一本地库、可写控制命令，无常驻。agent 进程活着时同一 UI 由该进程兼伺。
+
+### 控制命令（Control Command）
+
+跨进程控制载体：写入本地库、由引擎在恢复边界观察执行的命令。与进程内 RunHandle.cancel 同语义、不同运输。
+
+### 重跑（Rerun）
+
+同定义同输入的新 run，ledger 以 attempt 链关联前次。不是同 runId 复活——终态不可撤销，start-or-attach 幂等性优先。
+
+### Run Registry
+
+自用语境的 fleet 视角：全部 run × 状态 × 定义版本的注册视图，含按定义聚合。fleet 不是多机——是跨进程、跨时间。
+
+### 关联层（Correlation Layer）
+
+本地库中以 `(session.id, seq)` 指回 session log 的评估/反馈数据族（feedback / eval / dataset / experiment）；只引用，不复制内容。
