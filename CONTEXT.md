@@ -40,11 +40,23 @@ dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色�
 
 ### Run
 
-一次 durable 执行（一个 `defineWorkflow` 调用的持久化实例）。每 run 单写者：同一时刻只有一个驱动者。
+一次 durable 执行（`defineAgent` 或 `defineWorkflow` 调用的持久化实例）。持久身份 = runId；`def.run(input, { runId? })` 为幂等 start-or-attach：同 runId 已存在则接回，不存在则启动，崩溃重启后同一调用自动接回原 run。调用方持有 RunHandle（id、类型化 result、status、cancel）。结果 = output schema 校验后的类型化输出（引擎级因果归因，修复 dsh wire finalResponse 无归因的缺陷）。boot 扫描复活未完 run 不需要原调用者。每 run 单写者：同一时刻只有一个驱动者。run 不区分「单会话体」与「编排体」——ledger/Manager/EVO 只认 run。
+
+### Agent 定义（Agent Definition，`defineAgent`）
+
+声明式 LLM 循环 spec：name+version+zod 输入/输出+组合行（prompt 段、工具面、模型路由）。存于进程内定义注册表；run 时挂 session、应用组合（与 preset 同一挂载语义，来源为代码而非文件），session header 记 (定义 id, 版本) 供冷复活重建；ledger run 行记定义版本（EVO 变体并行前提）。一次 agent run = 一个主 session（subagent 子女自拥 session）。可直接 `run()`（一等公民，Palantir published async function 的对应物）。
+
+### Workflow 定义（Workflow Definition，`defineWorkflow`）
+
+代码编排体：用户 async 代码，引擎执行，内可调 agent / 子 workflow / gate / timer。与 Agent 定义共一个 run 概念，但 body 形态不同（代码 vs spec）。workflow run 无主 session——session 只在 `ctx.agent` 处产生。
 
 ### Step
 
-run 内的一个幂等执行单元（含 LLM/工具调用）。恢复时按幂等键去重：已完成 step 返回已记录结果，不重执行。
+run 内的一个幂等执行单元（含 LLM/工具调用），由 `ctx.step(name, fn)` 显式标记。恢复时按幂等键去重：已完成 step 返回已记录结果，不重执行。parallel/condition 不是原语——普通 TS（`Promise.all`/`if`）即控制流。
+
+### SDK 原语（ctx 面）
+
+workflow body 可用的五个显式原语：`ctx.step`（去重单元）、`ctx.sleep`（持久 timer）、`ctx.waitFor`（gate）、`ctx.agent`（调 agent 定义）、`ctx.spawn`（火后不管子 run）。其余靠语言本身；副作用不经 ctx 的代码不受引擎去重保护。命名不进口 Palantir 三原语（Event/Context 与 dsh 既有词汇撞名）；同构关系只记文档。
 
 ### Effect
 
@@ -57,6 +69,10 @@ step 内对外部世界的一次副作用（LLM 调用、工具调用、写文�
 ### Durable Promise（Gate）
 
 HITL 挂起原语 `ctx.waitFor(gate, {schema, timeout})`：键 = `(runId, gate 名)`，状态机 pending→resolved/rejected/timedout/cancelled，幂等 resolve；等待期间进程可退出（零算力）。
+
+### RunHandle
+
+run 的调用方句柄：id、result（类型化 Promise）、status()、cancel(cause)。内存 promise 不承诺跨进程——跨进程重连走 attach（幂等 start-or-attach）。
 
 ### Boot 扫描
 
