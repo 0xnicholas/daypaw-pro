@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": [],
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["sdk.d.ts", "stubs/**/*.d.ts", "examples/**/*.ts"]
+}
