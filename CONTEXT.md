@@ -106,4 +106,26 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 
 ### 关联层（Correlation Layer）
 
-本地库中以 `(session.id, seq)` 指回 session log 的评估/反馈数据族（feedback / eval / dataset / experiment）；只引用，不复制内容。
+本地库中以 `(session.id, seq)` 指回 session log 的评估/反馈数据族（feedback / eval / dataset）；只引用，不复制内容。
+
+## 优化（EVO 域）
+
+### EVO
+
+四支柱④：用户 Agent 的持续优化系统。以遥测与评估为据，为 agent 定义产出更优版本提案；本体是引擎上的一个 workflow。不优化 stack 自身。
+
+### 变体（Variant）
+
+一条 agent 定义的新版本：由类型化算子（模型路由、prompt 段、工具面子集）对既有版本施加变更而成，在实验中与 incumbent 对打。
+
+### 评估集（Eval Set）
+
+版本化的回放基准：从真实运行提取、人工策展、可含标记来源的合成扩量的输入→期望输出对集合。变体与 incumbent 在其上对打；晋升阈值与数据集版本绑定。
+
+### 双门判据
+
+变体胜出须过两道门：质量门（逐维度不劣于 incumbent 减容差，关键维度严格不差）与效率门（成本/延迟不减益）。由分层 judge（schema 校验 → rubric → 人工抽检）判定。
+
+### 提案（Proposal）
+
+实验胜出变体的发布物：类型化 diff + 实验记录 + eval 证据，经人审应用为代码中的定义新版本。EVO 的产出止于提案——永不自动生效。
