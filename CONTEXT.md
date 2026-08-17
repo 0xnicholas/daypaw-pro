@@ -129,3 +129,25 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 ### 提案（Proposal）
 
 实验胜出变体的发布物：类型化 diff + 实验记录 + eval 证据，经人审应用为代码中的定义新版本。EVO 的产出止于提案——永不自动生效。
+
+## 测试（Test 域）
+
+### REAL-composition 测试
+
+经真 Loader 启动测试专用 `cordis.yml` 的组合测试：product-visible 插件的最低真实入口要求，mock 边界仅限外部服务（LLM/网络/时钟）。与手搳 `ctx.plugin(...)` 的单元组合相对。
+
+### keyless / with-key
+
+keyless = 无 API key 也可跑（mock 或回放），CI 恒 keyless；with-key = 真模型真调用，无 key 自跳、真验证在本地。
+
+### 故障注入重放（Fault-injection Replay）
+
+engine 崩溃测试主力：在 ledger 写入点注入异常模拟死亡，穷举恢复路径。与「真 kill 补充」（真 SIGKILL 子进程验半写路径）相对。
+
+### Golden 库（Golden Ledger Fixture）
+
+提交进仓库的某 schema 版本历史 SQLite 库：迁移测试的权威输入（旧库 → 迁移 → 可重放断言）。
+
+### 覆盖率门（Coverage Gate）
+
+per-file 100% 行/分支/函数覆盖的 CI 门（上游 ci-coverage lane）。daypaw 非 UI 包沿用；`ui-*` 前缀一条 glob 豁免。

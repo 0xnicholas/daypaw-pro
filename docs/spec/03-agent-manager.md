@@ -24,4 +24,11 @@ span 粒度映射表（turn→`invoke_agent` internal、step→inference、tool�
 
 ## 6. 测试面
 
-待测试策略票定调后回填。
+[ADR 0007](../adr/0007-test-strategy.md) 定调：
+
+- **host 侧路由包**：服务代码 per-file 100% 门——真 SQLite fixture 库直读测试；双进程同库并发（WAL）如定案则配双连接并发写测试。
+- **ui-* 插槽插件**：jsdom 组件测试 + Loader 冒烟；不受覆盖率门（`packages/daypaw/ui-*/src/**` 一条 glob 豁免，CORE_TOUCHES 登记）。
+- **控制命令**：命令生命周期（去重/幂等/失效）单测 + store 命令面 → 引擎边界观察（step 边界/timer/promise 唤醒/boot 扫描三观察点）的集成测试，与第 2 章 engine 测试共用夹具。
+- **REAL-composition**：manager 路由包配真 Loader 组合测试；Manager Host（`daypaw manage` bin）如 ship 则加 built-artifact 冒烟（构建 `lib/` 纯 Node 跑）。
+- 浏览器车道（上游 `test:web` 级）：v1 不建——本地手测 + jsdom，升格条件待观察。
+- 待写：OTel 投影层（§5）的测试形状。

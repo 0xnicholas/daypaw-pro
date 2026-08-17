@@ -28,4 +28,10 @@ EVO 输出表（变体 / 实验 / 提案；owner = EVO，直读 ledger + 关联�
 
 ## 7. 测试面
 
-待测试策略票定调后回填。
+[ADR 0007](../adr/0007-test-strategy.md) 定调：
+
+- **全循环确定性测试**：完整 EVO 循环 = 真 workflow 跑真 engine；两段式生成 / rubric judge / 被测 agent 全走 dsh 现成 scripted mock model；评估集从提交的 fixture session log 真提取；预算（迭代+成本）、双门、attempt 链、提案打包全真逻辑。keyless。
+- **judge 阶梯**：zod 门 = 纯单测；rubric judge 在循环测试中 mock，真 judge 只进 with-key smoke。
+- **with-key smoke**：真 LLM 对玩具 agent 跑一轮「生成→评估→提案」，无 key 自跳。
+- **数据契约**：EVO 输出表迁移随 golden 库 fixture（ADR 0007 §4 store 形状）。
+- 待写：合成扩量标记的隔离性断言；漂移四层防线（§2）的监控测试形态。
