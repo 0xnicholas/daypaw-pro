@@ -29,8 +29,15 @@ daypaw-pro 在 fork 内新增的四个能力族：**Durable Execution**（跨 tu
 对上游既有文件的任何修改。默认禁止；例外须登记 `docs/fork/CORE_TOUCHES.md`。与 seam 扩展（新 package、merge-extensible 事件、profile 覆盖）相对。
 
 ### Seam
-
 dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色。daypaw 的扩展首选挂载点。
+
+### Walking skeleton（走骨）
+
+四支柱首个落地物（ADR 0008 §1）：`@daypaw/store` + `@daypaw/engine` + `@daypaw/sdk` 的最薄端到端耐久竖切——仅 `defineWorkflow` + `run()`/RunHandle，无 defineAgent/timer/HITL/spawn/retry 面。证明线：canonical example 真 SIGKILL 中段杀死，boot 扫描后续跑至类型化完成。
+
+### 落地批次（Landing Batches）
+
+#13 收尾计划的四批次（ADR 0008 §2）：A = fork 导入 + 首 checkpoint；B = spec 第 1 章（Durable Execution）；C = walking skeleton 落地（store → engine → sdk，按 `docs/fork/adding-a-daypaw-package.md`）；D = spec 00-overview（最后写，含 profile/bundle 行清单设计）。
 
 ## 编排（Orchestrator 域）
 
