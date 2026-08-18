@@ -87,7 +87,11 @@ run 的调用方句柄：id、result（类型化 Promise）、status()、cancel(
 
 ### 幂等键（Idempotency Key）
 
-step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知的依据。
+step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知的依据。自动派生 = `runId + name + occurrence`；`opts.key` 显式逃生口。
+
+### 认领（Claim）
+
+每 run 单写者的实施：进程以实例 id 经条件更新原子认领 run 的驱动权；进程边界即写权边界，旧驱动者随进程死亡自然失效。见 spec 01 §5。
 
 ## 管理面（Manager 域）
 
