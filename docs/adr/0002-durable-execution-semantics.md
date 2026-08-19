@@ -21,7 +21,7 @@
 - **Session log**（不动）：模型可见的一切；不变量 model-visible means logged 完好；不碰 `SESSION_FORMAT_VERSION`。
 - **Engine ledger**（新，追加式；物理落点见 spec 第 1 章 §3 落实注记）：编排事实——`run/start·end`、`step/start·end`、`effect`（幂等键+结果）、`promise`（create/resolve/reject/timeout）、`timer`（schedule/fire）、数据化 retry policy、定义版本。
 - 双向引用：ledger 行 → `(session.id, seq)`；session 事件可带可选 `runId` 字段。run 可跨 session/subagent 而不散射。
-- Manager 观测与 EVO 评估集均以 ledger 为数据源（OTel 导出是它的一次投影）。
+- Manager 观测与 EVO 评估集均以 ledger 为数据源（OTel 导出是它的一次投影——投影随③④子项目，ADR 0009；引擎 v1 不为此预留代码）。
 
 ### 4. 恢复谱系：step 去重续跑（DBOS 谱系）
 
@@ -42,7 +42,7 @@
 
 ### 7. Schema 预留（v1 字段化，不做语义）
 
-- 数据化 retry policy（重试计数崩溃不丢）；effect 幂等键列；run 记录其 workflow/agent 定义版本（EVO incumbent/candidate 并行运行的前提，Golem Agent Type 谱系）。
+- 数据化 retry policy（`attempt` 列崩溃不丢计数；policy 列待 retry 面落地时以迁移加入）；effect 幂等键列；run 记录其 workflow/agent 定义版本（EVO incumbent/candidate 并行运行的前提，Golem Agent Type 谱系）。
 - 补偿/saga 不做原语（六家亦非原语）：幂等键 + 重试 + 人工干预（Manager）覆盖。
 
 ## 后果

@@ -11,7 +11,7 @@
 **双事实源，各管一事**（ADR 0002 §3）：
 
 - **Session log**（不动）：模型可见的一切；不变量 model-visible means logged 完好；不碰 `SESSION_FORMAT_VERSION`。
-- **Engine ledger**（新，追加式）：编排事实的唯一权威——run 生命周期、step/effect（幂等键+结果）、promise（gate）、timer、retry 计数、定义版本。Manager 观测与 EVO 评估集（均现为远期子项目，ADR 0009）以它为数据源（OTel 导出是它的一次投影）。
+- **Engine ledger**（新，追加式）：编排事实的唯一权威——run 生命周期、step/effect（幂等键+结果）、promise（gate）、timer、retry 计数、定义版本。Manager 观测与 EVO 评估集（均现为远期子项目，ADR 0009）以它为数据源（OTel 导出是它的一次投影——投影随子项目落地，引擎 v1 不为此预留代码）。
 - **双向引用**：ledger 行可携 `(session_id, session_seq)` 指回 session log；session 事件可带可选 `runId` 字段（`SessionEventMap` merge-extensible，新增事件不碰 core）。run 可跨 session/subagent 而不散射。
 
 **与上游三族旁立**（ADR 0002 §6）：jobs / workflow / schedule 不改不碰；自有 daypaw profile 默认不装其模型侧工具。可选适配留后续票裁决优先级：jobs → 后台 effect 执行器 provider；schedule → timer provider；workflow → 不适配，被引擎取代。短期代价：代码库两套编排概念并存，接受。
@@ -24,9 +24,9 @@
 |---|---|---|
 | ① | 追加式 journal：effect + result 一起记 | **做**——engine ledger 本体（§3） |
 | ② | 重放/去重 | **做**——DBOS 谱系 step 去重续跑（§5）；无强确定性约束，改版本/改 prompt 不炸旧 run；全史对话重放由 session log 免费提供，引擎不重复 |
-| ③ | 持久 timer | **做**（§6）；skeleton 范围外（§11） |
-| ④ | 持久 promise / HITL gate | **做**（§6）——单一原语 `ctx.waitFor`；skeleton 范围外 |
-| ⑤ | 数据化 retry policy | **字段化预留**（journal 行 `attempt` + `retry_policy_json` 列，崩溃不丢计数）；v1 无自动重试策略面，step 失败即 run failed |
+| ③ | 持久 timer | **做**（§6）；按需落地（§11） |
+| ④ | 持久 promise / HITL gate | **做**（§6）——单一原语 `ctx.waitFor`；按需落地（§11） |
+| ⑤ | 数据化 retry policy | **字段化预留**（journal 行 `attempt` 列，崩溃不丢计数；`retry_policy_json` 待 retry 面落地时以迁移加入，golden 保障）；v1 无自动重试策略面，step 失败即 run failed |
 | ⑥ | 副作用幂等键 | **做**——step 键自动派生 `runId + name + occurrence`，`opts.key` 显式逃生口（原型裁决，见第 2 章 §2） |
 | ⑦ | 每 run 单写者 | **做**（§5 驱动者模型 + claim 认领） |
 | ⑧ | 版本化执行定义 | **做**——run 行记 `(def_name, def_version)`（EVO incumbent/candidate 同名不同版本并行跑的前提，Golem Agent Type 谱系） |
@@ -68,7 +68,7 @@ store = 共享数据契约的代码形态：schema 常量 + TS 行类型 + 迁�
 | `kind` | TEXT | `'step'`（后续扩 `'timer'` / `'sleep'` 族占位） |
 | `status` | TEXT | `'started' \| 'completed' \| 'failed'` |
 | `value_json` / `error_json` | TEXT NULL | 结果（ledger 写账时运行时校验）/ 失败 |
-| `attempt` / `retry_policy_json` | INTEGER / TEXT NULL | ⑤预留：重试计数崩溃不丢 |
+| `attempt` | INTEGER | ⑤预留：重试计数崩溃不丢；`retry_policy_json` 待 retry 面落地时以迁移加入 |
 | `session_id` / `session_seq` | TEXT / INTEGER NULL | 双向引用（§1） |
 | `started_at` / `finished_at` | INTEGER NULL | |
 
@@ -170,7 +170,7 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 | §3.1 runs / §3.2 journal | ✅ 落地 |
 | §4 迁移机制 | ✅ 迁移骨架 + 0001 段 + golden fixture |
 | §5 驱动 / step 去重 / boot 扫描 / claim / start-or-attach | ✅ 落地 |
-| §6 promise / timer | ❌（语义已定，skeleton 后落地） |
+| §6 promise / timer | ❌（语义已定，按需落地：首个需要 gate/timer 的真实 workflow 出现时实现） |
 | §7 三缝接口 | ✅ 以进程内实现落地（接口成型即留口） |
 | §9 双层崩溃 + golden fixture + canonical example | ✅ 随包落地（证明线：3-step example 真 SIGKILL 续跑） |
 | retry 面 / spawn / defineAgent / profile 接线 / bin 冒烟 | ❌ 全部在外 |
