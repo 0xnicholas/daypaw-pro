@@ -1,17 +1,17 @@
-# 第 1 章：Durable Execution（Orchestrator）
+# 第 1 章：Durable Execution（Durable Engine）
 
 > 状态：**完整章**（支柱①里程碑撰写，批次 B）。
 > 决策依据：[ADR 0002](../adr/0002-durable-execution-semantics.md)（语义与基座）、[ADR 0003](../adr/0003-engine-sdk-programming-model.md)（编程模型边界）、[ADR 0006](../adr/0006-engine-package-structure.md)（包结构）、[ADR 0007](../adr/0007-test-strategy.md)（测试策略）、[ADR 0008](../adr/0008-landing-order-walking-skeleton.md)（落地顺序与 walking skeleton）。
-> 事实底座：`research/durable-execution-landscape.md`（分支 `research/durable-execution-landscape`，六家引擎第一性语义）、`research/dsh-seam-inventory.md`（分支 `research/dsh-seam-inventory`，dsh seam 清点）。
+> 事实底座：`research/durable-execution-landscape.md`（分支 `research/durable-execution-landscape`，六家引擎第一性语义）、`research/dsh-seam-inventory-v2.md`（分支 `research/seam-inventory-v2`，dsh seam 清点 v2，接替 v1）。
 
 ## 1. 定位：双事实源与边界
 
-支柱①补的是 dsh 留白的那一层：dsh 已把**会话内 durability** 做满（append-only session log、checkpoint 屏障、崩溃修复合成收尾），但**跨 turn / 跨进程的编排 durability** 为零（jobs 内存注册表、workflow 非持久、schedule 只在 session 活着时等）。进程死了，对话史活着，一切「正在做的事」都死了——Orchestrator 复活「正在做的事」。
+支柱①补的是 dsh 留白的那一层：dsh 已把**会话内 durability** 做满（append-only session log、checkpoint 屏障、崩溃修复合成收尾），但**跨 turn / 跨进程的编排 durability** 为零——执行级无 run journal（jobs 内存注册表、workflow 无持久执行状态、schedule 只在 session 活着时等），显示级已有（`tool-workflow/*` 四事件 durable 可回放，见清点 v2）。进程死了，对话史与做事的叙事都活着，唯独「正在做的事」不会自己复活——Durable Engine（参照系：Palantir Orchestrator）复活「正在做的事」。
 
 **双事实源，各管一事**（ADR 0002 §3）：
 
 - **Session log**（不动）：模型可见的一切；不变量 model-visible means logged 完好；不碰 `SESSION_FORMAT_VERSION`。
-- **Engine ledger**（新，追加式）：编排事实的唯一权威——run 生命周期、step/effect（幂等键+结果）、promise（gate）、timer、retry 计数、定义版本。Manager 观测与 EVO 评估集均以它为数据源（OTel 导出是它的一次投影）。
+- **Engine ledger**（新，追加式）：编排事实的唯一权威——run 生命周期、step/effect（幂等键+结果）、promise（gate）、timer、retry 计数、定义版本。Manager 观测与 EVO 评估集（均现为远期子项目，ADR 0009）以它为数据源（OTel 导出是它的一次投影）。
 - **双向引用**：ledger 行可携 `(session_id, session_seq)` 指回 session log；session 事件可带可选 `runId` 字段（`SessionEventMap` merge-extensible，新增事件不碰 core）。run 可跨 session/subagent 而不散射。
 
 **与上游三族旁立**（ADR 0002 §6）：jobs / workflow / schedule 不改不碰；自有 daypaw profile 默认不装其模型侧工具。可选适配留后续票裁决优先级：jobs → 后台 effect 执行器 provider；schedule → timer provider；workflow → 不适配，被引擎取代。短期代价：代码库两套编排概念并存，接受。
@@ -109,7 +109,7 @@ DB 级：**WAL 一写多读**——引擎进程单写者，Manager host / 其它
 
 **幂等 start-or-attach**（ADR 0003 §4 的本章侧面）：`def.run(input, { runId? })`——runId 无行则 INSERT 并驱动；已有行则 attach：本进程在驱动 → 挂其完成通知；done/failed/cancelled → 直接读行返回；**他进程在驱动（v1 非常态）→ 低频轮询行变化兜底**（`pollMs` 可配，默认 1s——v1 进程内嵌形态下跨进程 attach 仅运维场景）。
 
-**cancel**：写 `status='cancelled'` + `cancel_cause` → driver 侧 AbortSignal 触发；已完成 step 记录保留。重跑语义（新 runId + attempt 链）归 Manager 章。
+**cancel**：写 `status='cancelled'` + `cancel_cause` → driver 侧 AbortSignal 触发；已完成 step 记录保留。重跑语义（新 runId + attempt 链）归 Manager 章（远期子项目方向文档）。
 
 ## 6. Durable promise（gate）与持久 timer
 

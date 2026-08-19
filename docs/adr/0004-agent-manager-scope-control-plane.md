@@ -49,6 +49,8 @@ Manager v1 是引擎的**控制者**，但控制面只做三件事：**resolve g
 
 v1 **不扩 dsh agent wire**。Manager 走 webserver 路由（读）+ store 命令（写），wire 现状（无 cancel/run 级结果/attach）不构成阻塞；ADR 0003 指出的「等价性谎言」问题在 Manager 路径上不存在，因为根本不经 wire。
 
+> 2026-08 消歧（seam 清点 v2）：「wire」= dsh agent wire（SDK wire）；「webserver 路由」现指 apiproxy→api Remote 网关（Typert 迁移中）。Manager host 复用该网关模式不属于扩 wire。
+
 ## 后果
 
 - spec 第 3 章骨架输入：`docs/spec/03-agent-manager.md`。

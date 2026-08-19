@@ -1,4 +1,4 @@
-# ADR 0002: Durable Execution 语义与基座（Orchestrator）
+# ADR 0002: Durable Execution 语义与基座（Durable Engine）
 
 - **状态**：已接受（2026-08-30，[Durable Execution 语义与基座](https://github.com/0xnicholas/daypaw-pro/issues/6)）
 - **参照**：Palantir Orchestrator（DevCon 6）语义 + 六家引擎第一性语义调研（`research/durable-execution-landscape.md`，分支）+ dsh seam 清点（`research/dsh-seam-inventory.md`，分支）
@@ -12,14 +12,14 @@
 
 ### 2. 持久化级别：进程重启存活 + boot 扫描（无常驻 daemon）
 
-- 一切 run 状态、timer、promise 落盘（SQLite，经 `ctx.storage` seam）；进程可随时退出。
+- 一切 run 状态、timer、promise 落盘（SQLite；落点 = 自立库文件直驱，见 spec 第 1 章 §3 落实注记）；进程可随时退出。
 - 唤醒 = **boot 扫描**：进程任何方式被拉起时，补发 overdue timer、恢复未完 run。可选 cron/launchd 定期拉起做「准 daemon」。
 - v1 无跨主机/副本/HA/task queue；**journal 读写、promise 解析、timer 调度三者做成可替换接口**，为日后 daemon 化/服务化留口（Resonate local→production 谱系）。
 
 ### 3. Ledger 落点：独立 engine ledger，双事实源各管一事
 
 - **Session log**（不动）：模型可见的一切；不变量 model-visible means logged 完好；不碰 `SESSION_FORMAT_VERSION`。
-- **Engine ledger**（新，追加式，落 storage seam）：编排事实——`run/start·end`、`step/start·end`、`effect`（幂等键+结果）、`promise`（create/resolve/reject/timeout）、`timer`（schedule/fire）、数据化 retry policy、定义版本。
+- **Engine ledger**（新，追加式；物理落点见 spec 第 1 章 §3 落实注记）：编排事实——`run/start·end`、`step/start·end`、`effect`（幂等键+结果）、`promise`（create/resolve/reject/timeout）、`timer`（schedule/fire）、数据化 retry policy、定义版本。
 - 双向引用：ledger 行 → `(session.id, seq)`；session 事件可带可选 `runId` 字段。run 可跨 session/subagent 而不散射。
 - Manager 观测与 EVO 评估集均以 ledger 为数据源（OTel 导出是它的一次投影）。
 

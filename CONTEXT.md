@@ -39,11 +39,11 @@ dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色�
 
 #13 收尾计划的四批次（ADR 0008 §2）：A = fork 导入 + 首 checkpoint；B = spec 第 1 章（Durable Execution）；C = walking skeleton 落地（store → engine → sdk，按 `docs/fork/adding-a-daypaw-package.md`）；D = spec 00-overview（最后写，含 profile/bundle 行清单设计）。
 
-## 编排（Orchestrator 域）
+## 编排（Durable Engine 域）
 
-### Orchestrator（即 Durable Engine）
+### Durable Engine（参照系名 Orchestrator）
 
-支柱①的引擎：跨 turn / 跨进程的持久执行层，Palantir Orchestrator 的自用等价物。作为 Cordis 插件族暴露 `ctx.durable`。见 ADR 0002。
+支柱①的引擎：跨 turn / 跨进程的持久执行层（参照系：Palantir Orchestrator）。作为 Cordis 插件族暴露 `ctx.durable`。见 ADR 0002。
 
 ### Run
 
@@ -71,7 +71,7 @@ step 内对外部世界的一次副作用（LLM 调用、工具调用、写文�
 
 ### Engine Ledger
 
-引擎的追加式事实日志（run/step/effect/promise/timer），落 storage seam，以 `(session.id, seq)` 引用回 session log。与 Session Log 双事实源各管一事：后者只承载模型可见内容。
+引擎的追加式事实日志（run/step/effect/promise/timer），以 `(session.id, seq)` 引用回 session log。与 Session Log 双事实源各管一事：后者只承载模型可见内容。
 
 ### Durable Promise（Gate）
 

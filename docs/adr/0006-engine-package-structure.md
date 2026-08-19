@@ -13,8 +13,8 @@ packages/daypaw/
 ├── engine/   @daypaw/engine   cordis 插件族：ctx.durable、journal/timer/promise、boot 扫描、定义注册表
 ├── sdk/      @daypaw/sdk      defineAgent/defineWorkflow、run()/RunHandle facade（纯库）
 ├── store/    @daypaw/store    共享 SQLite 契约：schema 常量 + 行类型 + 迁移骨架（无业务逻辑）
-├── (预留) manager/            host 侧路由 + manager host 进程——spec 3 撰写期建
-├── (预留) evo/                优化 workflow 定义 + 自身表——spec 4 撰写期建
+├── (预留) manager/            host 侧路由 + manager host 进程——子项目立项时建（ADR 0009）
+├── (预留) evo/                优化 workflow 定义 + 自身表——子项目立项时建（ADR 0009）
 └── (预留) ui-*/               Manager client 侧插槽插件——同上
 ```
 

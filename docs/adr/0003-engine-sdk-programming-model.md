@@ -49,7 +49,7 @@ parallel = `Promise.all`、condition = `if`/`try`——**普通 TypeScript，不
 ### 4. run() 语义：幂等 start-or-attach + RunHandle
 
 - `def.run(input, { runId? })`：runId 已存在则 **attach**（返回已有 run 的句柄与结果），不存在则启动——调用幂等，崩溃重启后同一调用自动接回原 run。
-- `RunHandle = { id, result: Promise<T>, status(), cancel(cause), meta }`；`status()` 可见 `'running' | 'waiting:<gate>' | 'done' | ...`（Manager 的数据底座）。
+- `RunHandle = { id, result: Promise<T>, status(), cancel(cause), meta }`；`status()` 返回 `RunStatus` 判别联合（`{state:'running'}` / `{state:'waiting', gate}` / `{state:'done'}` / `{state:'failed'}` / `{state:'cancelled'}`，类型面见 spec 第 2 章 §2；替代早先的 `'waiting:<gate>'` 字符串草案）（Manager 的数据底座）。
 - **结果 = output schema 校验后的类型化输出**——run 级因果归因在引擎层解决，不继承 dsh wire `finalResponse` 无归因的缺陷。
 - 持久身份 = runId；内存 promise 诚实地不承诺跨进程——跨进程重连走 attach。
 - boot 扫描复活未完 run **不需要原调用者**；`ctx.spawn` 的子 run 同样被独立复活。

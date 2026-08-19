@@ -1,6 +1,6 @@
 # ADR 0008: 落地顺序与 walking skeleton
 
-- **状态**：已接受（2026-08-17，[落地顺序与 walking skeleton](https://github.com/0xnicholas/daypaw-pro/issues/13)）
+- **状态**：已接受（2026-08-17，[落地顺序与 walking skeleton](https://github.com/0xnicholas/daypaw-pro/issues/13)）；§4 的 map #1 雾区语句已由 ADR 0009 作废
 - **前置**：ADR 0001（同步仪式、新 family、`@daypaw/*` 独立 0.x、core-touch 登记）、ADR 0002（引擎语义）、ADR 0003（编程模型、注册表）、ADR 0006（三包切分与预留位、撰写期设计题登记）、ADR 0007（测试策略：per-file 100% 门、双层崩溃测试、store golden fixture）
 - **事实底座**：本仓库当前为纯设计文档（无码，fork 未导入）；dsh 加包规范（docs/cookbook/adding-a-package.md）；dsh constraints 脚本按 scope 分支——严格 manifest 不变集（版本对齐 root、cordis peer/dev 镜像、main/types/exports）仅作用于 `@deepseek-ai/dsh-*`，非 dsh scope 包仅被强制 `private: true`；README Known Limitations 门与 vitest projects/覆盖率 globs 均按 `packages/*/*` 零配置覆盖 `packages/daypaw/`。
 
