@@ -37,7 +37,7 @@ dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色�
 
 ### 落地批次（Landing Batches）
 
-#13 收尾计划的四批次（ADR 0008 §2）：A = fork 导入 + 首 checkpoint；B = spec 第 1 章（Durable Execution）；C = walking skeleton 落地（store → engine → sdk，按 `docs/fork/adding-a-daypaw-package.md`）；D = spec 00-overview（最后写，含 profile/bundle 行清单设计）。
+#13 收尾计划的四批次（ADR 0008 §2）：A = fork 导入 + 首 checkpoint；B = spec 第 1 章（Durable Execution）；C = walking skeleton 落地（store → engine → sdk，按 `docs/fork/adding-a-daypaw-package.md`）；D = spec 00-overview（含 profile/bundle 行清单裁决）。
 
 ## 编排（Durable Engine 域）
 
@@ -145,7 +145,7 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 
 ### REAL-composition 测试
 
-经真 Loader 启动测试专用 `cordis.yml` 的组合测试：product-visible 插件的最低真实入口要求，mock 边界仅限外部服务（LLM/网络/时钟）。与手搳 `ctx.plugin(...)` 的单元组合相对。
+经真 Loader 启动测试专用 `cordis.yml` 的组合测试：product-visible 插件的最低真实入口要求，mock 边界仅限外部服务（LLM/网络/时钟）。与手搭 `ctx.plugin(...)` 的单元组合相对。
 
 ### keyless / with-key
 
