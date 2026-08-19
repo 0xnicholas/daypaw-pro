@@ -50,6 +50,7 @@ export { REGION_BEGIN, REGION_END }
  * errors, so the partition can never silently drift from the service API.
  */
 export const SERVICE_PAGE: Record<string, string> = {
+  durable: 'daypaw-engine.md',
   agentLoop: 'core.md',
   agentDefaultModel: 'core.md',
   agentPresets: 'core.md',
@@ -506,6 +507,9 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
 /** Project types deliberately documented outside the subsystems catalog. */
 export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   z: 'schemastery schema constructor is owned by vendor/schemastery (vendored upstream)',
+  EngineDefinition: 'durable definition record is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  EngineRunHandle: 'durable run handle is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  EngineRunOptions: 'durable run options are owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   BeginCommandRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   InsertReferenceRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   ConsumeTokenRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',

@@ -1,8 +1,7 @@
 # 第 1 章：Durable Execution（Durable Engine）
 
-> 状态：**完整章**（支柱①里程碑撰写，批次 B）。
-> 决策依据：[ADR 0002](../adr/0002-durable-execution-semantics.md)（语义与基座）、[ADR 0003](../adr/0003-engine-sdk-programming-model.md)（编程模型边界）、[ADR 0006](../adr/0006-engine-package-structure.md)（包结构）、[ADR 0007](../adr/0007-test-strategy.md)（测试策略）、[ADR 0008](../adr/0008-landing-order-walking-skeleton.md)（落地顺序与 walking skeleton）。
-> 事实底座：`docs/research/durable-execution-landscape.md`（六家引擎第一性语义）、`docs/research/dsh-seam-inventory-v2.md`（dsh seam 清点 v2，接替 v1）。
+> 状态：**完整章**（支柱①里程碑撰写，批次 B）。决策依据：[ADR 0002](../adr/0002-durable-execution-semantics.md)（语义与基座）、[ADR 0003](../adr/0003-engine-sdk-programming-model.md)（编程模型边界）、[ADR 0006](../adr/0006-engine-package-structure.md)（包结构）、[ADR 0007](../adr/0007-test-strategy.md)（测试策略）、[ADR 0008](../adr/0008-landing-order-walking-skeleton.md)（落地顺序与 walking skeleton）。事实底座：`docs/research/durable-execution-landscape.md`（六家引擎第一性语义）、`docs/research/dsh-seam-inventory-v2.md`（dsh seam 清点 v2，接替 v1）。
+>
 
 ## 1. 定位：双事实源与边界
 
@@ -88,7 +87,7 @@ DB 级：**WAL 一写多读**——引擎进程单写者，Manager host / 其它
 
 裁决（批次 B 撰写期设计题，ADR 0006 后果登记项）：**手写 SQL 迁移**，否决 drizzle 类 ORM（依赖链 + 生成工具链与全仓库「node:sqlite 直驱、零 ORM」惯法相异；2–6 张表量级下手写样板可忽略；store 定位是中立契约而非模型层）。
 
-- `packages/daypaw/store/src/migrations/NNNN_name.sql`——编号单调递增，迁移即代码评审对象，diff 可读。
+- `packages/daypaw/store/src/migrations.ts` —— 编号单调递增的 SQL 段（手写 SQL 以 TS 模板字符串承载，使编译后的 `lib/` 自包含；评审性质不变），迁移即代码评审对象，diff 可读。
 - 版本戳沿用 dsh 惯法：`PRAGMA user_version`。`migrate.ts` 读当前版本、逐段在事务内应用后续段、逐段推进戳。**旧版逐段迁移；比当前新的库拒绝打开**（dsh 拒旧姿态的 daypaw 版：向前兼容靠迁移，向后不承诺）。
 - golden fixture（ADR 0007）：`tests/fixtures/golden/` 每段一个库文件；测试 = 从 N-1 段 golden 应用第 N 段后，`sqlite_master` dump 与关键行比对。
 

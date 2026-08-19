@@ -97,6 +97,15 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'durable',
+    pkg: 'daypaw/engine',
+    title: 'Durable execution engine (daypaw fork)',
+    mode: 'seam',
+    implementations: ['engine'],
+    consumers: ['sdk'],
+    note: 'Fork-owned orchestrator: run lifecycle, step-dedup re-drive, and boot-scan revival over the @daypaw/store ledger; the @daypaw/sdk facade is its typed consumer (packages/daypaw/engine/README.md).',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

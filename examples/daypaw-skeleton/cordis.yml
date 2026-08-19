@@ -1,0 +1,7 @@
+# Walking-skeleton demo composition: the durable engine over a local ledger
+# file (created owner-only next to the process cwd on first use). Tests point
+# their own compositions at temp copies; this file is the runnable demo face.
+- id: daypaw-engine
+  name: '@daypaw/engine'
+  config:
+    path: daypaw-demo-ledger.db

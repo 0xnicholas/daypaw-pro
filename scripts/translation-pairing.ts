@@ -163,6 +163,16 @@ export const TRANSLATION_SCOPE_GLOB_EXCLUDES = [
   'python/sdk-runtime/src/deepseek_harness_runtime/runtime/dsh-jsonrpc-agent-*/**',
   'python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/**',
   'vendor/**',
+  // daypaw fork design corpus is Chinese-first by standing decision (wayfinder
+  // map #1): ADRs, specs, research, reports, agent docs, and the glossary
+  // carry no English twins; the bilingual duty covers upstream docs only.
+  'docs/adr/**',
+  'docs/spec/**',
+  'docs/agents/**',
+  'docs/fork/**',
+  'docs/reports/**',
+  'docs/research/**',
+  'CONTEXT.md',
 ]
 
 /** Whether a repository-relative path belongs to a dependency or generated tree. */

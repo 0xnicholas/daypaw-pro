@@ -1,8 +1,7 @@
 # dsh seam 清点 v2（merge 后地形重扫）
 
-> Wayfinder 研究票 [#21 「地形重扫：merge 后 seam 清点 v2」](https://github.com/0xnicholas/daypaw-pro/issues/21) 的成果，隶属地图 [#20 「daypaw-pro 架构重审（批次 C 开工前把关）」](https://github.com/0xnicholas/daypaw-pro/issues/20)。
-> 日期：2026-08-19。调查对象：**本仓库当前树**（main @ `db32236cb3`，即 upstream merge `a0a2a87370` 之后）。本地地形研究：一手来源为仓库自身代码与文档，引用一律为仓库内路径。
-> 基线：旧清点 [dsh-seam-inventory.md](dsh-seam-inventory.md)（commit `80a7f708e9`，2026-08-16）。
+> Wayfinder 研究票 [#21 「地形重扫：merge 后 seam 清点 v2」](https://github.com/0xnicholas/daypaw-pro/issues/21) 的成果，隶属地图 [#20 「daypaw-pro 架构重审（批次 C 开工前把关）」](https://github.com/0xnicholas/daypaw-pro/issues/20)。日期：2026-08-19。调查对象：**本仓库当前树**（main @ `db32236cb3`，即 upstream merge `a0a2a87370` 之后）。本地地形研究：一手来源为仓库自身代码与文档，引用一律为仓库内路径。基线：旧清点 [dsh-seam-inventory.md](dsh-seam-inventory.md)（commit `80a7f708e9`，2026-08-16）。
+>
 
 ## 0. 前提修正（票面叙述 vs 事实）
 

@@ -7,6 +7,10 @@ A service can be a core spine service, a swappable capability seam, or a bundle/
 
 ```mermaid
 flowchart LR
+  pkg_daypaw_engine["daypaw/engine"]
+  svc_durable["ctx.durable<br/>Durable execution engine (daypaw fork)"]
+  pkg_engine["engine"]
+  pkg_sdk["sdk"]
   pkg_attachment["attachment"]
   svc_attachments["ctx.attachments<br/>Durable binary attachment storage"]
   pkg_attachment_local["attachment-local"]
@@ -215,10 +219,12 @@ flowchart LR
   pkg_cordis_host_runner --> svc_dynamicCordisRunner
   pkg_credentials --> svc_credentials
   pkg_credentials_local --> svc_credentials
+  pkg_daypaw_engine --> svc_durable
   pkg_directory_picker --> svc_directoryPicker
   pkg_directory_picker_browse --> svc_directoryPicker
   pkg_directory_picker_native --> svc_directoryPicker
   pkg_e2b --> svc_e2b
+  pkg_engine --> svc_durable
   pkg_fs --> svc_fs
   pkg_fs_e2b --> svc_fs
   pkg_fs_local --> svc_fs
@@ -313,6 +319,7 @@ flowchart LR
   svc_credentials --> pkg_llm_deepseek
   svc_credentials --> pkg_llm_pi_ai
   svc_directoryPicker --> pkg_apiproxy
+  svc_durable --> pkg_sdk
   svc_dynamicCordisRunner --> pkg_tool_cordis
   svc_e2b --> pkg_fs_e2b
   svc_e2b --> pkg_subprocess_e2b
@@ -411,6 +418,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.durable` | `seam` | `daypaw/engine` | `engine` | `sdk` | - | Fork-owned orchestrator: run lifecycle, step-dedup re-drive, and boot-scan revival over the @daypaw/store ledger; the @daypaw/sdk facade is its typed consumer (packages/daypaw/engine/README.md). |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | `host-runtime`, [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content. |
 | `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | Adapters register provider implementations; the loop and compaction call the provider-neutral stream service. |
 | `ctx.tokenMeter` | `core` | [`token-meter`](../packages/llm/token-meter) | - | [`compaction-basic`](../packages/compaction/compaction-basic) | - | Owns isolated per-session replay folds; pressure consumers share immutable revisioned measurements. |

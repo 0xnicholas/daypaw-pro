@@ -198,6 +198,11 @@
       "@deepseek-ai/dsh-client-ui-tool": ["./packages/client/ui-tool/src"],
       "@deepseek-ai/dsh-client-ui-deliverables": ["./packages/client/ui-deliverables/src"],
       "@deepseek-ai/dsh-client-ui-workflow-run": ["./packages/client/ui-workflow-run/src"],
+      // daypaw fork packages: one group maps every @daypaw/<name> to its
+      // source; the invariant companion gets its own (more specific) pattern
+      // so it resolves before the generic wildcard below it.
+      "@daypaw/*/invariant": ["./packages/daypaw/*/src/invariant.ts"],
+      "@daypaw/*": ["./packages/daypaw/*/src"],
       "@deepseek-ai/dsh-client-ui-input-trigger": ["./packages/client/ui-input-trigger/src"],
       "@deepseek-ai/dsh-client-ui-commands": ["./packages/client/ui-commands/src"],
       "@deepseek-ai/dsh-client-ui-model-selection": ["./packages/client/ui-model-selection/src"],

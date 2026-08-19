@@ -11,6 +11,26 @@
 
 `Requires:` 行列出插件通过 `inject` 注入的服务键：其 `cordis.yml` 树还必须加载这些服务的提供者。范围限定为 harness 层级（`packages/`）；配置树还可能加载的 vendored cordis 插件（`hmr`、控制台日志记录器等）固定为上游源代码（参见 [vendoring policy](../vendor/README.md)），未收录于此目录。
 
+<a id="daypawengine"></a>
+
+## `@daypaw/engine`
+
+```ts config-catalog
+/** Service configuration. */
+export interface Config {
+  /**
+   * Ledger database file path, or `:memory:`. Missing parent directories and
+   * files are created owner-only; the schema is migrated on open and a
+   * database stamped newer than this build rejects.
+   */
+  path: string
+  /** Poll interval for attach calls that find the run driven elsewhere (ms). */
+  pollMs?: number
+}
+```
+
+Source: [`packages/daypaw/engine/src/index.ts:36`](../packages/daypaw/engine/src/index.ts)
+
 <a id="deepseek-aidsh-acp"></a>
 
 ## `@deepseek-ai/dsh-acp`
@@ -3116,6 +3136,8 @@ export interface Config {
 
 由其他包作为库导入；`cordis.yml` 无法加载它们。
 
+- `@daypaw/sdk`（[`packages/daypaw/sdk/src/index.ts`](../packages/daypaw/sdk/src/index.ts)）
+- `@daypaw/store`（[`packages/daypaw/store/src/index.ts`](../packages/daypaw/store/src/index.ts)）
 - `@deepseek-ai/dsh-acp-snapshot`（[`packages/test-support/acp-snapshot/src/index.ts`](../packages/test-support/acp-snapshot/src/index.ts)）
 - `@deepseek-ai/dsh-agent-loop-testkit`（[`packages/test-support/agent-loop-testkit/src/index.ts`](../packages/test-support/agent-loop-testkit/src/index.ts)）
 - `@deepseek-ai/dsh-anonymous-user-id`（[`packages/identity/anonymous-user-id/src/index.ts`](../packages/identity/anonymous-user-id/src/index.ts)）

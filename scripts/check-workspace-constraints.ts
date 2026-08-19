@@ -48,7 +48,10 @@ const repositoryUrl = 'git+https://github.com/deepseek-harness/deepseek-harness.
  */
 const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harness.git'
 /** Directories whose packages this repository publishes: one release member each. */
-const releaseMemberDirectory = /^(?:packages\/[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
+// Release members state that they are publishable. The daypaw fork family
+// stays private (ADR 0001): exclude it from the release-member directory set
+// so it only owes `private: true`.
+const releaseMemberDirectory = /^(?:packages\/(?!daypaw\/)[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
 
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {

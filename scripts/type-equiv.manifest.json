@@ -1924,6 +1924,11 @@
       "doc": "docs/subsystems/feedback.md",
       "symbol": "MessageFeedbackDeleteResult",
       "source": "packages/feedback/message-feedback/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/daypaw-engine.md",
+      "symbol": "EngineDefinition",
+      "source": "packages/daypaw/engine/src/core.ts"
     }
   ]
 }

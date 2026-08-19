@@ -38,7 +38,7 @@ packages/daypaw/<pkg>/
 | `tsconfig.host.json` / `tsconfig.client.json` | 每包加 `{ "path": "./packages/daypaw/<pkg>" }` 引用；engine/store/sdk 归 host 聚合，ui-* 归 client（聚合唯一，不同属两端） |
 | `knip.json` | 仅当入口逃出仓库发现机制时 |
 
-零改动（glob/发现机制自动覆盖，已核实）：`pnpm-workspace.yaml`（`packages/*/*`）、vitest projects 与覆盖率 globs、`scripts/publint-all.ts`、`tsdown.config.ts`、`.oxlintrc.json`、`scripts/check-workspace-constraints.ts`。
+零改动（glob/发现机制自动覆盖，已核实）：`pnpm-workspace.yaml`（`packages/*/*`）、vitest projects 与覆盖率 globs、`scripts/publint-all.ts`、`tsdown.config.ts`、`.oxlintrc.json`。`scripts/check-workspace-constraints.ts` 的 release-member 规则已登记 core touch（daypaw 组排除，保 private 姿态）——上游 npm-public 化后此顶不再是零改动。
 
 ## 3. 包拓扑与命名
 

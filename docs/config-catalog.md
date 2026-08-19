@@ -9,6 +9,26 @@ This file is GENERATED from source (`scripts/gen-config-catalog.ts`) and verifie
 
 A `Requires:` line lists the service keys the plugin `inject`s: its `cordis.yml` tree must also load providers for those services. Scope is the harness tier (`packages/`); the vendored cordis plugins a config tree may also load (`hmr`, the console logger, …) are pinned upstream source ([vendoring policy](../vendor/README.md)) and not catalogued here.
 
+<a id="daypawengine"></a>
+
+## `@daypaw/engine`
+
+```ts config-catalog
+/** Service configuration. */
+export interface Config {
+  /**
+   * Ledger database file path, or `:memory:`. Missing parent directories and
+   * files are created owner-only; the schema is migrated on open and a
+   * database stamped newer than this build rejects.
+   */
+  path: string
+  /** Poll interval for attach calls that find the run driven elsewhere (ms). */
+  pollMs?: number
+}
+```
+
+Source: [`packages/daypaw/engine/src/index.ts:36`](../packages/daypaw/engine/src/index.ts)
+
 <a id="deepseek-aidsh-acp"></a>
 
 ## `@deepseek-ai/dsh-acp`
@@ -3115,6 +3135,8 @@ Abstract service classes — a deployment loads a concrete implementation packag
 
 Imported as libraries by other packages; a `cordis.yml` cannot load them.
 
+- `@daypaw/sdk` ([`packages/daypaw/sdk/src/index.ts`](../packages/daypaw/sdk/src/index.ts))
+- `@daypaw/store` ([`packages/daypaw/store/src/index.ts`](../packages/daypaw/store/src/index.ts))
 - `@deepseek-ai/dsh-acp-snapshot` ([`packages/test-support/acp-snapshot/src/index.ts`](../packages/test-support/acp-snapshot/src/index.ts))
 - `@deepseek-ai/dsh-agent-loop-testkit` ([`packages/test-support/agent-loop-testkit/src/index.ts`](../packages/test-support/agent-loop-testkit/src/index.ts))
 - `@deepseek-ai/dsh-anonymous-user-id` ([`packages/identity/anonymous-user-id/src/index.ts`](../packages/identity/anonymous-user-id/src/index.ts))

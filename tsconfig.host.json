@@ -293,6 +293,9 @@
     { "path": "./packages/lsp/lsp" },
     { "path": "./packages/lsp/lsp-stdio" },
     { "path": "./packages/lsp/tool-lsp" },
+    { "path": "./packages/daypaw/store" },
+    { "path": "./packages/daypaw/engine" },
+    { "path": "./packages/daypaw/sdk" },
     { "path": "./apps/cli" }
   ]
 }

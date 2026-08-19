@@ -1,7 +1,7 @@
 # Agent 观测/管理技术地形（ticket #4 research brief）
 
-> 为「Manager 范围与控制面」票提供的决策输入。调研日期：2026-08-16。
-> 结论先行：**dsh 的 canonical session log 已经是事实源；缺的是 (1) 一层可导出的 OTel trace 投影，(2) 一个本地轻量关联库（eval/feedback/dataset→session.seq 指针），(3) 一个 Temporal Web UI 式的管理面。不建议整体引入 Langfuse/Phoenix 的数据模型。**
+> 为「Manager 范围与控制面」票提供的决策输入。调研日期：2026-08-16。结论先行：**dsh 的 canonical session log 已经是事实源；缺的是 (1) 一层可导出的 OTel trace 投影，(2) 一个本地轻量关联库（eval/feedback/dataset→session.seq 指针），(3) 一个 Temporal Web UI 式的管理面。不建议整体引入 Langfuse/Phoenix 的数据模型。**
+>
 
 ---
 

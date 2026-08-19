@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/daypaw-engine.md
+daypaw-engine.md: e7df0c28cfc57ec6e79f317228adb577dfa3dc7a
+daypaw-engine.zh.md: dce12f73abf26395602c1109bbe99478e986b22d

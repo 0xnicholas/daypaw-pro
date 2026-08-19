@@ -1,7 +1,7 @@
 # Palantir Agent Stack（DevCon 6）— daypaw-pro 的参照系
 
-> Wayfinder 票 [#6](https://github.com/0xnicholas/daypaw-pro/issues/6) grilling 中途的用户揭示：**daypaw-pro 是 dsh 与 Palantir Agent Stack 思想的结合产物**。四支柱即其自用开源版。本文件存证研究结论，供全图各票引用。
-> 日期：2026-08-30。来源：Palantir 官方发布（DevCon 6 演讲、LinkedIn 帖、blog.palantir.com）——全部 vendor-sourced，无独立评审。
+> Wayfinder 票 [#6](https://github.com/0xnicholas/daypaw-pro/issues/6) grilling 中途的用户揭示：**daypaw-pro 是 dsh 与 Palantir Agent Stack 思想的结合产物**。四支柱即其自用开源版。本文件存证研究结论，供全图各票引用。日期：2026-08-30。来源：Palantir 官方发布（DevCon 6 演讲、LinkedIn 帖、blog.palantir.com）——全部 vendor-sourced，无独立评审。
+>
 
 ## 栈全景（DevCon 6 发布）
 

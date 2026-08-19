@@ -8,7 +8,9 @@
 
 ### 1.1 workflow 面正典类型（批次 C 实现面）
 
-```ts
+绑定缝（实现落定）：`defineWorkflow` 返回未绑定定义，`bind(def, engine)` 挂到 `ctx.durable` 并返回 `run(input, opts)` 面；同一定义对象重复绑定 no-op。
+
+```ts ignore-check
 // @daypaw/sdk —— 批次 C 正典类型面（完整 ambient 草案见原型分支 prototype/sdk-api-surface）
 import type { ZodType } from 'zod'
 type Infer<I extends ZodType> = I['_output']

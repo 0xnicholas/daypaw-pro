@@ -2,9 +2,8 @@
 
 # dsh seam 清点（四支柱相关）
 
-> Wayfinder 研究票 [#3 「dsh seam 清点（四支柱相关）」](https://github.com/0xnicholas/daypaw-pro/issues/3) 的成果。
-> 调查对象：本地 deepseek-harness 仓库（`/Users/nicholasl/Documents/build-whatever/deepseek-harness`，只读）。
-> 结论形态：六节事实 + 逐支柱「可直接挂载 seam / 必须新造 seam」清单，供「Durable Execution 语义与基座」「Engine 与 SDK 编程模型边界」「Manager 范围与控制面」「EVO 循环机制」及引擎包结构雾使用。
+> Wayfinder 研究票 [#3 「dsh seam 清点（四支柱相关）」](https://github.com/0xnicholas/daypaw-pro/issues/3) 的成果。调查对象：本地 deepseek-harness 仓库（`/Users/nicholasl/Documents/build-whatever/deepseek-harness`，只读）。结论形态：六节事实 + 逐支柱「可直接挂载 seam / 必须新造 seam」清单，供「Durable Execution 语义与基座」「Engine 与 SDK 编程模型边界」「Manager 范围与控制面」「EVO 循环机制」及引擎包结构雾使用。
+>
 
 ---
 

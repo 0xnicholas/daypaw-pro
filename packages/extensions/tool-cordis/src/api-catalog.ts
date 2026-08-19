@@ -539,6 +539,29 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'durable',
+    summary: 'The `ctx.durable` service.',
+    description: 'The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal stops driving without writing terminal run states — unfinished runs stay revivable by the next process.',
+    methods: [
+      {
+        signature: 'async register(def: EngineDefinition): Promise<void>',
+        description: 'Register a definition for execution and boot-time revival.',
+        parameters: [{ name: 'def', description: 'opaque definition record (see `@daypaw/sdk`).' }],
+      },
+      {
+        signature: 'async run(def: EngineDefinition, input: unknown, opts?: EngineRunOptions): Promise<EngineRunHandle>',
+        description: 'Start a run, or attach to an existing one (idempotent start-or-attach).',
+        parameters: [{ name: 'def', description: 'registered definition to run.' }, { name: 'input', description: 'JSON-serializable run input.' }, { name: 'opts', description: 'run identity and caller cancellation.' }],
+        returns: 'the run handle.',
+      },
+      {
+        signature: 'async idle(): Promise<void>',
+        description: 'Resolve when this process drives no run (boot scan included).',
+        parameters: [],
+      },
+    ],
+  },
+  {
     key: 'e2b',
     summary: 'Creates one lazily consumable E2B SDK handle and deletes the sandbox at timeout or disposal.',
     description: 'Creates one lazily consumable E2B SDK handle and deletes the sandbox at timeout or disposal. Creation begins at plugin construction; adapters await getSandbox before their first operation.',
@@ -3026,6 +3049,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EditGoalRequest {\n    readonly objective?: string;\n    readonly maxGoalRounds?: number;\n}',
   },
   {
+    name: 'EngineDefinition',
+    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
+  },
+  {
+    name: 'EngineRunHandle',
+    declaration: 'export interface EngineRunHandle {\n    readonly id: string;\n    readonly result: Promise<unknown>;\n    status(): EngineRunStatus;\n    cancel(cause?: string): Promise<void>;\n}',
+  },
+  {
+    name: 'EngineRunOptions',
+    declaration: 'export interface EngineRunOptions {\n    readonly runId?: string;\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'EngineRunStatus',
+    declaration: 'export type EngineRunStatus = {\n    readonly state: \'running\';\n} | {\n    readonly state: \'done\';\n} | {\n    readonly state: \'failed\';\n    readonly error: unknown;\n} | {\n    readonly state: \'cancelled\';\n    readonly cause?: string;\n};',
+  },
+  {
+    name: 'EngineStepCtx',
+    declaration: 'export interface EngineStepCtx {\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n}',
+  },
+  {
+    name: 'EngineStepOptions',
+    declaration: 'export interface EngineStepOptions {\n    readonly key?: string;\n}',
+  },
+  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
   },
@@ -3648,6 +3695,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RpcResult',
     declaration: 'export type RpcResult<T> = {\n    ok: true;\n    value: T;\n} | {\n    ok: false;\n    error: RpcError;\n};',
+  },
+  {
+    name: 'RunDefKind',
+    declaration: 'export type RunDefKind = \'workflow\' | \'agent\';',
   },
   {
     name: 'RunnerFailureRule',

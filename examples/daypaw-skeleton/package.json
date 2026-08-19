@@ -1,0 +1,7 @@
+{
+  "name": "daypaw-skeleton-example",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Runnable demo: the daypaw walking skeleton — a three-step durable workflow that survives SIGKILL"
+}

@@ -1,8 +1,7 @@
 # Durable Execution 技术地形
 
-> Wayfinder research 票 [#2 「Durable Execution 技术地形」](https://github.com/0xnicholas/daypaw-pro/issues/2) 的调研产出。
-> 分支：`research/durable-execution-landscape`。父决策票：[#6 「Durable Execution 语义与基座」](https://github.com/0xnicholas/daypaw-pro/issues/6)（另被 [#7 Engine 与 SDK 编程模型边界] 间接消费）。
-> 方法：只读官方文档一手来源（docs.temporal.io、docs.restate.dev、docs.dbos.dev、docs.resonatehq.io、learn.golem.cloud、littlehorse.io）+ 本地 dsh 仓库事实。日期：2026-08-16。
+> Wayfinder research 票 [#2 「Durable Execution 技术地形」](https://github.com/0xnicholas/daypaw-pro/issues/2) 的调研产出。分支：`research/durable-execution-landscape`。父决策票：[#6 「Durable Execution 语义与基座」](https://github.com/0xnicholas/daypaw-pro/issues/6)（另被 [#7 Engine 与 SDK 编程模型边界] 间接消费）。方法：只读官方文档一手来源（docs.temporal.io、docs.restate.dev、docs.dbos.dev、docs.resonatehq.io、learn.golem.cloud、littlehorse.io）+ 本地 dsh 仓库事实。日期：2026-08-16。
+>
 
 ## 0. TL;DR
 
