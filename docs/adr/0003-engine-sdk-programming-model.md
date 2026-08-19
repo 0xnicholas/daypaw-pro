@@ -1,7 +1,7 @@
 # ADR 0003: Engine 与 SDK 编程模型边界（Agent Engine + SDK）
 
 - **状态**：已接受（2026-08-30，[Engine 与 SDK 编程模型边界](https://github.com/0xnicholas/daypaw-pro/issues/7)）
-- **参照**：Palantir Agent Engine/SDK（DevCon 6，`docs/research/palantir-agent-stack.md`；注意：其 Agent SDK 无公开 API 文档，参照系是概念级而非接口级）+ dsh seam 清点（`research/dsh-seam-inventory.md`，分支）
+- **参照**：Palantir Agent Engine/SDK（DevCon 6，`docs/research/palantir-agent-stack.md`；注意：其 Agent SDK 无公开 API 文档，参照系是概念级而非接口级）+ dsh seam 清点（`docs/research/dsh-seam-inventory.md`（v1，已被 v2 接替））
 - **前置**：ADR 0002（嵌入式引擎、step 去重续跑、`ctx.waitFor`、engine ledger）
 
 ## 决策

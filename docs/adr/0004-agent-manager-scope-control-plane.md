@@ -1,7 +1,7 @@
 # ADR 0004: Agent Manager 范围与控制面
 
 - **状态**：已接受（2026-08-30，[Manager 范围与控制面](https://github.com/0xnicholas/daypaw-pro/issues/8)）；2026-08 起降级为远期子项目方向文档（ADR 0009）
-- **参照**：Palantir Agent Manager（DevCon 6，`docs/research/palantir-agent-stack.md`）+ 观测/管理技术地形（`research/agent-observability-landscape.md`，分支 `research/agent-observability-landscape`）+ dsh seam 清点（`research/dsh-seam-inventory.md`，分支）
+- **参照**：Palantir Agent Manager（DevCon 6，`docs/research/palantir-agent-stack.md`）+ 观测/管理技术地形（`docs/research/agent-observability-landscape.md`）+ dsh seam 清点（`docs/research/dsh-seam-inventory.md`（v1，已被 v2 接替））
 - **前置**：ADR 0002（嵌入式引擎、engine ledger、零算力等待、无 daemon）、ADR 0003（RunHandle、v1 纯库、wire 扩展留口给本票）
 - **编号注记**：票面写「ADR 0003」，但 0003 已被 SDK 票消费；本决策为 ADR 0004。
 

@@ -2,7 +2,7 @@
 
 > 状态：**完整章**（支柱①里程碑撰写，批次 B）。
 > 决策依据：[ADR 0002](../adr/0002-durable-execution-semantics.md)（语义与基座）、[ADR 0003](../adr/0003-engine-sdk-programming-model.md)（编程模型边界）、[ADR 0006](../adr/0006-engine-package-structure.md)（包结构）、[ADR 0007](../adr/0007-test-strategy.md)（测试策略）、[ADR 0008](../adr/0008-landing-order-walking-skeleton.md)（落地顺序与 walking skeleton）。
-> 事实底座：`research/durable-execution-landscape.md`（分支 `research/durable-execution-landscape`，六家引擎第一性语义）、`research/dsh-seam-inventory-v2.md`（分支 `research/seam-inventory-v2`，dsh seam 清点 v2，接替 v1）。
+> 事实底座：`docs/research/durable-execution-landscape.md`（六家引擎第一性语义）、`docs/research/dsh-seam-inventory-v2.md`（dsh seam 清点 v2，接替 v1）。
 
 ## 1. 定位：双事实源与边界
 

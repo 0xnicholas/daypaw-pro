@@ -1,6 +1,6 @@
 # 第 3 章：Agent Manager（骨架输入）
 
-> 状态：**骨架输入**——结构已定，内容待 spec 撰写期填充。2026-08 起随 Manager 降级为远期独立子项目（ADR 0009），本章转为子项目方向文档。决策依据 [ADR 0004](../adr/0004-agent-manager-scope-control-plane.md)；数据模型三层的依据见观测地形研究（`research/agent-observability-landscape.md`，分支）；引擎语义见 ADR 0002 与 spec 第 1 章。
+> 状态：**骨架输入**——结构已定，内容待 spec 撰写期填充。2026-08 起随 Manager 降级为远期独立子项目（ADR 0009），本章转为子项目方向文档。决策依据 [ADR 0004](../adr/0004-agent-manager-scope-control-plane.md)；数据模型三层的依据见观测地形研究（`docs/research/agent-observability-landscape.md`）；引擎语义见 ADR 0002 与 spec 第 1 章。
 
 ## 1. 观测面
 

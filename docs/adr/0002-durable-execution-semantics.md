@@ -1,7 +1,7 @@
 # ADR 0002: Durable Execution 语义与基座（Durable Engine）
 
 - **状态**：已接受（2026-08-30，[Durable Execution 语义与基座](https://github.com/0xnicholas/daypaw-pro/issues/6)）
-- **参照**：Palantir Orchestrator（DevCon 6）语义 + 六家引擎第一性语义调研（`research/durable-execution-landscape.md`，分支）+ dsh seam 清点（`research/dsh-seam-inventory.md`，分支）
+- **参照**：Palantir Orchestrator（DevCon 6）语义 + 六家引擎第一性语义调研（`docs/research/durable-execution-landscape.md`）+ dsh seam 清点（`docs/research/dsh-seam-inventory.md`（v1，已被 v2 接替））
 - **前置**：ADR 0001（fork 卫生：seam 优先、`packages/daypaw/` 新 family）
 
 ## 决策

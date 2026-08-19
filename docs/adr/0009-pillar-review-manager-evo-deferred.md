@@ -2,7 +2,7 @@
 
 - **状态**：已接受（2026-08-19，[需求重审：四支柱性价比](https://github.com/0xnicholas/daypaw-pro/issues/22)）
 - **前置**：ADR 0002（引擎语义）、ADR 0003（编程模型）、ADR 0004（Manager 范围与控制面）、ADR 0005（EVO 循环机制）、ADR 0008（落地顺序与 walking skeleton）
-- **事实底座**：seam 清点 v2（`docs/research/dsh-seam-inventory-v2.md`，分支 `research/seam-inventory-v2`）——四支柱各自的 upstream 替代物均为**无**（执行级 durability 仍全留白；无用户代码优先编程模型；无完整 Manager；无优化环）；但单进程观测/检索/控制面显著加密，支柱③自建面收窄为「跨 run/跨进程聚合 + durable run 视图 + 控制命令」三件事。
+- **事实底座**：seam 清点 v2（`docs/research/dsh-seam-inventory-v2.md`）——四支柱各自的 upstream 替代物均为**无**（执行级 durability 仍全留白；无用户代码优先编程模型；无完整 Manager；无优化环）；但单进程观测/检索/控制面显著加密，支柱③自建面收窄为「跨 run/跨进程聚合 + durable run 视图 + 控制命令」三件事。
 
 ## 决策
 
