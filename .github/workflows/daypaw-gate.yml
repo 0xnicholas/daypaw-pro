@@ -50,8 +50,12 @@ jobs:
         run: pnpm run lint
 
       # The CI coverage gate, not plain `test` (AGENTS.md); runs the unit tier.
+      # Worker clamp: both vitest projects fork per-file processes; on a 4-vCPU
+      # standard runner the unclamped default starves process-bound suites'
+      # 30s OS-cleanup budgets (subprocess-local process-exit timeout on first
+      # run). Upstream runs this gate on 16-core enterprise runners.
       - name: Coverage gate (per-file 100%)
-        run: pnpm run test:coverage
+        run: pnpm run test:coverage -- --max-workers=2
 
       # Replay mode is the default without DSH_SNAPSHOT; expected outputs are
       # never written in CI (testing.md owns the record policy).
