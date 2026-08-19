@@ -1,6 +1,6 @@
 # CONTEXT.md — daypaw-pro 领域词汇表
 
-> 纯词汇表：术语与边界，不含实现细节。架构决策见 `docs/adr/`，进行中的规划见 wayfinder map（issue #1）。
+> 纯词汇表：术语与边界，不含实现细节。架构决策见 `docs/adr/`，进行中的规划见 wayfinder maps（issue #1、#20）。
 
 ## 词汇
 
@@ -14,7 +14,7 @@ deepseek-ai/deepseek-harness 的 main 分支。本 fork 一切非 `packages/dayp
 
 ### 四支柱（Four Pillars）
 
-daypaw-pro 在 fork 内新增的四个能力族：**Durable Execution**（跨 turn/跨进程的持久执行）、**Agent Engine + SDK**（引擎与代码优先的 Agent 编程模型）、**Agent Manager**（观测与管理面）、**EVO**（用户 Agent 的持续优化系统）。
+fork 叙事的四个能力族：**Durable Execution**（跨 turn/跨进程的持久执行）、**Agent Engine + SDK**（引擎与代码优先的 Agent 编程模型）、**Agent Manager**（观测与管理面）、**EVO**（用户 Agent 的持续优化系统）。2026-08 需求重审（ADR 0009）：①② 为现役支柱；③④ 降级为远期独立子项目，后期单独立项；spec 03/04 与 ADR 0004/0005 保留为子项目方向文档。
 
 ### 同步仪式（Sync Ritual）
 
@@ -97,7 +97,7 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 
 ### Agent Manager（Manager）
 
-四支柱③：人的观测与控制窗口——看 run（registry / timeline / trace）并施加少量控制（resolve / cancel / 重跑）。是人的窗口，不是其他支柱的数据管道。
+四支柱③，现为远期独立子项目（ADR 0009）：人的观测与控制窗口——看 run（registry / timeline / trace）并施加少量控制（resolve / cancel / 重跑）。是人的窗口，不是其他支柱的数据管道。自建面收窄为「跨 run/跨进程聚合 + durable run 视图 + 控制命令」；spec 03/ADR 0004 为方向文档。
 
 ### Manager Host
 
@@ -123,7 +123,7 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 
 ### EVO
 
-四支柱④：用户 Agent 的持续优化系统。以遥测与评估为据，为 agent 定义产出更优版本提案；本体是引擎上的一个 workflow。不优化 stack 自身。
+四支柱④，现为远期独立子项目（ADR 0009）：用户 Agent 的持续优化系统。以遥测与评估为据，为 agent 定义产出更优版本提案；本体是引擎上的一个 workflow。不优化 stack 自身。等①②跑出真实遥测语料与重复负载再评估毕业；spec 04/ADR 0005 为方向文档。
 
 ### 变体（Variant）
 

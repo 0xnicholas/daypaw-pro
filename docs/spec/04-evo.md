@@ -1,6 +1,6 @@
 # 第 4 章：EVO（骨架输入）
 
-> 状态：**骨架输入**——结构已定，内容待 spec 撰写期填充。决策依据 [ADR 0005](../adr/0005-evo-loop-mechanics.md)；数据契约见 ADR 0004 §6；AIP Evolve 事实底座 `docs/research/aip-evolve.md`（发布机制无公开文档，标注了设计自由区）。
+> 状态：**骨架输入**——结构已定，内容待 spec 撰写期填充。2026-08 起随 EVO 降级为远期独立子项目（ADR 0009），本章转为子项目方向文档。决策依据 [ADR 0005](../adr/0005-evo-loop-mechanics.md)；数据契约见 ADR 0004 §6；AIP Evolve 事实底座 `docs/research/aip-evolve.md`（发布机制无公开文档，标注了设计自由区）。
 
 ## 1. 优化对象与变体模型
 

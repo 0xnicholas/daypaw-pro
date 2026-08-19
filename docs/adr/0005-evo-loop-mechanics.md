@@ -1,6 +1,6 @@
 # ADR 0005: EVO 循环机制
 
-- **状态**：已接受（2026-08-30，[EVO 循环机制](https://github.com/0xnicholas/daypaw-pro/issues/9)）
+- **状态**：已接受（2026-08-30，[EVO 循环机制](https://github.com/0xnicholas/daypaw-pro/issues/9)）；2026-08 起降级为远期子项目方向文档（ADR 0009）
 - **参照**：AIP Evolve 机制调研（`docs/research/aip-evolve.md`，main 分支；要点：发布/版本化机制无公开文档，有据可查契约 = 人配置 run → 多迭代自动生成/测试 → evals + 专家双门过滤 → 带 lineage graph 与 diff 的 final proposal）+ Palantir Agent Stack 参照系（`docs/research/palantir-agent-stack.md`）+ 观测地形（Run Registry 为发布后监控面）
 - **前置**：ADR 0002（ledger 记定义版本）、ADR 0003（定义注册表、`run()` 一等公民、代码优先编程模型）、ADR 0004 §6（EVO 数据契约：自拥输出表，直读 ledger + 关联层 + session log）
 - **编号注记**：票面写「产出 ADR 0004」，但 0004 已被 Manager 票消费；本决策为 ADR 0005。
