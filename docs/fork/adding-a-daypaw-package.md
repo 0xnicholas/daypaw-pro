@@ -7,7 +7,7 @@
 ## 0. 前置
 
 - 批次 A 已完成（fork 导入 + 首 checkpoint tag），`pnpm install` 与全量测试绿。
-- 该包的 spec 章已存在（ADR 0006「空壳包是自锁」：spec 未到的包不建）。
+- 该包的 spec 章已存在（ADR 0006「空壳包是自锁」：spec 未到的包不建）；manager/evo 预留位另须子项目立项（ADR 0009）。
 
 ## 1. 建包骨架
 
