@@ -51,7 +51,7 @@ dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色�
 
 ### Agent 定义（Agent Definition，`defineAgent`）
 
-声明式 LLM 循环 spec：name+version+zod 输入/输出+组合行（prompt 段、工具面、模型路由）。存于进程内定义注册表；run 时挂 session、应用组合（与 preset 同一挂载语义，来源为代码而非文件），session header 记 (定义 id, 版本) 供冷复活重建；ledger run 行记定义版本（EVO 变体并行前提）。一次 agent run = 一个主 session（subagent 子女自拥 session）。可直接 `run()`（一等公民，Palantir published async function 的对应物）。
+声明式 LLM 循环 spec：name+version+zod 输入/输出+组合行（prompt 段、工具面、模型路由）。`bindAgent(def, ctx)` 把 spec 编译为不透明 body（引擎盲，ADR 0010）；终止 = submit 工具约定（args schema 即 output schema）；输入 = 首条 user message。agent run 的 session 身份 = sessionId 恒等于 runId：首驱动 create、复活 resume 接回，复活后以合成续跑消息唤醒（dsh 无无内容唤醒）。存于进程内定义注册表；session header 记 (定义 id, 版本) 供冷复活重建；ledger run 行记定义版本（EVO 变体并行前提）。一次 agent run = 一个主 session（subagent 子女自拥 session）；一个 dsh 推理轮（step）= 一条 journal step。可直接 `run()`（一等公民，Palantir published async function 的对应物）。
 
 ### Workflow 定义（Workflow Definition，`defineWorkflow`）
 
@@ -59,7 +59,7 @@ dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色�
 
 ### Step
 
-run 内的一个幂等执行单元（含 LLM/工具调用），由 `ctx.step(name, fn)` 显式标记。恢复时按幂等键去重：已完成 step 返回已记录结果，不重执行。parallel/condition 不是原语——普通 TS（`Promise.all`/`if`）即控制流。
+run 内的一个幂等执行单元（含 LLM/工具调用），由 `ctx.step(name, fn)` 显式标记。恢复时按幂等键去重：已完成 step 返回已记录结果，不重执行。parallel/condition 不是原语——普通 TS（`Promise.all`/`if`）即控制流。与 dsh agent-loop 的 step 同名不同物：后者是一次推理轮（组装→模型调用→工具执行），由 session log 承载、resume 重建历史但不跳过副作用；引擎 step 由 engine ledger 承载、复活时副作用不重付。defineAgent 编译面以一个 dsh 推理轮为一条 journal step。
 
 ### SDK 原语（ctx 面）
 

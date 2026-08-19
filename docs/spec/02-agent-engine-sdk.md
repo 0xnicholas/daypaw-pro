@@ -1,6 +1,6 @@
-# 第 2 章：Agent Engine + SDK（workflow 面已写满）
+# 第 2 章：Agent Engine + SDK（workflow 面写满，defineAgent 面已裁）
 
-> 状态：**workflow 面已写满**（清晰度裁决，批次 C 开工输入）；**defineAgent 面**（§1 类型、§3 版本语义）留支柱②里程碑深化。决策依据 [ADR 0003](../adr/0003-engine-sdk-programming-model.md)；引擎语义见 ADR 0002 与 spec 第 1 章。
+> 状态：**workflow 面已写满**（批次 C 开工输入）；**defineAgent 面已裁**（ADR 0010 十一裁决，随支柱②里程碑实现；类型面随实现折入）。决策依据 [ADR 0003](../adr/0003-engine-sdk-programming-model.md) / [ADR 0010](../adr/0010-define-agent-compilation-and-execution.md)；引擎语义见 ADR 0002 与 spec 第 1 章。
 
 ## 1. 编程模型
 
@@ -75,13 +75,15 @@ export interface StepOptions {
 
 **折入时的对齐裁决**（原型草案 → 正典）：`succeeded` 并入 `done`（spec 01 §3.1 为正典）；`GateResolution` 以 spec 01 §6 四态为准（补 `cancelled` 变体）；`opts.retry` / `PermanentStepError` 随 retry 面推迟（简化走查裁决）；错误类族（`RunFailedError` / `RunCancelledError` / `StepFailedError`）见原型草案，随实现落地。
 
-### 1.2 defineAgent 面（骨架，支柱②里程碑）
+### 1.2 defineAgent 面（ADR 0010 已裁）
 
-类型面（`AgentComposition` / `DefineAgentOptions` / `ctx.agent` / `ctx.spawn` 签名）已在原型分支 tsc 验证，折入时机 = defineAgent 实现前。
+编译与绑定：`defineAgent` 返回声明式定义（组合行静态：prompt 段 + dsh `ToolDefinition` 零适配 + ModelRoute，动态 `compose(input)` 留口未开）；`bindAgent(def, ctx)` 把 spec 编译为不透明 body 交引擎注册表（引擎盲），闭包捕获宿主 Context（`ctx.durable`/`ctx.agents`/`installModelSelection`，headless bundle 同式）。类型面（`AgentComposition` / `DefineAgentOptions` / `ctx.agent` 签名）已在原型分支 tsc 验证，随实现折入。
+
+执行语义（ADR 0010 §2–§5）：一个 dsh step（组装 + 可能多路并行调用 + 工具执行）= 一条 journal step，记录值 = 完整结果上下文；submit 工具约定终止（SDK 注入，args schema = output schema，模型自然收尾，pre-step rejection 式零成本终止留作优化）；输入 = 首条 user message；sessionId ≡ runId，复活 resume 接回 + 合成续跑消息 steer 唤醒（dsh 无无内容唤醒）；`ctx.agent(def, input)` = 确定性子 runId 派生上的语法糖（与子 workflow 惯用式共享机制），两级各自耐久；轮内 LLM 瞬态失败归 dsh llm-retry（不改 occurrence 序），step 级失败才落 journal。运维注记：合成续跑消息与崩溃半轮的冗余失败尝试留在上下文 = defineAgent 的诚实代价。
 
 ## 2. ctx 原语面
 
-五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。各原语的参数、返回、ledger 事件映射：待写。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
+五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。`step`/`agent` 面已定案（上节与 ADR 0010）；`sleep`/`waitFor` 语义 spec 01 §6 已定、按需落地；`spawn` 语义未设计（ADR 0010 §4 排除）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
 
 - **子 workflow 等待式调用 = 惯用式**，不加第六原语：`ctx.step` 内裸 `def.run()` 等待 `.result`；前提是引擎从 `(parentRunId, stepKey, occurrence)` 派生**确定性子 runId**（重驱动 attach 而非重开，副作用不翻倍）。
 - **step 幂等键**：默认 `runId + name + occurrence` 自动派生（重驱动遍历顺序须确定，map 顺序稳定、手写乱序 await 不稳——运维注记）；`opts.key` 显式逃生口。
