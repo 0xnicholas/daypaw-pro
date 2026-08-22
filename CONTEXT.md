@@ -6,7 +6,7 @@
 
 ### daypaw-pro
 
-本仓库：deepseek-harness 的 fork + in-tree 扩展，自用的 TypeScript Agent Stack 基础设施。
+本仓库：deepseek-harness 的 fork + in-tree 扩展，TypeScript Agent Stack 基础设施；自用为先，同时以 npm 自含单包支持外部客户自跑（ADR 0011）。
 
 ### 上游（Upstream）
 
@@ -140,6 +140,20 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 ### 提案（Proposal）
 
 实验胜出变体的发布物：类型化 diff + 实验记录 + eval 证据，经人审应用为代码中的定义新版本。EVO 的产出止于提案——永不自动生效。
+
+## 交付（Delivery 域）
+
+### 产物分层（Delivery Tiers）
+
+客户自跑的交付形态分层（ADR 0011）：v1 承诺两层——库层（`@daypaw/sdk` 自含单包，画像 = 嵌入自己应用的开发者）与 CLI 层（`@daypaw/cli` 自含单包，画像 = 直接运营平台的使用者）；单文件 exe 为 fast-follow 预案（触发 = 客户无 Node）；容器镜像为雾区（触发 = 客户只有 Docker）。
+
+### 自含单包（Self-contained Package）
+
+发布形态：全部运行时依赖（含上游 `@deepseek-ai/*` 包与 in-box bundle）经打包进入单个 npm 包，上游包零改名、零 core touch。
+
+### Artifact 版本线
+
+daypaw 自有的 0.x 发布版本线，独立于上游版本号；每次 release 即 checkpoint 晋级，记录所含上游 sha。与客户代码的定义版本正交；不承诺跨版本续跑在飞 run（升级 = drain 或弃库），SDK 公共 API 面 semver-ish。
 
 ## 测试（Test 域）
 
