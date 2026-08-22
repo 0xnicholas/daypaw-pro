@@ -23,6 +23,7 @@
   },
   "files": [
     "bin.mjs",
+    "lib/index.js",
     "lib/invariant.js",
     "lib/types/**/*.d.ts"
   ],
@@ -31,15 +32,18 @@
     "@deepseek-ai/dsh-invariants": "workspace:^"
   },
   "dependencies": {
+    "@daypaw/engine": "workspace:^",
     "@deepseek-ai/cordis-plugin-group": "workspace:^",
     "@deepseek-ai/cosmokit": "workspace:^",
     "@deepseek-ai/dsh": "workspace:^",
     "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
+    "@deepseek-ai/dsh-app-boot": "workspace:^",
     "@deepseek-ai/dsh-atomic-write": "workspace:^",
     "@deepseek-ai/dsh-bash-local": "workspace:^",
     "@deepseek-ai/dsh-code-runtime": "workspace:^",
     "@deepseek-ai/dsh-compaction": "workspace:^",
     "@deepseek-ai/dsh-fs": "workspace:^",
+    "@deepseek-ai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-output-retention": "workspace:^",
     "@deepseek-ai/dsh-sandbox": "workspace:^",

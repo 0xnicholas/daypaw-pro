@@ -3136,6 +3136,7 @@ export interface Config {
 
 由其他包作为库导入；`cordis.yml` 无法加载它们。
 
+- `@daypaw/cli`（[`packages/daypaw/cli/src/index.ts`](../packages/daypaw/cli/src/index.ts)）
 - `@daypaw/sdk`（[`packages/daypaw/sdk/src/index.ts`](../packages/daypaw/sdk/src/index.ts)）
 - `@daypaw/store`（[`packages/daypaw/store/src/index.ts`](../packages/daypaw/store/src/index.ts)）
 - `@deepseek-ai/dsh-acp-snapshot`（[`packages/test-support/acp-snapshot/src/index.ts`](../packages/test-support/acp-snapshot/src/index.ts)）

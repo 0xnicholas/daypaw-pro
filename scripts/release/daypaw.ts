@@ -455,9 +455,10 @@ class DaypawRelease {
   }
 
   /**
-   * Smoke the CLI tarball: clean-prefix global install, then a headless boot
-   * without an API key must reach the credential error — proof the bundled
-   * plugin closure loads end to end.
+   * Smoke the CLI tarball: clean-prefix global install, then a `--profile
+   * daypaw` boot from a fresh DSH_HOME without an API key must reach the
+   * credential error — proof the seeded daypaw profile composes and the
+   * bundled plugin closure (including `@daypaw/engine`) loads end to end.
    * @param tarball - the packed CLI tarball.
    */
   private async smokeCli(tarball: string): Promise<void> {
@@ -477,18 +478,31 @@ class DaypawRelease {
     const output = await run(
       'cli smoke boot',
       bin,
-      ['--profile', 'headless', 'release smoke'],
+      ['--profile', 'daypaw', 'release smoke'],
       { cwd: scratch, env, capture: true },
     ).catch((error: unknown) => {
       // The boot must fail at the missing credential; any earlier failure
-      // (plugin resolution, profile boot) carries a different message.
+      // (profile seeding, plugin resolution, profile boot) carries a
+      // different message.
       if (error instanceof Error && /no API key|MISSING_CREDENTIAL/.test(error.message)) return error.message
       throw error
     })
     if (!/no API key|MISSING_CREDENTIAL/.test(output)) {
       throw new Error(`release-daypaw: cli smoke boot did not reach the credential check:\n${output}`)
     }
-    console.log('release-daypaw: cli smoke reached the no-API-key line (closure boots).')
+    // First-run seeding materialized the daypaw profile from the shipped
+    // template: manifest, user patch layer carrying the engine row, and the
+    // profile-local link to the bundled engine. The ledger under the launch
+    // cwd proves the seeded engine row mounted with its template config
+    // before the run reached the credential check.
+    const profileDir = join(home, 'profiles', 'daypaw')
+    const seededPatch = await readFile(join(profileDir, 'cordis.patch.yml'), 'utf8')
+    if (!seededPatch.includes('daypaw-engine')
+      || !existsSync(join(profileDir, 'node_modules', '@daypaw', 'engine', 'package.json'))
+      || !existsSync(join(scratch, 'daypaw', 'ledger.db'))) {
+      throw new Error('release-daypaw: cli smoke found no seeded daypaw profile (engine row, engine link, or ledger missing).')
+    }
+    console.log('release-daypaw: cli smoke seeded the daypaw profile, mounted the engine row, and reached the no-API-key line.')
   }
 
   /**

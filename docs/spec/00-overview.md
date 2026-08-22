@@ -54,6 +54,6 @@ daypaw profile 的组合面 v1 = **单行插件配方**：
 - **上游三族（jobs/workflow/schedule）默认不装**（[第 1 章](01-durable-execution.md) §1 旁立裁决）。
 - config 契约（`path` / `pollMs`）见 [engine README](../../packages/daypaw/engine/README.md)。
 
-**分发形态（ADR 0011）**：客户交付走 CLI 自含单包——daypaw profile 模板随包自带、首跑自初始化；源码态组合仍是宿主在自己的 cordis.yml 写同一插件行（[examples/daypaw-skeleton](../../examples/daypaw-skeleton/README.md) 示范）。独立 `@daypaw/bundle` 包不发布：单行 patch 的复制成本近零，CLI 包内 profile 模板已承担组合面分发；接线点不变——`dsh.bundle.patch` manifest 契约（[packages/bundle](../../packages/bundle/README.md)）+ `dsh plugin --profile <name> add <package>` 安装。
+**分发形态（ADR 0011）**：客户交付走 CLI 自含单包——daypaw profile 模板随 `@daypaw/cli` 包自带、首跑自初始化；源码态组合仍是宿主在自己的 cordis.yml 写同一插件行（[examples/daypaw-skeleton](../../examples/daypaw-skeleton/README.md) 示范）。模板不进上游 `PROFILE_TEMPLATES`：`daypaw` bin 每次启动先播种再引导 vendored dsh bin——首跑物化 `$DSH_HOME/profiles/daypaw`（bundles = `dsh-base` + `dsh-headless`；上面的单行配方以 `- insert:` 行落进 profile 自己的 `cordis.patch.yml`，随用户层语义归客户所有），并把闭包内的 `@daypaw/engine` 软链进 profile 的 `node_modules`（launcher 维护的模块 fallback 只覆盖 dsh app 依赖闭包，够不到 daypaw 族）；播种幂等、永不覆盖既有文件。独立 `@daypaw/bundle` 包不发布：单行 patch 的复制成本近零，CLI 包内 profile 模板已承担组合面分发；接线点不变——`dsh.bundle.patch` manifest 契约（[packages/bundle](../../packages/bundle/README.md)）+ `dsh plugin --profile <name> add <package>` 安装。
 
 否决：独立 bundle 包与 CLI 包并行发布——同一组合面两个分发载体纯增维护面（README limitations 门、hygiene），与「按需落地、勿提前实现」裁决相悖。
