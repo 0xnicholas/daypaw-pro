@@ -1,0 +1,84 @@
+name: Release (daypaw)
+
+# Pull requests and main pushes build and smoke the two publishable daypaw
+# packages (ADR 0011) without registry credentials. Publication is accepted
+# only from a manual run with publish=true when NPM_TOKEN is configured.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the packed @daypaw/* tarballs to npm. Requires the NPM_TOKEN secret.
+        required: true
+        type: boolean
+        default: false
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Public runs stay globally serialized. Pack validations remain isolated by
+  # ref so they do not block an intentional publication.
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && 'daypaw-publication' || format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: false
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  pack:
+    name: Pack and smoke @daypaw/cli + @daypaw/sdk
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build both faces, pack, and smoke
+        run: pnpm run release:daypaw
+
+      - name: Upload tarballs
+        uses: actions/upload-artifact@v4
+        with:
+          name: daypaw-tarballs
+          path: dist-daypaw/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Publish to npm
+    needs: pack
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: daypaw-tarballs
+          path: dist-daypaw
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish both tarballs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish dist-daypaw/daypaw-sdk-*.tgz --access public
+          npm publish dist-daypaw/daypaw-cli-*.tgz --access public

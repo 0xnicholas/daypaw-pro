@@ -46,3 +46,4 @@ None — the ledger is never part of a live request prefix.
 - **Attach never drives** — a run found unfinished and not driven here is polled; revival happens in processes whose boot scan runs after the definition registers.
 - **`RunOptions.meta` is not persisted** — the skeleton's `runs` table has no meta column; meta lives on the in-process handle only.
 - **Runtime invariant companion is a placeholder** — relational checks land with the promise/timer states they guard; until then the fault-injection suite asserts the state machines (spec ch.1 §9).
+- **Not independently published** — the engine ships vendored inside the `@daypaw/sdk` tarball (ADR 0011); consumers import its faces through `@daypaw/sdk`.

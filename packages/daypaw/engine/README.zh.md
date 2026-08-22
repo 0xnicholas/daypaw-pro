@@ -46,3 +46,4 @@ run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键
 - **attach 永不驱动** —— 发现未完且本进程未驱动的 run 只轮询；复活发生在定义登记后跑过 boot 扫描的进程里。
 - **`RunOptions.meta` 不落盘** —— 走骨 `runs` 表无 meta 列；meta 只存在于进程内句柄上。
 - **运行时 invariant 伴随包是占位** —— 关系检查随其守护的 promise/timer 状态落地；在此之前由故障注入套件断言状态机（spec 第 1 章 §9）。
+- **不独立发布** —— 引擎随 `@daypaw/sdk` tarball vendored 分发（ADR 0011）；消费方经 `@daypaw/sdk` import 其面。

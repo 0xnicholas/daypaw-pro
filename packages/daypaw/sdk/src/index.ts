@@ -12,6 +12,11 @@ import type { ZodType, z } from 'zod'
 import type DurableEngine from '@daypaw/engine'
 import type { EngineDefinition, EngineRunHandle, EngineStepCtx } from '@daypaw/engine'
 
+// Consumers mount the engine through the SDK face so the vendored
+// `@daypaw/engine` copy inside the published tarball stays an implementation
+// detail; the class contract lives at its declaration in `@daypaw/engine`.
+export { default as DurableEngine } from '@daypaw/engine'
+
 /** zod schema → inferred TS type. */
 type Infer<I extends ZodType> = z.output<I>
 

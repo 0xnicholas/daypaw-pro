@@ -96,7 +96,11 @@ function checkManifest(
     addViolation(violations, owner.manifestPath, 'files must publish lib/invariant.js')
   }
   if (owner.packageName === '@deepseek-ai/dsh-invariants') return
-  if (manifest.peerDependencies?.['@deepseek-ai/dsh-invariants'] !== 'workspace:^') {
+  // ADR 0011: @daypaw/sdk publishes with the consumer-facing npm peer range;
+  // its workspace wiring lives in devDependencies, checked below.
+  const npmPeerPackages = new Set(['@daypaw/sdk'])
+  if (!npmPeerPackages.has(owner.packageName)
+    && manifest.peerDependencies?.['@deepseek-ai/dsh-invariants'] !== 'workspace:^') {
     addViolation(
       violations,
       owner.manifestPath,

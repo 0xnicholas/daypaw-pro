@@ -40,3 +40,4 @@ daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——sch
 - **仅 runs 与 journal** —— command 与关联层属于 Manager/EVO 子项目（ADR 0009），刻意缺席。
 - **尚无 `retry_policy_json` 列** —— retry 面已推迟；该列随其落地以后续迁移加入（简化裁决，issue #24）。
 - **单进程属主纪律归引擎** —— 本包除 SQLite WAL 语义外既不强制也不描述跨进程写策略。
+- **不独立发布** —— 本包随 `@daypaw/sdk` tarball vendored 分发（ADR 0011）。

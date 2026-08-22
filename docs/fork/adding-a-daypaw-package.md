@@ -24,7 +24,7 @@ packages/daypaw/<pkg>/
 
 `package.json` 不变集：
 
-- `name: "@daypaw/<pkg>"`、`private: true`、`version: "0.0.0"`（独立 0.x 演进；constraints 的严格不变集 scope 限 `@deepseek-ai/dsh-*`，版本不对齐 root——ADR 0001 §3）。
+- `name: "@daypaw/<pkg>"`、`private: true`、`version: "0.0.0"`（独立 0.x 演进；constraints 的严格不变集 scope 限 `@deepseek-ai/dsh-*`，版本不对齐 root——ADR 0001 §3）。**可发布例外**：`@daypaw/cli` 与 `@daypaw/sdk` 经 ADR 0011 核准发布——真实 `0.x` 版本、`publishConfig.access: public`、repository 指向 fork 仓库；消费方自备的单例（cordis、dsh-invariants、zod）用 npm range 作 peer，其余 workspace 引用保持 `workspace:^` 协议（constraints 与 package-invariants 两门各有一条对应豁免，登记在 CORE_TOUCHES.md）。
 - 自愿镜像 dsh manifest 形状：`type: module`、`main: "lib/index.js"`、`types: "lib/types/index.d.ts"`、`exports["."].types` / `.default`、`files` 清单同上游规约（`lib/index.js`、`lib/invariant.js`、`lib/types/**/*.d.ts` 等）。
 - `@deepseek-ai/cordis` 同时入 `peerDependencies` 与 `devDependencies`（同 range；插件包必须，纯库包按实际需要）。
 - 运行时校验器入 `dependencies`：sdk 用 zod（ADR 0003 / spec 02 双 schema 并存裁决）；其余包按章定。

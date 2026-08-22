@@ -296,6 +296,7 @@
     { "path": "./packages/daypaw/store" },
     { "path": "./packages/daypaw/engine" },
     { "path": "./packages/daypaw/sdk" },
+    { "path": "./packages/daypaw/cli" },
     { "path": "./apps/cli" }
   ]
 }

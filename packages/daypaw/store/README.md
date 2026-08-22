@@ -40,3 +40,4 @@ None — the ledger is never part of a live request prefix.
 - **Runs and journal only** — command and correlation tables belong to the Manager/EVO subprojects (ADR 0009) and are intentionally absent.
 - **No `retry_policy_json` column yet** — the retry surface is deferred; the column arrives by a later migration when that surface lands (simplification ruling, issue #24).
 - **Single-process ownership discipline is the engine's job** — this package neither enforces nor documents cross-process write policy beyond SQLite WAL semantics.
+- **Not independently published** — the store ships vendored inside the `@daypaw/sdk` tarball (ADR 0011).

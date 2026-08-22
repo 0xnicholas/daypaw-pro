@@ -52,6 +52,14 @@ const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harn
 // stays private (ADR 0001): exclude it from the release-member directory set
 // so it only owes `private: true`.
 const releaseMemberDirectory = /^(?:packages\/(?!daypaw\/)[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
+/**
+ * The two daypaw packages ADR 0011 publishes to npm under their own artifact
+ * version line: the self-contained CLI and the library. They carry real
+ * versions, public access, and npm-facing peer ranges for consumer-supplied
+ * packages; everything else in the family owes `private: true`.
+ */
+const publishableDaypawPackages = new Set(['@daypaw/cli', '@daypaw/sdk'])
+const daypawRepositoryUrl = 'git+https://github.com/0xnicholas/daypaw-pro.git'
 
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
@@ -265,6 +273,20 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
       || manifest.repository.directory !== dir) {
       errors.push(`${label}: release member repository must use ${publishedRepositoryUrl} with directory ${dir}`)
     }
+  } else if (publishableDaypawPackages.has(manifest.name ?? '')) {
+    // ADR 0011 publishable daypaw packages: same publishable invariants as a
+    // release member, pointed at the fork repository.
+    if (manifest.private === true) {
+      errors.push(`${label}: publishable daypaw package must not set "private": true`)
+    }
+    if (manifest.publishConfig?.access !== 'public') {
+      errors.push(`${label}: publishable daypaw package must set publishConfig.access to "public"`)
+    }
+    if (manifest.repository?.type !== 'git'
+      || manifest.repository.url !== daypawRepositoryUrl
+      || manifest.repository.directory !== dir) {
+      errors.push(`${label}: publishable daypaw package repository must use ${daypawRepositoryUrl} with directory ${dir}`)
+    }
   } else if (manifest.private !== true) {
     errors.push(`${label}: package.json must set "private": true`)
   }
@@ -402,6 +424,11 @@ function checkWorkspaceProtocol(manifests: readonly WorkspaceManifest[]): string
     for (const section of dependencySections) {
       for (const [name, range] of Object.entries(manifest[section] ?? {})) {
         if (!members.has(name) || range.startsWith('workspace:')) continue
+        // ADR 0011: a publishable daypaw package's peerDependencies name
+        // upstream's published npm releases for the consumer-supplied
+        // singletons (cordis, dsh-invariants); its dependencies and
+        // devDependencies keep the workspace protocol.
+        if (section === 'peerDependencies' && publishableDaypawPackages.has(manifest.name ?? '')) continue
         errors.push(`${manifest.name ?? dir}: ${section}.${name} must use the workspace: protocol, got ${range}`)
       }
     }

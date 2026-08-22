@@ -29,6 +29,8 @@
 
 否决：承诺跨版本续跑（需跨版本重放测试面与重放语义冻结，v1 测试成本显著增加）；0.x 即承诺不破（锁死走骨期设计自由度，与上游 dev-preview 频繁 breaking 的现实冲突）。
 
+> **补记（2026-08-22）——SDK peer 分发**：`@daypaw/sdk` 的 `@deepseek-ai/cordis` 与 `@deepseek-ai/dsh-invariants` peer 指向上游 npm 发布而非 vendored 副本。前提成立：fork 的 `vendor/` 与上游 main 字节一致（`docs/fork/CORE_TOUCHES.md` 无 vendor/ 条目），上游已公开发布 `@deepseek-ai/cordis@4.0.1` 与 `@deepseek-ai/dsh-invariants` rc 线。peer range 收窄到 `~` 级（cordis `~4.0.1`；dsh-invariants 取下限为不超过 vendored 版本的最新已发布 rc，当前 `~0.1.0-rc.3`）。同步仪式检查项：当一次 sync 把 vendored 副本抬过 npm 已发布版本时，peer range 停留在最新已发布版本，直到上游发布覆盖。
+
 ### 3. 自用立场修订
 
 ADR 0009 后果的「自用约束」修订为：单机、本地（无托管）、无多租户、无计费**不变**；「无公开 API 稳定性承诺」修订为 §2 的两级承诺（SDK 面 semver-ish + 不承诺跨版本续跑）；分发（自有 scope 的 npm 两层）进入范围。
