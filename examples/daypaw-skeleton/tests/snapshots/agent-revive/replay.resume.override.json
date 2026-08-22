@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "tool-call" },
+      { "type": "tool-call-delta", "index": 0, "id": "call_submit", "name": "submit", "argumentsDelta": "{\"score\":7}" },
+      { "type": "block-end", "index": 0, "block": { "type": "tool-call", "id": "call_submit", "name": "submit", "arguments": "{\"score\":7}" } },
+      { "type": "usage", "usage": { "inputTokens": 40, "outputTokens": 5 } },
+      { "type": "finish", "reason": { "kind": "tool-calls" } }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "text" },
+      { "type": "text-delta", "index": 0, "text": "REVIEW RESUMED" },
+      { "type": "block-end", "index": 0, "block": { "type": "text", "text": "REVIEW RESUMED" } },
+      { "type": "usage", "usage": { "inputTokens": 50, "outputTokens": 2 } },
+      { "type": "finish", "reason": { "kind": "stop" } }
+    ]
+  }
+]

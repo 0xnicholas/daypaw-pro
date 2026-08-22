@@ -3058,7 +3058,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineRunOptions',
-    declaration: 'export interface EngineRunOptions {\n    readonly runId?: string;\n    readonly signal?: AbortSignal;\n}',
+    declaration: 'export interface EngineRunOptions {\n    readonly runId?: string;\n    readonly parent?: {\n        readonly runId: string;\n        readonly stepKey: string;\n    };\n    readonly signal?: AbortSignal;\n}',
   },
   {
     name: 'EngineRunStatus',
@@ -3066,7 +3066,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineStepCtx',
-    declaration: 'export interface EngineStepCtx {\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n}',
+    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n}',
   },
   {
     name: 'EngineStepOptions',

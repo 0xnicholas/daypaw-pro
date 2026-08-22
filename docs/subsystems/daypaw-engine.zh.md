@@ -13,7 +13,7 @@ fork 自有的 durable 执行服务（`ctx.durable`，包 [`@daypaw/engine`](../
 ```ts type-equiv
 /** Opaque definition record the engine can execute and revive (ADR 0006 §2). */
 interface EngineDefinition {
-  /** Definition family; only `workflow` bodies exist in the skeleton. */
+  /** Definition family; the engine stays blind to what a kind's body does (ADR 0010: agent bodies are SDK-compiled closures). */
   readonly kind: RunDefKind
   /** Definition name; with version, the registry identity. */
   readonly name: string

@@ -1,27 +1,52 @@
 /**
- * The `@daypaw/sdk` typed facade over the durable engine: `defineWorkflow`
- * declares a code-orchestrated run (zod input/output, step body), and
- * `bind(def, engine)` attaches it to a `ctx.durable` service, returning the
- * runnable face (`run()` idempotent start-or-attach + typed
- * {@link RunHandle}). v1 ships the workflow face; `defineAgent` lands with
- * pillar ②'s milestone (spec: docs/spec/02-agent-engine-sdk.md).
+ * The `@daypaw/sdk` typed facade over the durable engine. `defineWorkflow`
+ * declares a code-orchestrated run and `bind(def, engine)` attaches it to a
+ * `ctx.durable` service; `defineAgent` declares a declarative LLM-loop spec
+ * and `bindAgent(def, ctx)` compiles it into an opaque engine body over the
+ * host's dsh agent stack (ADR 0010). Both faces return the runnable
+ * `run()` — idempotent start-or-attach with a typed {@link RunHandle}
+ * (spec: docs/spec/02-agent-engine-sdk.md).
  * @module @daypaw/sdk
  */
 
 import type { ZodType, z } from 'zod'
 import type DurableEngine from '@daypaw/engine'
-import type { EngineDefinition, EngineRunHandle, EngineStepCtx } from '@daypaw/engine'
+import type { EngineDefinition, EngineStepCtx } from '@daypaw/engine'
+import type { AgentDefinition, BoundAgent } from './agent.ts'
+import { boundAgentFor } from './agent.ts'
+import type { RunHandle, RunOptions } from './run-handle.ts'
+import { startRun } from './run-handle.ts'
 
 // Consumers mount the engine through the SDK face so the vendored
 // `@daypaw/engine` copy inside the published tarball stays an implementation
 // detail; the class contract lives at its declaration in `@daypaw/engine`.
 export { default as DurableEngine } from '@daypaw/engine'
 
+export { defineAgent, bindAgent } from './agent.ts'
+export type {
+  AgentDefinition, BoundAgent, DefineAgentOptions, ModelRoute, PromptSegment,
+} from './agent.ts'
+export { RunCancelledError, RunFailedError } from './run-handle.ts'
+export type { RunHandle, RunOptions, RunStatus } from './run-handle.ts'
+
 /** zod schema → inferred TS type. */
 type Infer<I extends ZodType> = z.output<I>
 
 /** Execution context handed to a workflow body; grows with the ctx primitives. */
-export type WorkflowCtx = EngineStepCtx
+export interface WorkflowCtx extends EngineStepCtx {
+  /**
+   * Awaited child agent run (ADR 0010 §4): sugar for one parent step
+   * (`agent:<name>`) that starts the child on its deterministic derived
+   * runId — recording the parent linkage — and awaits its typed result. The
+   * parent step's dedup attaches to the child's terminal state on re-drive;
+   * a half-dead child revives through the boot scan. The definition must be
+   * bound with `bindAgent` first; an unbound definition throws.
+   * @param def - bound agent definition.
+   * @param input - child run input.
+   * @returns the child's output-validated result.
+   */
+  agent<I extends ZodType, O extends ZodType>(def: AgentDefinition<I, O>, input: Infer<I>): Promise<Infer<O>>
+}
 
 /** Options declaring one workflow definition. */
 export interface DefineWorkflowOptions<I extends ZodType, O extends ZodType> {
@@ -64,86 +89,12 @@ export function defineWorkflow<I extends ZodType, O extends ZodType>(
   return { kind: 'workflow', ...options }
 }
 
-/** Options for starting (or attaching to) a run. */
-export interface RunOptions {
-  /** Persistent run identity; an existing id attaches instead of starting. */
-  readonly runId?: string
-  /** Caller cancellation; effective at the next step boundary. */
-  readonly signal?: AbortSignal
-  /** Caller-side metadata; in-process only, not persisted by the skeleton. */
-  readonly meta?: Record<string, unknown>
-}
-
-/** Run status; `waiting` appears once `ctx.waitFor` lands. */
-export type RunStatus =
-  | { readonly state: 'running' }
-  | { readonly state: 'waiting'; readonly gate: string }
-  | { readonly state: 'done' }
-  | { readonly state: 'failed'; readonly error: unknown }
-  | { readonly state: 'cancelled'; readonly cause?: string }
-
-/** Caller-side handle for one run. */
-export interface RunHandle<T> {
-  /** Persistent run identity. */
-  readonly id: string
-  /** Identity of the definition this run belongs to. */
-  readonly definition: { readonly name: string; readonly version: string }
-  /** Resolves with the output-validated typed result; rejects on failure or cancellation. */
-  readonly result: Promise<T>
-  /** @returns the current status, read from the ledger. */
-  status(): RunStatus
-  /**
-   * Request cancellation (effective at the next step boundary).
-   * @param cause - human-readable cancel cause.
-   */
-  cancel(cause?: string): Promise<void>
-  /** Caller-side metadata passed via {@link RunOptions}. */
-  readonly meta: Record<string, unknown>
-}
-
-/** A run ended in the `failed` state. */
-export class RunFailedError extends Error {
-  /** The failed run. */
-  readonly runId: string
-  /** Underlying failure. */
-  override readonly cause?: unknown
-
-  /**
-   * @param runId - failed run identity.
-   * @param cause - underlying failure.
-   */
-  constructor(runId: string, cause?: unknown) {
-    super(`run ${runId} failed`, { cause })
-    this.name = 'RunFailedError'
-    this.runId = runId
-    this.cause = cause
-  }
-}
-
-/** A run ended in the `cancelled` state. */
-export class RunCancelledError extends Error {
-  /** The cancelled run. */
-  readonly runId: string
-  /** Cancel cause, when one was given. */
-  override readonly cause?: unknown
-
-  /**
-   * @param runId - cancelled run identity.
-   * @param cause - cancel cause.
-   */
-  constructor(runId: string, cause?: unknown) {
-    super(`run ${runId} cancelled`, { cause })
-    this.name = 'RunCancelledError'
-    this.runId = runId
-    this.cause = cause
-  }
-}
-
 /** The bound, runnable face of one definition on one engine. */
 export interface BoundWorkflow<I extends ZodType = ZodType, O extends ZodType = ZodType> {
   /**
    * Start a run (input validated against the definition's contract), or
-   * attach to an existing runId.
+   * attach to an existing runId. Inside a step of another run the runId
+   * derives deterministically from the ambient step scope (spec 02 §2).
    * @param input - workflow input, validated before starting.
    * @param opts - run identity, cancellation, and metadata.
    * @returns the typed run handle.
@@ -151,14 +102,23 @@ export interface BoundWorkflow<I extends ZodType = ZodType, O extends ZodType = 
   run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>>>
 }
 
-/** Map an engine rejection to the SDK error face; unknown errors pass through. */
-function mapEngineError(error: unknown): unknown {
-  if (error instanceof Error && 'code' in error) {
-    const engineError = error as unknown as { code: string; runId: string; detail?: unknown }
-    if (engineError.code === 'RUN_FAILED') return new RunFailedError(engineError.runId, engineError.detail)
-    if (engineError.code === 'RUN_CANCELLED') return new RunCancelledError(engineError.runId, engineError.detail)
+/** Wrap the engine's step ctx with the SDK's `ctx.agent` primitive. */
+function enrichStepCtx(ctx: EngineStepCtx): WorkflowCtx {
+  return {
+    runId: ctx.runId,
+    signal: ctx.signal,
+    step: (name, fn, opts) => ctx.step(name, fn, opts),
+    agent: async (def, input) => {
+      const bound = boundAgentFor(def) as BoundAgent<typeof def.input, typeof def.output> | undefined
+      if (bound === undefined) {
+        throw new Error(`agent definition "${def.name}@${def.version}" is not bound; call bindAgent(def, ctx) before ctx.agent`)
+      }
+      return ctx.step(`agent:${def.name}`, async () => {
+        const handle = await bound.run(input)
+        return handle.result
+      })
+    },
   }
-  return error
 }
 
 /** Engine-side definition record per definition object; reuse keeps re-binding idempotent. */
@@ -182,33 +142,14 @@ export async function bind<I extends ZodType, O extends ZodType>(
       kind: 'workflow',
       name: def.name,
       version: def.version,
-      body: def.body as EngineDefinition['body'],
+      // The body boundary is `unknown`; run-start validated the stored input
+      // against `def.input` before the engine serialized it.
+      body: (ctx, input) => def.body(enrichStepCtx(ctx), input as Infer<I>),
     }
     engineDefs.set(def, engineDef)
   }
   await engine.register(engineDef)
   return {
-    run: async (input: Infer<I>, opts?: RunOptions) => {
-      const parsedInput = def.input.parse(input)
-      const engineOpts: { runId?: string; signal?: AbortSignal } = {}
-      if (opts?.runId !== undefined) engineOpts.runId = opts.runId
-      if (opts?.signal !== undefined) engineOpts.signal = opts.signal
-      const handle: EngineRunHandle = await engine.run(engineDef, parsedInput, engineOpts)
-      const result = handle.result.then(
-        raw => def.output.parse(raw),
-        (error: unknown) => { throw mapEngineError(error) },
-      )
-      // Handles whose result is never awaited (a caller taking only status)
-      // must not crash the process on rejection; real consumers still get it.
-      result.catch(() => {})
-      return {
-        id: handle.id,
-        definition: { name: def.name, version: def.version },
-        result: result,
-        status: () => handle.status(),
-        cancel: cause => handle.cancel(cause),
-        meta: opts?.meta ?? {},
-      }
-    },
+    run: (input: Infer<I>, opts?: RunOptions) => startRun(engine, engineDef, def, input, opts),
   }
 }

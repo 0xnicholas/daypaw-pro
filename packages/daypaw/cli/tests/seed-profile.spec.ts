@@ -77,7 +77,7 @@ describe('seedDaypawProfile', () => {
     await mkdir(link, { recursive: true })
     await writeFile(join(link, 'placeholder'), '')
 
-    expect(() => seedDaypawProfile(home)).toThrow(/exists and is not a symlink/)
+    expect(() => { seedDaypawProfile(home) }).toThrow(/exists and is not a symlink/)
   })
 })
 

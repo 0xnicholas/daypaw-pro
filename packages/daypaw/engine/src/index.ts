@@ -16,10 +16,10 @@ import { DurableEngineCore } from './core.ts'
 import type { EngineDefinition, EngineRunHandle, EngineRunOptions } from './core.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 
-export { DurableEngineCore, EngineRunError } from './core.ts'
+export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
 export type {
   EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
-  EngineRunStatus, EngineStepCtx, EngineStepOptions,
+  EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope,
 } from './core.ts'
 export { SqliteJournalStore } from './sqlite-journal-store.ts'
 export type {

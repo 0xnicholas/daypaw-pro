@@ -1,6 +1,6 @@
 # 第 2 章：Agent Engine + SDK（workflow 面写满，defineAgent 面已裁）
 
-> 状态：**workflow 面已写满**（批次 C 开工输入）；**defineAgent 面已裁**（ADR 0010 十一裁决，随支柱②里程碑实现；类型面随实现折入）。决策依据 [ADR 0003](../adr/0003-engine-sdk-programming-model.md) / [ADR 0010](../adr/0010-define-agent-compilation-and-execution.md)；引擎语义见 ADR 0002 与 spec 第 1 章。
+> 状态：**workflow 面与 defineAgent 面均已实现**（支柱②落地 ADR 0010 §4 范围：defineAgent/bindAgent + 确定性子 runId 派生 + `ctx.agent` + 子 workflow 惯用式；`ctx.spawn` 仍排除）。决策依据 [ADR 0003](../adr/0003-engine-sdk-programming-model.md) / [ADR 0010](../adr/0010-define-agent-compilation-and-execution.md)；引擎语义见 ADR 0002 与 spec 第 1 章。
 
 ## 1. 编程模型
 
@@ -75,11 +75,77 @@ export interface StepOptions {
 
 **折入时的对齐裁决**（原型草案 → 正典）：`succeeded` 并入 `done`（spec 01 §3.1 为正典）；`GateResolution` 以 spec 01 §6 四态为准（补 `cancelled` 变体）；`opts.retry` / `PermanentStepError` 随 retry 面推迟（简化走查裁决）；错误类族（`RunFailedError` / `RunCancelledError` / `StepFailedError`）见原型草案，随实现落地。
 
-### 1.2 defineAgent 面（ADR 0010 已裁）
+### 1.2 defineAgent 面（ADR 0010，已实现）
 
-编译与绑定：`defineAgent` 返回声明式定义（组合行静态：prompt 段 + dsh `ToolDefinition` 零适配 + ModelRoute，动态 `compose(input)` 留口未开）；`bindAgent(def, ctx)` 把 spec 编译为不透明 body 交引擎注册表（引擎盲），闭包捕获宿主 Context（`ctx.durable`/`ctx.agents`/`installModelSelection`，headless bundle 同式）。类型面（`AgentComposition` / `DefineAgentOptions` / `ctx.agent` 签名）已在原型分支 tsc 验证，随实现折入。
+编译与绑定（实现落定）：`defineAgent` 返回声明式定义（组合行静态：prompt 段 + dsh `ToolDefinition` 零适配 + `ModelRoute` + 必填 `maxTurns` 声明期校验；动态 `compose(input)` 留口未开）。`bindAgent(def, ctx)` 把 spec 编译为不透明 body 交引擎注册表（引擎对 `kind: 'agent'` 无感知），闭包捕获宿主 Context；`ctx.durable` / `agents` / `sessions` / `sessionPersistence` 缺任一则 bind 期 loud throw——persistence 缺失即配置错误（耐久是 defineAgent 的存在理由，不是可选项）。同一定义对象重复绑定 no-op，返回首个 face（WeakMap；闭包锁定首个宿主 Context）。
 
-执行语义（ADR 0010 §2–§5）：一个 dsh step（组装 + 可能多路并行调用 + 工具执行）= 一条 journal step，记录值 = 完整结果上下文；submit 工具约定终止（SDK 注入，args schema = output schema，模型自然收尾，pre-step rejection 式零成本终止留作优化）；输入 = 首条 user message；sessionId ≡ runId，复活 resume 接回 + 合成续跑消息 steer 唤醒（dsh 无无内容唤醒）；`ctx.agent(def, input)` = 确定性子 runId 派生上的语法糖（与子 workflow 惯用式共享机制），两级各自耐久；轮内 LLM 瞬态失败归 dsh llm-retry（不改 occurrence 序），step 级失败才落 journal。运维注记：合成续跑消息与崩溃半轮的冗余失败尝试留在上下文 = defineAgent 的诚实代价。
+```ts
+// @daypaw/sdk —— defineAgent 面正典类型（ADR 0010 §4 落地；实现即权威）
+import type { Context } from '@deepseek-ai/cordis'
+import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { ZodType, z } from 'zod'
+import type { RunHandle, RunOptions } from '@daypaw/sdk'
+
+/** zod schema → inferred TS type. */
+type Infer<I extends ZodType> = z.output<I>
+
+/** 静态系统提示段（agent scope 内 scoped 注册）。 */
+export interface PromptSegment {
+  readonly name: string
+  readonly order: number
+  readonly text: string
+}
+
+/** 静态模型路由。 */
+export interface ModelRoute {
+  readonly provider: string
+  readonly model: string
+  readonly maxTokens?: number
+}
+
+export interface DefineAgentOptions<I extends ZodType, O extends ZodType> {
+  readonly name: string
+  readonly version: string
+  readonly input: I
+  /** 输出契约，同时是注入 submit 工具的 args schema（非 object 根包 {value} 单参数）。 */
+  readonly output: O
+  readonly prompt: readonly PromptSegment[]
+  /** 工具面：dsh ToolDefinition 零适配。 */
+  readonly tools: readonly ToolDefinition[]
+  readonly model: ModelRoute
+  /** 跨复活累计的 turn 预算（唤醒前检查，超限即失败）；必填正整数。 */
+  readonly maxTurns: number
+}
+
+export interface AgentDefinition<I extends ZodType = ZodType, O extends ZodType = ZodType>
+  extends DefineAgentOptions<I, O> {
+  readonly kind: 'agent'
+}
+
+export declare function defineAgent<I extends ZodType, O extends ZodType>(
+  options: DefineAgentOptions<I, O>,
+): AgentDefinition<I, O>
+
+export declare function bindAgent<I extends ZodType, O extends ZodType>(
+  def: AgentDefinition<I, O>,
+  ctx: Context,  // 宿主组合：dsh agent 栈 + ctx.durable
+): Promise<BoundAgent<I, O>>
+
+export interface BoundAgent<I extends ZodType, O extends ZodType> {
+  /** 与 workflow 面同一 run 语义：幂等 start-or-attach + 类型化 RunHandle。 */
+  run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>>>
+}
+
+/** WorkflowCtx 上（bind 注入的增强 ctx；未绑定定义 loud throw）。 */
+export interface WorkflowCtx {
+  /** 自身即父步 agent:<name>，等待子 run 类型化结果。 */
+  agent<I extends ZodType, O extends ZodType>(
+    def: AgentDefinition<I, O>, input: Infer<I>,
+  ): Promise<Infer<O>>
+}
+```
+
+执行语义（ADR 0010 §2–§5，实现落定点）：sessionId ≡ runId；create vs resume 判别 = 持久化 session 是否存在（覆盖 insertRun 后崩溃窗口）；复活 resume 接回 + 合成续跑消息（`RESUME_MESSAGE`，英文常量，模型可见）steer 唤醒（dsh 无无内容唤醒）；submit 工具约定终止（SDK 注入，args schema = output schema，二次调用抛错，模型自然收尾）；输入 = 首条 user message（JSON text）；一个 dsh step = 一条 journal step（键 `dsh-step:<turn>:<step>`，值 = 事件切片；复活重驱动遍历同序，引擎去重返回已记录切片而非重执行，模型调用由 session resume 本身省掉）；`maxTurns` 实现为唤醒前预算检查——一次唤醒恰好跑一个 turn 到 quiescence，无需 live listener；`ctx.agent(def, input)` = 确定性子 runId 派生上的语法糖（引擎从 `(parentRunId, stepKey, occurrence)` 派生，与子 workflow 惯用式共享机制），两级各自耐久；轮内 LLM 瞬态失败归 dsh llm-retry（不改 occurrence 序），step 级失败才落 journal。运维注记：合成续跑消息与崩溃半轮的冗余失败尝试留在上下文 = defineAgent 的诚实代价。
 
 ## 2. ctx 原语面
 

@@ -9,7 +9,7 @@ The durable execution engine (`ctx.durable`): run lifecycle, step-dedup re-drive
 `ctx.durable` (plugin `@daypaw/engine`):
 
 - `register(def)` — record an opaque definition (kind/name/version + body thunk) for execution and boot-time revival. Same identity with a different body rejects; registering runs a boot scan that may revive unfinished runs left by a previous process.
-- `run(def, input, { runId?, signal? })` — idempotent start-or-attach: unknown runId inserts and drives; a terminal run settles from its row; a run this process drives returns its live handle; anything else is polled (`pollMs`) — attaching never claims, reviving is the boot scan's job.
+- `run(def, input, { runId?, signal?, parent? })` — idempotent start-or-attach: unknown runId inserts and drives; a terminal run settles from its row; a run this process drives returns its live handle; anything else is polled (`pollMs`) — attaching never claims, reviving is the boot scan's job. `parent` (`{ runId, stepKey }`) records the caller's lineage on insert (`parent_run_id` / `parent_step_key`); an existing runId attaches without rewriting lineage.
 - `idle()` — resolves when this process drives no run.
 
 Configuration (schemastery): `path` (ledger file or `:memory:`), `pollMs` (attach poll interval, default 1s).
@@ -17,6 +17,8 @@ Configuration (schemastery): `path` (ledger file or `:memory:`), `pollMs` (attac
 ## Execution model
 
 A run drives its body with a step ctx. `ctx.step(name, fn, { key? })` derives the idempotency key `name#occurrence` (or takes an explicit key); a completed step returns its recorded result without re-executing, an unfinished one (re)executes and records — at-least-once execution, exactly-once step commits. Cancellation writes the terminal row first and takes effect at the next step boundary. Disposal stops driving without terminal writes: unfinished runs stay revivable.
+
+The step ctx also exposes `runId` and the driver's `signal`. While a step's `fn` awaits, `currentStepScope()` returns the ambient scope `{ runId, stepKey }`; a child run started inside it derives its deterministic runId as `<runId>/<stepKey>/<kind>:<name>#<occurrence>` with the parent linkage recorded — a re-driven parent attaches to the child instead of re-opening it (the SDK's `ctx.agent` and the bare sub-workflow idiom both ride this).
 
 ## Extension points
 

@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The typed facade over the daypaw durable engine: `defineWorkflow` declares a code-orchestrated run, `bind` attaches it to a `ctx.durable` service, and the returned runnable face gives `run()` (idempotent start-or-attach) plus a typed `RunHandle`. Type authority: [spec ch.2 §1.1](../../../docs/spec/02-agent-engine-sdk.md); programming-model decisions: [ADR 0003](../../../docs/adr/0003-engine-sdk-programming-model.md).
+The typed facade over the daypaw durable engine: `defineWorkflow` declares a code-orchestrated run, `defineAgent` declares a declarative LLM-loop spec, and `bind` / `bindAgent` attach them to a host composition. Both faces return `run()` (idempotent start-or-attach) plus a typed `RunHandle`. Type authority: [spec ch.2 §1.1/§1.2](../../../docs/spec/02-agent-engine-sdk.md); programming-model decisions: [ADR 0003](../../../docs/adr/0003-engine-sdk-programming-model.md) and [ADR 0010](../../../docs/adr/0010-define-agent-compilation-and-execution.md).
 
 ## Install
 
@@ -39,25 +39,64 @@ const { total } = await handle.result   // typed: { total: number }
 - `RunHandle` — `id`, `definition`, typed `result` (input validated before start, output validated before resolve), `status()` (`RunStatus` discriminated union), `cancel(cause?)`, `meta`.
 - Errors — engine failures surface as `RunFailedError` (cause attached), cancellations as `RunCancelledError`; input/output contract violations reject with the zod error.
 
+### Agents (ADR 0010)
+
+```ts
+import { bindAgent, defineAgent, defineWorkflow } from '@daypaw/sdk'
+import type { Context } from '@deepseek-ai/cordis'
+import { z } from 'zod'
+
+const reviewer = defineAgent({
+  name: 'reviewer', version: '1',
+  input: z.object({ code: z.string() }),
+  output: z.object({ score: z.number() }),   // also the injected submit tool's args schema
+  prompt: [{ name: 'persona', order: 10, text: 'You review code and report a score.' }],
+  tools: [],                                  // dsh ToolDefinitions, zero adapter
+  model: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 4096 },
+  maxTurns: 4,                                // turn budget across revivals; required
+})
+
+const reviewFlow = defineWorkflow({
+  name: 'review-flow', version: '1',
+  input: z.object({ code: z.string() }),
+  output: z.object({ score: z.number() }),
+  // Inside a workflow body — itself the parent step `agent:reviewer`:
+  body: (ctx, input) => ctx.agent(reviewer, { code: input.code }),
+})
+
+// ctx = the host composition (see below):
+export async function compose(ctx: Context) {
+  await bindAgent(reviewer, ctx)
+  return reviewFlow
+}
+```
+
+- `defineAgent(options)` — declarative spec: identity, zod contracts, static composition lines (prompt segments, dsh tools, model route), and a mandatory `maxTurns` budget validated at declaration.
+- `bindAgent(def, ctx)` — compile the spec into an opaque engine body (the engine stays blind to `kind: 'agent'`) and register it for execution and boot revival. The host context must mount `ctx.durable`, the dsh agent stack (`agents`, `sessions`), and a session persistence backend; any one missing fails loud at bind time. Re-binding the same definition object is a no-op returning the first face — the closure stays captured on the first host context.
+- One agent run = one dsh session with `sessionId ≡ runId`: first drive creates, revival resumes and wakes with a synthetic continuation message. Every dsh step journals as one engine step (`dsh-step:<turn>:<step>`), so a re-driven body replays the session log instead of re-calling the model.
+- `ctx.agent(def, input)` — awaited child run on a deterministic derived runId (`<parentRunId>/<stepKey>/<kind>:<name>#<occurrence>`), parent linkage recorded in the ledger; the bare sub-workflow idiom (`child.run()` inside `ctx.step`) shares the same derivation.
+
 ## Model Experience
 
 ### Stored domain records
 
 #### What the model sees
 
-Nothing. The SDK contributes no prompt, tool, or schema; `defineWorkflow` and `bind` type the orchestration layer above model calls.
+`defineWorkflow` / `bind` contribute nothing — they type the orchestration layer above model calls. `defineAgent` owns its whole model-visible surface: the declared prompt segments assemble into the system prompt, the injected `submit` tool carries the output contract as its argument schema, the run input becomes the first user message, and a revived run is woken by a synthetic continuation message naming the restart.
 
 #### Token effect
 
-Zero live-request tokens.
+Workflow face: zero live-request tokens. Agent face: the static prompt segments and the `submit` schema ride every request of the run; the resume steer and a crashed half-turn's failed attempt stay in the resumed context (the honest cost of durability, ADR 0010 §5).
 
 #### KV Cache effect
 
-None — the SDK never touches live request prefixes.
+Prompt segments and the tool list are stable per definition, so a run's requests share one prefix; revival appends (steer message, new turn) and never rewrites history.
 
 ## Known Limitations and Deferred Work
 
-- **Workflow face only** — `defineAgent` (declarative spec + composition lines) lands with pillar ②'s milestone (ADR 0009 frame); the engine's registry already accepts `agent`-kind records.
+- **Static composition lines only** — the dynamic `compose(input)` escape hatch is declared in ADR 0010 but not opened; EVO variant operators target the static dimensions.
+- **`ctx.spawn` excluded** — fire-and-forget child runs are out of ADR 0010 §4's scope; `ctx.agent` is the awaited form.
+- **Agent runs require a persistence backend** — `bindAgent` fails loud without one: durability is the agent face's reason to exist, not an option.
 - **Retry surface deferred** — `StepOptions.retry` and `PermanentStepError` arrive with the retry migration; v1 fails the run on the first step failure.
 - **`meta` is caller-side only** — not persisted by the skeleton; see the engine README.
 - **`@daypaw/engine` / `@daypaw/store` are not independently published** — they ship vendored inside this tarball (ADR 0011); import their faces through this package, never directly.

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { Context } from '@deepseek-ai/cordis'
 import DurableEngine from '@daypaw/engine'
+import { currentStepScope } from '@daypaw/engine'
 import type { EngineDefinition, EngineRunError, EngineStepCtx } from '@daypaw/engine'
 
 /** Workflow definition helper: opaque body thunk around one body function. */
@@ -400,5 +401,108 @@ describe('durable engine service', () => {
     const [row] = readRuns(path)
     expect(row?.status).toBe('cancelled')
     expect(row?.cancel_cause).toBe('cross-process-stop')
+  })
+
+  it('exposes the driving runId on the step ctx', async () => {
+    const path = await tmpPath('daypaw-engine-runid-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    let observed: string | undefined
+    const def = workflowDef(async (run) => {
+      observed = run.runId
+      return run.step('only', async () => null)
+    })
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'runid-1' })
+    await handle.result
+    expect(observed).toBe('runid-1')
+  })
+
+  it('derives deterministic child run ids inside the ambient step scope', async () => {
+    const path = await tmpPath('daypaw-engine-scope-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    expect(currentStepScope()).toBeUndefined()
+    const seen: Array<{ stepKey: string; scopeRunId: string; children: string[] }> = []
+    const def = workflowDef(async run => (await run.step('parent', async () => {
+      const scope = currentStepScope()
+      if (scope === undefined) throw new Error('step fn ran without an ambient scope')
+      seen.push({
+        stepKey: scope.stepKey,
+        scopeRunId: scope.runId,
+        children: [
+          scope.childRunId('agent', 'reviewer'),
+          scope.childRunId('agent', 'reviewer'),
+          scope.childRunId('workflow', 'child'),
+        ],
+      })
+      return null
+    })))
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'scope-1' })
+    await handle.result
+    expect(currentStepScope()).toBeUndefined()
+    expect(seen).toEqual([{
+      stepKey: 'parent#0',
+      scopeRunId: 'scope-1',
+      children: [
+        'scope-1/parent#0/agent:reviewer#0',
+        'scope-1/parent#0/agent:reviewer#1',
+        'scope-1/parent#0/workflow:child#0',
+      ],
+    }])
+  })
+
+  it('re-derives the same child run ids when a step re-executes after revival', async () => {
+    const path = await tmpPath('daypaw-engine-rederive-')
+    const first = await boot(path)
+    const derivations: string[][] = []
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const def = workflowDef(async run => (await run.step('held', async () => {
+      const scope = currentStepScope()
+      if (scope === undefined) throw new Error('step fn ran without an ambient scope')
+      derivations.push([scope.childRunId('agent', 'kid'), scope.childRunId('agent', 'kid')])
+      await gate
+      return null
+    })))
+    await first.engine.register(def)
+    const handle = await first.engine.run(def, null, { runId: 'rederive-1' })
+    await until(() => derivations.length === 1)
+    await first.ctx.fiber.dispose()
+    release()
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => runError(error).code === 'ENGINE_DISPOSED')
+
+    const second = await boot(path)
+    contexts.push(second.ctx)
+    await second.engine.register(def)
+    await second.engine.idle()
+    await expect((await second.engine.run(def, null, { runId: 'rederive-1' })).result).resolves.toBeNull()
+    expect(derivations.length).toBe(2)
+    expect(derivations[1]).toEqual(derivations[0])
+  })
+
+  it('records parent linkage on insert and never rewrites it on attach', async () => {
+    const path = await tmpPath('daypaw-engine-parent-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    const child = workflowDef(async () => 'kid', 'child')
+    await engine.register(child)
+    const handle = await engine.run(child, null, {
+      runId: 'child-1',
+      parent: { runId: 'parent-1', stepKey: 'agent:reviewer#0' },
+    })
+    await expect(handle.result).resolves.toBe('kid')
+    const [row] = readRuns(path)
+    expect(row?.parent_run_id).toBe('parent-1')
+    expect(row?.parent_step_key).toBe('agent:reviewer#0')
+    const again = await engine.run(child, null, {
+      runId: 'child-1',
+      parent: { runId: 'other-parent', stepKey: 'elsewhere#0' },
+    })
+    await expect(again.result).resolves.toBe('kid')
+    const [after] = readRuns(path)
+    expect(after?.parent_run_id).toBe('parent-1')
+    expect(after?.parent_step_key).toBe('agent:reviewer#0')
   })
 })

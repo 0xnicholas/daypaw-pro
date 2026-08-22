@@ -8,6 +8,7 @@
  * @module @daypaw/engine/core
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 import type { RunDefKind, RunRow } from '@daypaw/store'
 import type { JournalStore } from './seams.ts'
@@ -53,6 +54,14 @@ export interface EngineStepOptions {
 
 /** The execution context handed to a workflow body. */
 export interface EngineStepCtx {
+  /** Identity of the run this body drives; agent-kind bodies derive their session id from it. */
+  readonly runId: string
+  /**
+   * Driver cancellation: aborted when the run is cancelled or the engine is
+   * disposed. Bodies that await external quiescence (an agent loop) must race
+   * it — `step()` alone observes cancellation only at step boundaries.
+   */
+  readonly signal: AbortSignal
   /**
    * Idempotent execution unit. A completed step returns its recorded result
    * without re-executing; an unfinished one (re)executes and records.
@@ -64,9 +73,42 @@ export interface EngineStepCtx {
   step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>
 }
 
+/**
+ * The ambient scope of the step whose `fn` is currently executing. Child
+ * runs started inside the step derive their persistent identity from it, so
+ * a re-driven step re-derives the same child runIds and attaches instead of
+ * restarting (spec 02 §2).
+ */
+export interface EngineStepScope {
+  /** Run driving the step. */
+  readonly runId: string
+  /** Idempotency key of the step. */
+  readonly stepKey: string
+  /**
+   * Derive the persistent identity of one child run started inside this
+   * step. A per-scope occurrence counter makes successive calls distinct;
+   * replaying the step in the same call order re-derives the same ids.
+   * @param kind - child definition family.
+   * @param name - child definition name; readability only, not uniqueness.
+   * @returns the deterministic child runId.
+   */
+  childRunId(kind: RunDefKind, name: string): string
+}
+
+/** Publishes the executing step's scope to anything its `fn` awaits into. */
+const stepScopeStorage = new AsyncLocalStorage<EngineStepScope>()
+
+/**
+ * Return the ambient step scope while a step's `fn` executes.
+ * @returns the scope, or `undefined` outside any step (top-level `run()` callers derive nothing).
+ */
+export function currentStepScope(): EngineStepScope | undefined {
+  return stepScopeStorage.getStore()
+}
+
 /** Opaque definition record the engine can execute and revive (ADR 0006 §2). */
 export interface EngineDefinition {
-  /** Definition family; only `workflow` bodies exist in the skeleton. */
+  /** Definition family; the engine stays blind to what a kind's body does (ADR 0010: agent bodies are SDK-compiled closures). */
   readonly kind: RunDefKind
   /** Definition name; with version, the registry identity. */
   readonly name: string
@@ -80,6 +122,12 @@ export interface EngineDefinition {
 export interface EngineRunOptions {
   /** Persistent run identity; an existing id attaches instead of starting. */
   readonly runId?: string
+  /**
+   * Parent linkage of a child run, recorded on the inserted row
+   * (`parent_run_id` / `parent_step_key`). Ignored when the runId already
+   * exists — attach never rewrites lineage.
+   */
+  readonly parent?: { readonly runId: string; readonly stepKey: string }
   /** Caller cancellation; forwards into the driver's abort signal. */
   readonly signal?: AbortSignal
 }
@@ -200,8 +248,8 @@ export class DurableEngineCore {
         defName: def.name,
         defVersion: def.version,
         inputJson: JSON.stringify(input),
-        parentRunId: undefined,
-        parentStepKey: undefined,
+        parentRunId: opts?.parent?.runId,
+        parentStepKey: opts?.parent?.stepKey,
         claimedBy: this.options.instanceId,
         claimedAt: now,
         createdAt: now,
@@ -371,6 +419,8 @@ export class DurableEngineCore {
     const runId = entry.handle.id
     const occurrences = new Map<string, number>()
     return {
+      runId,
+      signal,
       step: async <T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T> => {
         this.assertNotDisposed()
         if (signal.aborted) throw new EngineRunError('RUN_CANCELLED', runId)
@@ -388,8 +438,19 @@ export class DurableEngineCore {
         if (existing === undefined) {
           this.store.insertJournalStep({ runId, stepKey, name, occurrence, startedAt: Date.now() })
         }
+        const childOccurrences = new Map<string, number>()
+        const scope: EngineStepScope = {
+          runId,
+          stepKey,
+          childRunId: (kind, childName) => {
+            const key = `${kind}${childName}`
+            const childOccurrence = childOccurrences.get(key) ?? 0
+            childOccurrences.set(key, childOccurrence + 1)
+            return `${runId}/${stepKey}/${kind}:${childName}#${childOccurrence}`
+          },
+        }
         try {
-          const value = await fn()
+          const value = await stepScopeStorage.run(scope, fn)
           this.store.completeJournalStep(runId, stepKey, JSON.stringify(value), Date.now())
           return value
         } catch (error) {

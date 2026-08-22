@@ -9,7 +9,7 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 `ctx.durable`（插件 `@daypaw/engine`）：
 
 - `register(def)` —— 登记不透明定义（kind/name/version + body thunk）供执行与 boot 复活。同身份不同 body 拒绝；登记会触发 boot 扫描，可能复活前一进程留下的未完 run。
-- `run(def, input, { runId?, signal? })` —— 幂等 start-or-attach：未知 runId 插入并驱动；终态 run 从行结算；本进程在驱动的 run 返回活句柄；其余按 `pollMs` 轮询——attach 永不夺权，复活是 boot 扫描的职责。
+- `run(def, input, { runId?, signal?, parent? })` —— 幂等 start-or-attach：未知 runId 插入并驱动；终态 run 从行结算；本进程在驱动的 run 返回活句柄；其余按 `pollMs` 轮询——attach 永不夺权，复活是 boot 扫描的职责。`parent`（`{ runId, stepKey }`）在插入时记录调用方血缘（`parent_run_id` / `parent_step_key`）；已有 runId 则 attach，不改写血缘。
 - `idle()` —— 本进程不驱动任何 run 时 resolve。
 
 配置（schemastery）：`path`（ledger 文件或 `:memory:`）、`pollMs`（attach 轮询间隔，默认 1s）。
@@ -17,6 +17,8 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 ## 执行模型
 
 run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键 `name#occurrence`（或显式 key）；已完成 step 直接返回已记录结果不再执行，未完成的（重）执行并记录——执行 at-least-once，step 提交 exactly-once。取消先写终态行，在下一 step 边界生效。销毁停止驱动且不写终态：未完 run 保持可复活。
+
+step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间，`currentStepScope()` 返回 ambient 作用域 `{ runId, stepKey }`；在其中启动的子 run 派生确定性 runId `<runId>/<stepKey>/<kind>:<name>#<occurrence>` 并记录父子血缘——重驱动的父 run attach 子 run 而非重开（SDK 的 `ctx.agent` 与裸子 workflow 惯用式都走这条机制）。
 
 ## 扩展点
 

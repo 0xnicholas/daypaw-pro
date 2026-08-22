@@ -15,3 +15,4 @@
 | `scripts/doc-budgets.manifest.json` | `AGENTS.md` 词预算 1900 → 1975 | 上游本体已顶满 1900，任何 fork layer 追加都超限；提上限而非持续压缩上游段落 | 否（fork 层增量无上游对应物） | C（走骨） |
 | `scripts/translation-pairing.ts` | 翻译范围排除 fork 设计语料（docs/{adr,spec,agents,fork,reports,research}、CONTEXT.md） | fork 设计语料中文优先是图定决策（map #1），双语义务覆盖上游文档 | 否（fork 语料无上游对应物） | C（走骨） |
 | `scripts/gen-cordis-catalog.ts` | `ctx.durable` 入 SERVICE_WALK_EXEMPTIONS；EngineDefinition/EngineRunHandle/EngineRunOptions 入 TYPE_LINK_EXEMPTIONS | fork 服务的文档之家是包 README（上游子系统目录外），签名类型链接随之豁免 | 可提（豁免模式本身是上游机制；具体条目属 fork） | C（走骨） |
+| `package.json`（root） | devDependencies 新增 `zod@^4.4.3` | doc-typecheck 从根级临时项目编译文档代码块，裸 `zod` 导入只能经根 node_modules 解析（pnpm 不提升到根）；daypaw spec/README 的正典类型与示例必须 import zod | 否（上游文档块未导入 zod，无对应需求） | E（defineAgent 编译面） |

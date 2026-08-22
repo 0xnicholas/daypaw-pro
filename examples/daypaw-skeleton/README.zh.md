@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-daypaw 走骨的可运行演示（[ADR 0008](../../docs/adr/0008-landing-order-walking-skeleton.md)）：一个在真 `SIGKILL` 下存活的三步 durable workflow。
+daypaw 走骨的可运行演示（[ADR 0008](../../docs/adr/0008-landing-order-walking-skeleton.md)）：一个在真 `SIGKILL` 下存活的三步 durable workflow，外加支柱②的 agent 编译面（[ADR 0010](../../docs/adr/0010-define-agent-compilation-and-execution.md)）跑在真实 dsh agent 栈上。
 
 ## 运行
 
@@ -16,9 +16,22 @@ node --import tsx/esm examples/daypaw-skeleton/src/main.ts \
 
 `cordis.yml` 是演示组合（engine 落本地 ledger 文件）；[tests/sigkill.spec.ts](tests/sigkill.spec.ts) 是证明线套件——第一步效果出现后杀死，断言已完成 step 恰一次与带类型化结果的 `done` 行。
 
+## Agent 演示
+
+[src/agent-main.ts](src/agent-main.ts) 跑一个 workflow，其 step 经 `ctx.agent` 等待一个 `defineAgent` 编译的子 run，dsh agent 栈为真实组合，LLM 路由由脚本化 replay override 免 key 供给：
+
+```sh
+node --import tsx/esm examples/daypaw-skeleton/src/agent-main.ts \
+  --db /tmp/demo-ledger.db --sessions /tmp/demo-sessions \
+  --override examples/daypaw-skeleton/tests/snapshots/agent-happy/replay.override.json \
+  --run-id agent-demo-1
+```
+
+[tests/agent.snapshot.ts](tests/agent.snapshot.ts) 钉住模型可见面：持久化 session log 与提交的期望输出对 diff（persona prompt 段、注入的 `submit` schema、输入消息）；第二个场景在轮中 SIGKILL 宿主、重启，并钉住复活后模型看到的合成续跑 steer。
+
 ## Model Experience
 
-不适用——本示例不编排任何模型调用。
+workflow 演示不编排模型调用。agent 演示的模型可见面即其快照所钉内容，见上。
 
 ## Known Limitations and Deferred Work
 

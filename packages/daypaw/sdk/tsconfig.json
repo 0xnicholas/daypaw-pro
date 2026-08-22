@@ -10,6 +10,12 @@
   "references": [
     { "path": "../../../vendor/cordis" },
     { "path": "../../../packages/runtime-diagnostics/invariants" },
+    { "path": "../../../packages/core/agent" },
+    { "path": "../../../packages/core/session" },
+    { "path": "../../../packages/core/system-prompt" },
+    { "path": "../../../packages/core/tools" },
+    { "path": "../../../packages/llm/llm" },
+    { "path": "../../../packages/session/session-persistence" },
     { "path": "../engine" }
   ]
 }
