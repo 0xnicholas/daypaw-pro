@@ -260,3 +260,88 @@ describe('defineWorkflow + bind', () => {
     })
   })
 })
+
+describe('ctx.waitFor through the SDK face', () => {
+  const approvalWorkflow = defineWorkflow({
+    name: 'approval-flow',
+    version: '1',
+    input: z.object({ amount: z.number() }),
+    output: z.object({ approved: z.boolean(), note: z.string() }),
+    body: async (ctx, input) => {
+      const resolution = await ctx.waitFor('approval', {
+        schema: z.object({ approved: z.boolean() }),
+        timeout: 60_000,
+      })
+      if (resolution.state !== 'resolved') return { approved: false, note: resolution.state }
+      return { approved: resolution.value.approved, note: `amount:${input.amount}` }
+    },
+  })
+
+  it('suspends with a typed waiting status and resumes with a validated value', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-gate-'))
+    const workflow = await bind(approvalWorkflow, engine)
+    const handle = await workflow.run({ amount: 12 }, { runId: 'sdk-gate-1' })
+    await until(() => handle.status().state === 'waiting')
+    expect(handle.status()).toEqual({ state: 'waiting', gate: 'approval' })
+    const won = await engine.resolveGate('sdk-gate-1', 'approval', { state: 'resolved', value: { approved: true } }, 'sdk')
+    expect(won).toBe(true)
+    await expect(handle.result).resolves.toEqual({ approved: true, note: 'amount:12' })
+  })
+
+  it('types the gate outcome as a GateResolution union', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-gate-types-'))
+    const workflow = await bind(approvalWorkflow, engine)
+    const handle = await workflow.run({ amount: 1 }, { runId: 'sdk-gate-2' })
+    await until(() => handle.status().state === 'waiting')
+    await engine.resolveGate('sdk-gate-2', 'approval', { state: 'rejected', reason: 'nope' }, 'manager')
+    await expect(handle.result).resolves.toEqual({ approved: false, note: 'rejected' })
+  })
+
+  it('rejects an invalid settlement before it records', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-gate-invalid-'))
+    const workflow = await bind(approvalWorkflow, engine)
+    const handle = await workflow.run({ amount: 1 }, { runId: 'sdk-gate-3' })
+    await until(() => handle.status().state === 'waiting')
+    await expect(engine.resolveGate('sdk-gate-3', 'approval', { state: 'resolved', value: { approved: 'yes' } }, 'sdk'))
+      .rejects.toThrow()
+    expect(handle.status()).toEqual({ state: 'waiting', gate: 'approval' })
+    await engine.resolveGate('sdk-gate-3', 'approval', { state: 'resolved', value: { approved: false } }, 'sdk')
+    await expect(handle.result).resolves.toEqual({ approved: false, note: 'amount:1' })
+  })
+
+  it('times out a gate as a programmable branch', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-gate-timeout-'))
+    const impatient = defineWorkflow({
+      name: 'impatient-flow',
+      version: '1',
+      input: z.object({}),
+      output: z.string(),
+      body: async (ctx) => {
+        const resolution = await ctx.waitFor('approval', { timeout: 30 })
+        return resolution.state
+      },
+    })
+    const workflow = await bind(impatient, engine)
+    const handle = await workflow.run({})
+    await expect(handle.result).resolves.toBe('timedout')
+  })
+
+  it('waits without options and resolves an unvalidated value', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-gate-bare-'))
+    const bare = defineWorkflow({
+      name: 'bare-flow',
+      version: '1',
+      input: z.object({}),
+      output: z.string(),
+      body: async (ctx) => {
+        const resolution = await ctx.waitFor('ping')
+        return resolution.state === 'resolved' ? String(resolution.value) : resolution.state
+      },
+    })
+    const workflow = await bind(bare, engine)
+    const handle = await workflow.run({}, { runId: 'sdk-gate-4' })
+    await until(() => handle.status().state === 'waiting')
+    await engine.resolveGate('sdk-gate-4', 'ping', { state: 'resolved', value: 'pong' }, 'sdk')
+    await expect(handle.result).resolves.toBe('pong')
+  })
+})

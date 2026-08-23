@@ -29,7 +29,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:36`](../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:38`](../packages/daypaw/engine/src/index.ts)
 
 <a id="deepseek-aidsh-acp"></a>
 

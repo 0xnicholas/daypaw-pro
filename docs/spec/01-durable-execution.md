@@ -71,7 +71,7 @@ store = 共享数据契约的代码形态：schema 常量 + TS 行类型 + 迁�
 | `session_id` / `session_seq` | TEXT / INTEGER NULL | 双向引用（§1） |
 | `started_at` / `finished_at` | INTEGER NULL | |
 
-### 3.3 `promises`（§6，skeleton 后）
+### 3.3 `promises`（§6，已随 gate 原语落地）
 
 PK `(run_id, gate)`；列：`state`（`pending | resolved | rejected | timedout | cancelled`，对齐 Resonate durable promise spec 状态机）、`payload_json`（resolve 值，引擎侧 zod 校验后落盘）、`schema_json`（zod → JSON Schema 的**渲染投影**，供 Manager/UI 渲染表单；权威校验在引擎侧，渲染投影不作校验依据）、`timeout_at`、`resolution_source`（`'sdk' | 'manager' | 'webhook'`）、`created_at` / `resolved_at`。
 
@@ -170,7 +170,7 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 | §3.1 runs / §3.2 journal | ✅ 落地 |
 | §4 迁移机制 | ✅ 迁移骨架 + 0001 段 + golden fixture |
 | §5 驱动 / step 去重 / boot 扫描 / claim / start-or-attach | ✅ 落地 |
-| §6 promise / timer | ❌（语义已定，按需落地：首个需要 gate/timer 的真实 workflow 出现时实现） |
+| §6 promise / timer | promise ✅（`ctx.waitFor` gate 原语，含超时与 boot overdue 扫尾）/ timer ❌（按需落地：首个需要 sleep 的真实 workflow 出现时实现） |
 | §7 三缝接口 | ✅ 以进程内实现落地（接口成型即留口） |
 | §9 双层崩溃 + golden fixture + canonical example | ✅ 随包落地（证明线：3-step example 真 SIGKILL 续跑） |
 | retry 面 / spawn / defineAgent / profile 接线 / bin 冒烟 | ❌ 全部在外 |

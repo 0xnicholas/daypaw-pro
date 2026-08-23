@@ -10,12 +10,13 @@ One standalone SQLite database file (WAL, `busy_timeout`, `foreign_keys ON`), cr
 
 - `runs` — one row per durable run: definition identity, input, status, claim, parent link, typed output/failure.
 - `journal` — one row per idempotent step (`(run_id, step_key)` primary key is the dedup gate): name, occurrence, status, recorded result or failure.
+- `promises` — one row per durable gate (`(run_id, gate)` primary key): five-state settlement, payload, JSON Schema rendering projection, deadline, resolution source.
 
 ## API
 
 - `openLedgerDatabase(path)` — open (creating owner-only) and migrate a ledger file, or `:memory:`.
 - `migrateDatabase(db, migrations?)` — apply pending segments; each segment commits its SQL plus its `PRAGMA user_version` stamp in one transaction.
-- `MIGRATIONS`, `DAYPAW_STORE_SCHEMA_VERSION`, `RUNS_TABLE` / `JOURNAL_TABLE`, `RunRow` / `JournalRow` — the contract constants and row types.
+- `MIGRATIONS`, `DAYPAW_STORE_SCHEMA_VERSION`, `RUNS_TABLE` / `JOURNAL_TABLE` / `PROMISES_TABLE`, `RunRow` / `JournalRow` / `PromiseRow` — the contract constants and row types.
 
 Migrations are numbered, monotonic, hand-written SQL (as reviewable TS template strings so compiled `lib/` stays self-contained). Databases stamped newer than this build reject on open; forward compatibility comes from migrations, backward is not promised.
 
@@ -25,7 +26,7 @@ Migrations are numbered, monotonic, hand-written SQL (as reviewable TS template 
 
 #### What the model sees
 
-Nothing. This package contributes no prompt, tool, or schema; it persists the engine's `runs` and `journal` tables behind `openLedgerDatabase`.
+Nothing. This package contributes no prompt, tool, or schema; it persists the engine's `runs`, `journal`, and `promises` tables behind `openLedgerDatabase`.
 
 #### Token effect
 
@@ -37,7 +38,7 @@ None — the ledger is never part of a live request prefix.
 
 ## Known Limitations and Deferred Work
 
-- **Runs and journal only** — command and correlation tables belong to the Manager/EVO subprojects (ADR 0009) and are intentionally absent.
+- **No timer or command tables** — `timers` (with `ctx.sleep`), command and correlation tables stay deferred: timers land with the sleep primitive, the rest belong to the Manager/EVO subprojects (ADR 0009) and are intentionally absent.
 - **No `retry_policy_json` column yet** — the retry surface is deferred; the column arrives by a later migration when that surface lands (simplification ruling, issue #24).
 - **Single-process ownership discipline is the engine's job** — this package neither enforces nor documents cross-process write policy beyond SQLite WAL semantics.
 - **Not independently published** — the store ships vendored inside the `@daypaw/sdk` tarball (ADR 0011).

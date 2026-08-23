@@ -60,7 +60,18 @@ async run(def: EngineDefinition, input: unknown, opts?: EngineRunOptions): Promi
  * Resolve when this process drives no run (boot scan included).
  */
 async idle(): Promise<void>
+
+/**
+ * Settle a gate (first-wins): the one resolve seam for SDK direct calls,
+ * Manager UI, and (deferred) webhooks. See {@link DurableEngineCore.resolveGate}.
+ * @param runId - run identity.
+ * @param gate - gate name.
+ * @param settlement - resolved value or rejection reason.
+ * @param source - who settled, recorded on the row.
+ * @returns whether this call won the settlement.
+ */
+async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:59`](../../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:61`](../../packages/daypaw/engine/src/index.ts)
 <!-- END GENERATED cordis-surface -->

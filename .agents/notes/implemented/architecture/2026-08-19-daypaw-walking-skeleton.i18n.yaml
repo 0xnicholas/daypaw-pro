@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-19-daypaw-walking-skeleton.md
-2026-08-19-daypaw-walking-skeleton.md: 64495218bd38d41c9e8a19a4ee92d74e3f8448ac
-2026-08-19-daypaw-walking-skeleton.zh.md: 865006d4cf063b5db6eac10bc61175b358ee3d5b
+2026-08-19-daypaw-walking-skeleton.md: ff67ceb0405c93c58eaf6e832afe4bd52a1d7602
+2026-08-19-daypaw-walking-skeleton.zh.md: b7b0fe7b0ccceaf6c62493b2d89c136b4bc624f7

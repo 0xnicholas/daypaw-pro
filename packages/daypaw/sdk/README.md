@@ -37,6 +37,7 @@ const { total } = await handle.result   // typed: { total: number }
 - `bind(def, engine)` — register for execution and boot revival (same definition object rebinds as a no-op) and return `{ run(input, opts?) }`.
 - `DurableEngine` — re-export of the engine's Cordis plugin class, so consumers never import the vendored `@daypaw/engine` copy directly.
 - `RunHandle` — `id`, `definition`, typed `result` (input validated before start, output validated before resolve), `status()` (`RunStatus` discriminated union), `cancel(cause?)`, `meta`.
+- `ctx.waitFor(gate, { schema?, timeout? })` — durable gate (HITL suspension): suspends the run inside the body (`status()` reports `{state:'waiting', gate}`); waiting costs nothing and the process may exit. The outcome returns as a `GateResolution` union value (`resolved` / `rejected` / `timedout` / `cancelled` — terminal states are values, not exceptions). Settle through `ctx.durable.resolveGate(runId, gate, settlement, source)`, first-wins idempotent; the zod `schema` validates on both the write and the delivery side.
 - Errors — engine failures surface as `RunFailedError` (cause attached), cancellations as `RunCancelledError`; input/output contract violations reject with the zod error.
 
 ### Agents (ADR 0010)

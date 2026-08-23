@@ -559,6 +559,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Resolve when this process drives no run (boot scan included).',
         parameters: [],
       },
+      {
+        signature: 'async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>',
+        description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate.',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row.' }],
+        returns: 'whether this call won the settlement.',
+      },
     ],
   },
   {
@@ -3062,11 +3068,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineRunStatus',
-    declaration: 'export type EngineRunStatus = {\n    readonly state: \'running\';\n} | {\n    readonly state: \'done\';\n} | {\n    readonly state: \'failed\';\n    readonly error: unknown;\n} | {\n    readonly state: \'cancelled\';\n    readonly cause?: string;\n};',
+    declaration: 'export type EngineRunStatus = {\n    readonly state: \'running\';\n} | {\n    readonly state: \'waiting\';\n    readonly gate: string;\n} | {\n    readonly state: \'done\';\n} | {\n    readonly state: \'failed\';\n    readonly error: unknown;\n} | {\n    readonly state: \'cancelled\';\n    readonly cause?: string;\n};',
   },
   {
     name: 'EngineStepCtx',
-    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n}',
+    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n    waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>;\n}',
   },
   {
     name: 'EngineStepOptions',
@@ -3135,6 +3141,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsWriteOutcome',
     declaration: 'export interface FsWriteOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    before: string | null;\n    after: string;\n}',
+  },
+  {
+    name: 'GateResolution',
+    declaration: 'export type GateResolution<T = unknown> = {\n    readonly state: \'resolved\';\n    readonly value: T;\n} | {\n    readonly state: \'rejected\';\n    readonly reason: string;\n} | {\n    readonly state: \'timedout\';\n} | {\n    readonly state: \'cancelled\';\n};',
+  },
+  {
+    name: 'GateResolutionSource',
+    declaration: 'export type GateResolutionSource = PromiseResolutionSource;',
+  },
+  {
+    name: 'GateSettlement',
+    declaration: 'export type GateSettlement = {\n    readonly state: \'resolved\';\n    readonly value: unknown;\n} | {\n    readonly state: \'rejected\';\n    readonly reason: string;\n};',
   },
   {
     name: 'GenerateOptions',
@@ -3579,6 +3597,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ProjectionSnapshot',
     declaration: 'export interface ProjectionSnapshot {\n    asOfSeq: number;\n    values: Partial<SessionProjectionMap>;\n}',
+  },
+  {
+    name: 'PromiseResolutionSource',
+    declaration: 'export type PromiseResolutionSource = \'sdk\' | \'manager\' | \'webhook\';',
   },
   {
     name: 'PromptAssembly',

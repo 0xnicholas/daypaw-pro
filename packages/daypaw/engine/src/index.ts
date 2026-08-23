@@ -1,7 +1,8 @@
 /**
  * The durable engine Cordis service (`ctx.durable`): definition registry,
- * run lifecycle, step-dedup re-drive, single-writer claims, and boot-scan
- * revival over the SQLite ledger (spec: docs/spec/01-durable-execution.md,
+ * run lifecycle, step-dedup re-drive, durable gates (`ctx.waitFor`),
+ * single-writer claims, and boot-scan revival over the SQLite ledger
+ * (spec: docs/spec/01-durable-execution.md,
  * programming face docs/spec/02-agent-engine-sdk.md). Load this plugin in a
  * Cordis composition; `@daypaw/sdk` is the typed facade applications call.
  * @module @daypaw/engine
@@ -13,17 +14,18 @@ import z from '@deepseek-ai/schemastery'
 import { openLedgerDatabase } from '@daypaw/store'
 import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
-import type { EngineDefinition, EngineRunHandle, EngineRunOptions } from './core.ts'
+import type { EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement } from './core.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 
 export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
 export type {
   EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
   EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope,
+  GateResolution, GateResolutionSource, GateSchema, GateSettlement, WaitForOptions,
 } from './core.ts'
 export { SqliteJournalStore } from './sqlite-journal-store.ts'
 export type {
-  JournalStepInsert, JournalStore, RunFinalize, RunInsert,
+  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert,
 } from './seams.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -108,6 +110,19 @@ export default class DurableEngine extends Service {
    */
   async idle(): Promise<void> {
     await (await this.coreOrFail()).idle()
+  }
+
+  /**
+   * Settle a gate (first-wins): the one resolve seam for SDK direct calls,
+   * Manager UI, and (deferred) webhooks. See {@link DurableEngineCore.resolveGate}.
+   * @param runId - run identity.
+   * @param gate - gate name.
+   * @param settlement - resolved value or rejection reason.
+   * @param source - who settled, recorded on the row.
+   * @returns whether this call won the settlement.
+   */
+  async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean> {
+    return (await this.coreOrFail()).resolveGate(runId, gate, settlement, source)
   }
 
   private async coreOrFail(): Promise<DurableEngineCore> {

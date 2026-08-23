@@ -6,9 +6,9 @@
  */
 
 import type { DatabaseSync } from 'node:sqlite'
-import type { JournalRow, RunRow } from '@daypaw/store'
+import type { JournalRow, PromiseRow, RunRow } from '@daypaw/store'
 import type {
-  JournalStepInsert, JournalStore, RunFinalize, RunInsert,
+  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert,
 } from './seams.ts'
 
 type Statement = ReturnType<DatabaseSync['prepare']>
@@ -30,6 +30,13 @@ export class SqliteJournalStore implements JournalStore {
   private readonly insertStepStmt: Statement
   private readonly completeStepStmt: Statement
   private readonly failStepStmt: Statement
+  private readonly setRunWaitingStmt: Statement
+  private readonly resumeRunStmt: Statement
+  private readonly insertPromiseStmt: Statement
+  private readonly selectPromiseStmt: Statement
+  private readonly settlePromiseStmt: Statement
+  private readonly selectOverdueStmt: Statement
+  private readonly cancelPromisesStmt: Statement
 
   /**
    * @param db - the open ledger database (schema already migrated).
@@ -58,6 +65,24 @@ export class SqliteJournalStore implements JournalStore {
     this.failStepStmt = db.prepare(`UPDATE journal
       SET status = 'failed', error_json = ?, finished_at = ?
       WHERE run_id = ? AND step_key = ?`)
+    this.setRunWaitingStmt = db.prepare(`UPDATE runs
+      SET status = 'waiting', waiting_gate = ?, updated_at = ?
+      WHERE run_id = ? AND status IN ${UNFINISHED}`)
+    this.resumeRunStmt = db.prepare(`UPDATE runs
+      SET status = 'running', waiting_gate = NULL, updated_at = ?
+      WHERE run_id = ? AND status = 'waiting'`)
+    this.insertPromiseStmt = db.prepare(`INSERT INTO promises (
+      run_id, gate, schema_json, timeout_at, created_at
+    ) VALUES (?, ?, ?, ?, ?)`)
+    this.selectPromiseStmt = db.prepare('SELECT * FROM promises WHERE run_id = ? AND gate = ?')
+    this.settlePromiseStmt = db.prepare(`UPDATE promises
+      SET state = ?, payload_json = ?, resolution_source = ?, resolved_at = ?
+      WHERE run_id = ? AND gate = ? AND state = 'pending'`)
+    this.selectOverdueStmt = db.prepare(
+      "SELECT * FROM promises WHERE state = 'pending' AND timeout_at IS NOT NULL AND timeout_at <= ?")
+    this.cancelPromisesStmt = db.prepare(`UPDATE promises
+      SET state = 'cancelled', resolved_at = ?
+      WHERE run_id = ? AND state = 'pending'`)
   }
 
   /** @inheritdoc */
@@ -110,5 +135,42 @@ export class SqliteJournalStore implements JournalStore {
   /** @inheritdoc */
   failJournalStep(runId: string, stepKey: string, errorJson: string, finishedAt: number): void {
     this.failStepStmt.run(errorJson, finishedAt, runId, stepKey)
+  }
+
+  /** @inheritdoc */
+  setRunWaiting(runId: string, gate: string, at: number): void {
+    this.setRunWaitingStmt.run(gate, at, runId)
+  }
+
+  /** @inheritdoc */
+  resumeRun(runId: string, at: number): void {
+    this.resumeRunStmt.run(at, runId)
+  }
+
+  /** @inheritdoc */
+  insertPromise(row: PromiseInsert): void {
+    this.insertPromiseStmt.run(row.runId, row.gate, row.schemaJson ?? null, row.timeoutAt ?? null, row.createdAt)
+  }
+
+  /** @inheritdoc */
+  selectPromise(runId: string, gate: string): PromiseRow | undefined {
+    return this.selectPromiseStmt.get(runId, gate) as PromiseRow | undefined
+  }
+
+  /** @inheritdoc */
+  settlePromise(runId: string, gate: string, patch: PromiseSettle): boolean {
+    return this.settlePromiseStmt.run(
+      patch.state, patch.payloadJson ?? null, patch.source ?? null, patch.resolvedAt, runId, gate,
+    ).changes === 1
+  }
+
+  /** @inheritdoc */
+  selectOverduePromises(now: number): PromiseRow[] {
+    return this.selectOverdueStmt.all(now) as unknown as PromiseRow[]
+  }
+
+  /** @inheritdoc */
+  cancelPendingPromises(runId: string, at: number): void {
+    this.cancelPromisesStmt.run(at, runId)
   }
 }

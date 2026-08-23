@@ -64,12 +64,21 @@ export interface RunHandle<T> {
 export interface WorkflowCtx {
   /** 幂等执行单元；恢复时已完成 step 直接返回已记录结果。 */
   step<T>(name: string, fn: () => Promise<T>, opts?: StepOptions): Promise<T>
-  // sleep / waitFor / agent / spawn：语义已定（§2），按需落地（简化走查裁决）
+  /** durable gate（HITL 挂起，spec 01 §6）；终态以 GateResolution 联合值返回。 */
+  waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
+  // sleep / agent / spawn：sleep 语义已定（§2）按需落地；agent 见 §1.2；spawn 未设计
 }
 
 export interface StepOptions {
   /** 显式幂等键逃生口；默认引擎派生 runId + name + occurrence。 */
   readonly key?: string
+}
+
+export interface WaitForOptions<T> {
+  /** 值契约（zod）；写入侧与投递侧双重校验。 */
+  readonly schema?: ZodType<T>
+  /** 超时毫秒时长；自 gate 首次登记起算。 */
+  readonly timeout?: number
 }
 ```
 
@@ -149,7 +158,7 @@ export interface WorkflowCtx {
 
 ## 2. ctx 原语面
 
-五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。`step`/`agent` 面已定案（上节与 ADR 0010）；`sleep`/`waitFor` 语义 spec 01 §6 已定、按需落地；`spawn` 语义未设计（ADR 0010 §4 排除）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
+五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。`step`/`agent` 面已定案（上节与 ADR 0010）；`waitFor` 语义 spec 01 §6、已实现；`sleep` 语义同节已定、按需落地；`spawn` 语义未设计（ADR 0010 §4 排除）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
 
 - **子 workflow 等待式调用 = 惯用式**，不加第六原语：`ctx.step` 内裸 `def.run()` 等待 `.result`；前提是引擎从 `(parentRunId, stepKey, occurrence)` 派生**确定性子 runId**（重驱动 attach 而非重开，副作用不翻倍）。
 - **step 幂等键**：默认 `runId + name + occurrence` 自动派生（重驱动遍历顺序须确定，map 顺序稳定、手写乱序 await 不稳——运维注记）；`opts.key` 显式逃生口。
@@ -170,7 +179,7 @@ export interface WorkflowCtx {
 | `def.run`，已有行 | attach 三态：本进程在驱动→挂完成通知；终态→直读行；他进程驱动→`pollMs` 轮询 | 终态直接 settle |
 | `ctx.step(name, fn)` | INSERT `journal` `started` → 执行 → `completed`+`value_json` / `failed`+`error_json`（PK `(run_id, step_key)` 即去重闸） | — |
 | 重驱动遇已完成 step | 读 `value_json` 返回，不重执行 | — |
-| `ctx.waitFor` / `ctx.sleep`（按需落地） | `promises` 行 pending + `runs`→`waiting`/`waiting_gate`；`timers` 行 `wake_at` | `status()` = `{state:'waiting', gate}` |
+| `ctx.waitFor`（已实现）/ `ctx.sleep`（按需落地） | `promises` 行 pending + `runs`→`waiting`/`waiting_gate`；`timers` 行 `wake_at` | `status()` = `{state:'waiting', gate}` |
 | `handle.cancel(cause)` | UPDATE `runs`→`cancelled`+`cancel_cause` → driver AbortSignal | `result` reject `RunCancelledError` |
 | step 失败（v1 无 retry 面） | `journal` `failed` + `runs`→`failed`+`error_json` | `result` reject `RunFailedError` |
 | 成功收尾 | output schema 校验后写 `output_json`，`runs`→`done` | `result` resolve 类型化结果 |

@@ -247,7 +247,7 @@ describe('durable engine service', () => {
     expect(row?.status).toBe('failed')
   })
 
-  it('throws on a waiting status row: that state lands with ctx.waitFor', async () => {
+  it('throws on a waiting row with no gate recorded (ledger inconsistency)', async () => {
     const path = await tmpPath('daypaw-engine-waiting-')
     const { ctx, engine } = await boot(path)
     contexts.push(ctx)
@@ -260,7 +260,7 @@ describe('durable engine service', () => {
     const poker = new DatabaseSync(path)
     poker.exec("UPDATE runs SET status = 'waiting' WHERE run_id = 'waiting-1'")
     poker.close()
-    expect(() => handle.status()).toThrow(/lands with ctx.waitFor/)
+    expect(() => handle.status()).toThrow(/waiting with no gate recorded/)
     release()
     await handle.result
   })

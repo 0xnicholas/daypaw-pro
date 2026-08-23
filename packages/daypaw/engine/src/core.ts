@@ -1,6 +1,7 @@
 /**
  * The durable engine core: definition registry, run lifecycle, step dedup
- * re-drive, single-writer claims, boot scan, and cancellation — everything
+ * re-drive, durable gates, single-writer claims, boot scan, and
+ * cancellation — everything
  * except Cordis wiring and database ownership. The Cordis service in
  * `index.ts` is a thin adapter over this core, and the fault-injection
  * suite drives the core through wrapped {@link JournalStore} seams
@@ -10,12 +11,13 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
-import type { RunDefKind, RunRow } from '@daypaw/store'
+import type { PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
 import type { JournalStore } from './seams.ts'
 
-/** Run status reported by handles. `waiting` lands with `ctx.waitFor`. */
+/** Run status reported by handles. */
 export type EngineRunStatus =
   | { readonly state: 'running' }
+  | { readonly state: 'waiting'; readonly gate: string }
   | { readonly state: 'done' }
   | { readonly state: 'failed'; readonly error: unknown }
   | { readonly state: 'cancelled'; readonly cause?: string }
@@ -52,6 +54,49 @@ export interface EngineStepOptions {
   readonly key?: string
 }
 
+/**
+ * Terminal outcome of one durable gate, returned to the body as a value:
+ * timeout, rejection, and cancellation are programmable branches, never
+ * thrown (spec 01 §6).
+ */
+export type GateResolution<T = unknown> =
+  | { readonly state: 'resolved'; readonly value: T }
+  | { readonly state: 'rejected'; readonly reason: string }
+  | { readonly state: 'timedout' }
+  | { readonly state: 'cancelled' }
+
+/**
+ * Value contract of one gate. `parse` is the authoritative validation,
+ * applied before a same-process settlement is recorded and again before the
+ * recorded value reaches the body; `toJSONSchema` renders the projection
+ * persisted for Manager/UI form rendering (never a validation basis).
+ */
+export interface GateSchema<T> {
+  /** @param value - decoded settlement payload. @returns the validated value. */
+  parse(value: unknown): T
+  /** @returns the JSON Schema rendering projection. */
+  toJSONSchema(): Record<string, unknown>
+}
+
+/** Options for one `ctx.waitFor` call. */
+export interface WaitForOptions<T> {
+  /** Value contract; an omitted schema accepts any JSON value. */
+  readonly schema?: GateSchema<T>
+  /**
+   * Timeout in milliseconds from the gate's first registration; a re-driven
+   * wait keeps the originally recorded deadline.
+   */
+  readonly timeout?: number
+}
+
+/** Settlement input for {@link DurableEngineCore.resolveGate}. */
+export type GateSettlement =
+  | { readonly state: 'resolved'; readonly value: unknown }
+  | { readonly state: 'rejected'; readonly reason: string }
+
+/** Who settled a gate; recorded on the promise row. */
+export type GateResolutionSource = PromiseResolutionSource
+
 /** The execution context handed to a workflow body. */
 export interface EngineStepCtx {
   /** Identity of the run this body drives; agent-kind bodies derive their session id from it. */
@@ -71,6 +116,18 @@ export interface EngineStepCtx {
    * @returns the step result (recorded value on re-drive).
    */
   step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>
+  /**
+   * Durable gate (HITL suspension): registers a pending promise keyed by
+   * `(runId, gate)`, moves the run to `waiting`, and yields the driver —
+   * waiting costs nothing, and a dead process revives through the boot scan.
+   * A gate already settled in the ledger returns its recorded outcome
+   * without waiting again. Throws `RUN_CANCELLED` only when the run was
+   * already cancelled at entry, mirroring `step`.
+   * @param gate - gate name; unique within the run.
+   * @param opts - value contract and timeout.
+   * @returns the terminal gate outcome as a value.
+   */
+  waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
 }
 
 /**
@@ -171,6 +228,20 @@ interface PollEntry {
   stop(error: EngineRunError): void
 }
 
+/** One in-process gate waiter, keyed by `runId` + gate name. */
+interface GateWaiterEntry {
+  /** Live value contract held while this process waits; enables write-side validation of same-process settlements. */
+  readonly schema: GateSchema<unknown> | undefined
+  /** Deliver a terminal outcome to the waiting body. */
+  deliver(resolution: GateResolution): void
+  /** Reject the body's wait (engine disposal, ledger loss). */
+  fail(error: unknown): void
+}
+
+function gateWaiterKey(runId: string, gate: string): string {
+  return `${runId}\u0000${gate}`
+}
+
 function definitionKey(kind: RunDefKind, name: string, version: string): string {
   return `${kind}\u0000${name}\u0000${version}`
 }
@@ -194,6 +265,7 @@ export class DurableEngineCore {
   private readonly definitions = new Map<string, EngineDefinition>()
   private readonly drivers = new Map<string, DriverEntry>()
   private readonly polls = new Map<string, PollEntry>()
+  private readonly gateWaiters = new Map<string, GateWaiterEntry>()
   private disposed = false
 
   /**
@@ -264,14 +336,56 @@ export class DurableEngineCore {
   }
 
   /**
-   * Revive unfinished runs: claim each unclaimed (or foreign-claimed) run
-   * and re-drive it from its recorded steps; runs this instance already
-   * claimed (an earlier scan that lacked the definition) drive once their
-   * definition registers. Runs whose definitions are not registered stay
-   * unfinished and are retried on a later scan.
+   * Settle a gate (first-wins): the one resolve seam for SDK direct calls,
+   * Manager UI, and (deferred) webhooks. When this process holds the
+   * waiter, the value contract validates before the write — an invalid
+   * settlement throws here and records nothing. A second settler is a
+   * no-op. A waiting driver in this process resumes immediately; elsewhere
+   * it observes the row through its poll or the next boot scan.
+   * @param runId - run identity.
+   * @param gate - gate name.
+   * @param settlement - resolved value or rejection reason.
+   * @param source - who settled, recorded on the row.
+   * @returns whether this call won the settlement.
+   */
+  resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): boolean {
+    this.assertNotDisposed()
+    const waiter = this.gateWaiters.get(gateWaiterKey(runId, gate))
+    const payloadJson = settlement.state === 'resolved'
+      ? JSON.stringify(waiter?.schema === undefined ? settlement.value : waiter.schema.parse(settlement.value))
+      : JSON.stringify(settlement.reason)
+    const won = this.store.settlePromise(runId, gate, {
+      state: settlement.state,
+      payloadJson,
+      source,
+      resolvedAt: Date.now(),
+    })
+    if (waiter !== undefined) this.deliverRecordedResolution(runId, gate, waiter)
+    return won
+  }
+
+  /**
+   * Revive unfinished runs: sweep overdue gates to `timedout` (first-wins),
+   * then claim each unclaimed (or foreign-claimed) run and re-drive it from
+   * its recorded steps; runs this instance already claimed (an earlier scan
+   * that lacked the definition) drive once their definition registers. Runs
+   * whose definitions are not registered stay unfinished and are retried on
+   * a later scan.
    */
   bootScan(): void {
     this.assertNotDisposed()
+    // Missed deadlines first: a process that died before its timeout fired
+    // leaves the gate pending; settle it so the revived wait reads `timedout`.
+    for (const promise of this.store.selectOverduePromises(Date.now())) {
+      this.store.settlePromise(promise.run_id, promise.gate, {
+        state: 'timedout',
+        payloadJson: undefined,
+        source: undefined,
+        resolvedAt: Date.now(),
+      })
+      const waiter = this.gateWaiters.get(gateWaiterKey(promise.run_id, promise.gate))
+      if (waiter !== undefined) this.deliverRecordedResolution(promise.run_id, promise.gate, waiter)
+    }
     for (const runId of this.store.selectUnfinishedRunIds()) {
       const row = this.store.selectRun(runId)
       if (row === undefined) {
@@ -410,26 +524,44 @@ export class DurableEngineCore {
       } finally {
         callerSignal?.removeEventListener('abort', forward)
         this.drivers.delete(runId)
+        // A body that died mid-wait (or returned with a gate still pending)
+        // leaves its waiter registered; fail it so no timer or poll outlives
+        // the driver.
+        this.abandonGateWaiters(runId)
       }
     })()
     return entry
   }
 
+  /** Fail every gate waiter one run still has registered. */
+  private abandonGateWaiters(runId: string): void {
+    for (const [key, waiter] of this.gateWaiters) {
+      if (key.startsWith(gateWaiterKey(runId, ''))) {
+        waiter.fail(new EngineRunError('RUN_FAILED', runId,
+          new Error(`run ${runId} settled while a gate wait was still pending`)))
+      }
+    }
+  }
+
   private stepCtxFor(entry: DriverEntry, signal: AbortSignal): EngineStepCtx {
     const runId = entry.handle.id
     const occurrences = new Map<string, number>()
+    /** Reject a step/gate action whose run is disposed, aborted, lost, or cancelled. */
+    const assertDrivable = (): void => {
+      this.assertNotDisposed()
+      if (signal.aborted) throw new EngineRunError('RUN_CANCELLED', runId)
+      const row = this.store.selectRun(runId)
+      if (row === undefined) throw new Error(`durable engine: ledger lost run ${runId}`)
+      if (row.status === 'cancelled') {
+        entry.abort(row.cancel_cause ?? undefined)
+        throw new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined)
+      }
+    }
     return {
       runId,
       signal,
       step: async <T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T> => {
-        this.assertNotDisposed()
-        if (signal.aborted) throw new EngineRunError('RUN_CANCELLED', runId)
-        const row = this.store.selectRun(runId)
-        if (row === undefined) throw new Error(`durable engine: ledger lost run ${runId}`)
-        if (row.status === 'cancelled') {
-          entry.abort(row.cancel_cause ?? undefined)
-          throw new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined)
-        }
+        assertDrivable()
         const occurrence = occurrences.get(name) ?? 0
         occurrences.set(name, occurrence + 1)
         const stepKey = opts?.key ?? `${name}#${occurrence}`
@@ -467,6 +599,173 @@ export class DurableEngineCore {
           throw error
         }
       },
+      waitFor: <T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>> => {
+        assertDrivable()
+        const schema = opts?.schema as GateSchema<unknown> | undefined
+        const existing = this.store.selectPromise(runId, gate)
+        if (existing !== undefined && existing.state !== 'pending') {
+          // Re-drive after the gate settled: the recorded outcome returns
+          // without waiting again; a run left `waiting` by a crash between
+          // settlement and resume now moves on.
+          this.store.resumeRun(runId, Date.now())
+          return Promise.resolve(this.resolutionFromRow(existing, schema) as GateResolution<T>)
+        }
+        let timeoutAt: number | undefined
+        if (existing === undefined) {
+          const now = Date.now()
+          timeoutAt = opts?.timeout === undefined ? undefined : now + opts.timeout
+          this.store.insertPromise({
+            runId,
+            gate,
+            schemaJson: schema === undefined ? undefined : JSON.stringify(schema.toJSONSchema()),
+            timeoutAt,
+            createdAt: now,
+          })
+        } else {
+          timeoutAt = existing.timeout_at ?? undefined
+        }
+        this.store.setRunWaiting(runId, gate, Date.now())
+        return this.suspendOnGate(entry, signal, gate, schema, timeoutAt) as Promise<GateResolution<T>>
+      },
+    }
+  }
+
+  /**
+   * Suspend the driver on a pending gate: register the in-process waiter and
+   * wake on the first of a same-process resolve push, the cross-process poll
+   * fallback, the timeout, or driver abort (cancellation / disposal).
+   * @param entry - the driver waiting.
+   * @param signal - driver abort signal.
+   * @param gate - gate name.
+   * @param schema - live value contract held for delivery-time validation.
+   * @param timeoutAt - recorded deadline (epoch ms), when the gate has one.
+   * @returns the terminal gate outcome.
+   */
+  private suspendOnGate(
+    entry: DriverEntry,
+    signal: AbortSignal,
+    gate: string,
+    schema: GateSchema<unknown> | undefined,
+    timeoutAt: number | undefined,
+  ): Promise<GateResolution> {
+    const runId = entry.handle.id
+    const key = gateWaiterKey(runId, gate)
+    if (this.gateWaiters.has(key)) {
+      throw new Error(`durable engine: run ${runId} already waits on gate ${gate} in this process`)
+    }
+    let deliver!: (resolution: GateResolution) => void
+    let fail!: (error: unknown) => void
+    const waiting = new Promise<GateResolution>((resolve, reject) => {
+      deliver = resolve
+      fail = reject
+    })
+    // A body that abandons its wait (floating call, or death by a sibling
+    // branch) holds no consumer; mark handled so the abandonment rejection
+    // never crashes the process. Real awaiters still receive it.
+    waiting.catch(() => {})
+    let timeoutTimer: NodeJS.Timeout | undefined
+    // Settling a promise is idempotent, so repeated deliver/fail after the
+    // first outcome is a no-op; cleanup is idempotent too.
+    const waiter: GateWaiterEntry = {
+      schema,
+      deliver: (resolution) => {
+        cleanup()
+        // A no-op unless the row still reads `waiting` (cancelled runs are
+        // terminal already), so every outcome can take the same path.
+        this.store.resumeRun(runId, Date.now())
+        deliver(resolution)
+      },
+      fail: (error) => {
+        cleanup()
+        fail(error)
+      },
+    }
+    const cleanup = () => {
+      this.gateWaiters.delete(key)
+      clearInterval(pollTimer)
+      if (timeoutTimer !== undefined) clearTimeout(timeoutTimer)
+      signal.removeEventListener('abort', onAbort)
+    }
+    const onAbort = () => {
+      if (this.disposed) {
+        waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
+      } else {
+        waiter.deliver({ state: 'cancelled' })
+      }
+    }
+    const pollTimer = setInterval(() => {
+      try {
+        const row = this.store.selectPromise(runId, gate)
+        if (row === undefined) {
+          waiter.fail(new Error(`durable engine: ledger lost promise ${runId}/${gate}`))
+          return
+        }
+        if (row.state !== 'pending') this.deliverRecordedResolution(runId, gate, waiter)
+      } catch (error) {
+        waiter.fail(error)
+      }
+    }, this.options.pollMs)
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (timeoutAt !== undefined) {
+      // A past deadline arms an immediate timeout; setTimeout clamps negatives.
+      timeoutTimer = setTimeout(() => {
+        try {
+          // First-wins against a concurrent resolver: the recorded row decides.
+          this.store.settlePromise(runId, gate, {
+            state: 'timedout',
+            payloadJson: undefined,
+            source: undefined,
+            resolvedAt: Date.now(),
+          })
+          this.deliverRecordedResolution(runId, gate, waiter)
+        } catch (error) {
+          waiter.fail(error)
+        }
+      }, timeoutAt - Date.now())
+    }
+    this.gateWaiters.set(key, waiter)
+    return waiting
+  }
+
+  /**
+   * Decode a settled promise row into the body-facing union, validating a
+   * resolved payload against the live contract (delivery side: covers
+   * settlements written cross-process, where no live schema was available).
+   * @param row - the settled promise row.
+   * @param schema - the gate's value contract, when declared.
+   * @returns the terminal gate outcome.
+   */
+  private resolutionFromRow(row: PromiseRow, schema: GateSchema<unknown> | undefined): GateResolution {
+    switch (row.state) {
+      case 'resolved': {
+        const raw: unknown = JSON.parse(row.payload_json ?? 'null')
+        return { state: 'resolved', value: schema === undefined ? raw : schema.parse(raw) }
+      }
+      case 'rejected': {
+        const reason: unknown = JSON.parse(row.payload_json ?? 'null')
+        return { state: 'rejected', reason: typeof reason === 'string' ? reason : JSON.stringify(reason) }
+      }
+      case 'timedout': return { state: 'timedout' }
+      case 'cancelled': return { state: 'cancelled' }
+      case 'pending': throw new Error(`durable engine: promise ${row.run_id}/${row.gate} is still pending`)
+    }
+  }
+
+  /**
+   * Read the promise row and hand its outcome to the waiter; a settled row
+   * whose payload fails validation rejects the wait instead (the body's step
+   * fails loud rather than consuming an unchecked value).
+   */
+  private deliverRecordedResolution(runId: string, gate: string, waiter: GateWaiterEntry): void {
+    const row = this.store.selectPromise(runId, gate)
+    if (row === undefined) {
+      waiter.fail(new Error(`durable engine: ledger lost promise ${runId}/${gate}`))
+      return
+    }
+    try {
+      waiter.deliver(this.resolutionFromRow(row, waiter.schema))
+    } catch (error) {
+      waiter.fail(error)
     }
   }
 
@@ -480,7 +779,8 @@ export class DurableEngineCore {
       new Error(`run ${runId} reached terminal state ${row?.status ?? 'unknown'} before completion`))
   }
 
-  private cancelRun(runId: string, cause?: string): Promise<void> {
+  // oxlint-disable-next-line typescript/require-await -- async keeps a store throw a rejection, not a synchronous throw
+  private async cancelRun(runId: string, cause?: string): Promise<void> {
     this.store.finalizeRun(runId, {
       status: 'cancelled',
       outputJson: undefined,
@@ -488,8 +788,8 @@ export class DurableEngineCore {
       cancelCause: cause,
       finishedAt: Date.now(),
     })
+    this.store.cancelPendingPromises(runId, Date.now())
     this.drivers.get(runId)?.abort(cause)
-    return Promise.resolve()
   }
 
   private finalizeCancelledFromDriver(runId: string, cause: string | undefined): void {
@@ -497,7 +797,7 @@ export class DurableEngineCore {
     // A same-process cancel already wrote the terminal row; a row cancelled
     // through another process needs no second write. Anything else means the
     // row vanished mid-run — nothing to finalize.
-    if (row === undefined || row.status !== 'running') return
+    if (row === undefined || isTerminal(row.status)) return
     this.store.finalizeRun(runId, {
       status: 'cancelled',
       outputJson: undefined,
@@ -505,6 +805,7 @@ export class DurableEngineCore {
       cancelCause: cause,
       finishedAt: Date.now(),
     })
+    this.store.cancelPendingPromises(runId, Date.now())
   }
 
   private finalizeFailedFromDriver(runId: string, error: unknown): void {
@@ -540,7 +841,12 @@ export class DurableEngineCore {
       case 'cancelled': return row.cancel_cause === null
         ? { state: 'cancelled' }
         : { state: 'cancelled', cause: row.cancel_cause }
-      case 'waiting': throw new Error('durable engine: waiting status lands with ctx.waitFor (spec 01 §6)')
+      case 'waiting': {
+        if (row.waiting_gate === null) {
+          throw new Error(`durable engine: run ${row.run_id} is waiting with no gate recorded`)
+        }
+        return { state: 'waiting', gate: row.waiting_gate }
+      }
     }
   }
 

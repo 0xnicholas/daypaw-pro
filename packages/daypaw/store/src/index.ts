@@ -17,6 +17,8 @@ export { MIGRATIONS, type Migration } from './migrations.ts'
 export const RUNS_TABLE = 'runs'
 /** `journal` table name (spec §3.2). */
 export const JOURNAL_TABLE = 'journal'
+/** `promises` table name (spec §3.3). */
+export const PROMISES_TABLE = 'promises'
 
 /** Current on-disk layout version: the last migration segment's version. */
 export const DAYPAW_STORE_SCHEMA_VERSION: number = newestVersionOf(MIGRATIONS)
@@ -41,6 +43,12 @@ export type RunStatusDb = 'running' | 'waiting' | 'done' | 'failed' | 'cancelled
 
 /** Journal step status recorded on `journal.status` (spec §3.2). */
 export type JournalStatusDb = 'started' | 'completed' | 'failed'
+
+/** Promise state recorded on `promises.state` (spec §3.3; aligns with the Resonate durable promise state machine). */
+export type PromiseStateDb = 'pending' | 'resolved' | 'rejected' | 'timedout' | 'cancelled'
+
+/** Who settled a promise, recorded on `promises.resolution_source` (spec §3.3). */
+export type PromiseResolutionSource = 'sdk' | 'manager' | 'webhook'
 
 /** One `runs` row (spec §3.1; skeleton columns). */
 export interface RunRow {
@@ -80,6 +88,19 @@ export interface JournalRow {
   readonly session_seq: number | null
   readonly started_at: number
   readonly finished_at: number | null
+}
+
+/** One `promises` row (spec §3.3). `payload_json` carries the resolved value, or the rejection reason for `rejected`. */
+export interface PromiseRow {
+  readonly run_id: string
+  readonly gate: string
+  readonly state: PromiseStateDb
+  readonly payload_json: string | null
+  readonly schema_json: string | null
+  readonly timeout_at: number | null
+  readonly resolution_source: PromiseResolutionSource | null
+  readonly created_at: number
+  readonly resolved_at: number | null
 }
 
 /**

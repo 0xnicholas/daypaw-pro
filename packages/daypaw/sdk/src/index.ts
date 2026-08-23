@@ -9,9 +9,10 @@
  * @module @daypaw/sdk
  */
 
-import type { ZodType, z } from 'zod'
+import { z } from 'zod'
+import type { ZodType } from 'zod'
 import type DurableEngine from '@daypaw/engine'
-import type { EngineDefinition, EngineStepCtx } from '@daypaw/engine'
+import type { EngineDefinition, EngineStepCtx, GateResolution, GateSchema } from '@daypaw/engine'
 import type { AgentDefinition, BoundAgent } from './agent.ts'
 import { boundAgentFor } from './agent.ts'
 import type { RunHandle, RunOptions } from './run-handle.ts'
@@ -28,9 +29,26 @@ export type {
 } from './agent.ts'
 export { RunCancelledError, RunFailedError } from './run-handle.ts'
 export type { RunHandle, RunOptions, RunStatus } from './run-handle.ts'
+export type { GateResolution } from '@daypaw/engine'
 
 /** zod schema → inferred TS type. */
 type Infer<I extends ZodType> = z.output<I>
+
+/** Options for one `ctx.waitFor` call. */
+export interface WaitForOptions<T> {
+  /** Value contract: validated before the settlement records and again before the value reaches the body. */
+  readonly schema?: ZodType<T>
+  /** Timeout in milliseconds from the gate's first registration. */
+  readonly timeout?: number
+}
+
+/** Adapt a zod contract to the engine's structural gate schema (projection via zod's own JSON Schema renderer). */
+function adaptGateSchema<T>(schema: ZodType<T>): GateSchema<T> {
+  return {
+    parse: value => schema.parse(value),
+    toJSONSchema: () => z.toJSONSchema(schema),
+  }
+}
 
 /** Execution context handed to a workflow body; grows with the ctx primitives. */
 export interface WorkflowCtx extends EngineStepCtx {
@@ -46,6 +64,17 @@ export interface WorkflowCtx extends EngineStepCtx {
    * @returns the child's output-validated result.
    */
   agent<I extends ZodType, O extends ZodType>(def: AgentDefinition<I, O>, input: Infer<I>): Promise<Infer<O>>
+  /**
+   * Durable gate (HITL suspension, spec 01 §6): register a pending promise
+   * keyed by `(runId, gate)`, move the run to `waiting`, and yield — waiting
+   * costs nothing, and a dead process revives through the boot scan. The
+   * terminal outcome returns as a {@link GateResolution} value; timeout,
+   * rejection, and cancellation are programmable branches, never thrown.
+   * @param gate - gate name; unique within the run.
+   * @param opts - zod value contract and timeout.
+   * @returns the terminal gate outcome.
+   */
+  waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
 }
 
 /** Options declaring one workflow definition. */
@@ -108,6 +137,10 @@ function enrichStepCtx(ctx: EngineStepCtx): WorkflowCtx {
     runId: ctx.runId,
     signal: ctx.signal,
     step: (name, fn, opts) => ctx.step(name, fn, opts),
+    waitFor: (gate, opts) => ctx.waitFor(gate, {
+      ...(opts?.schema === undefined ? {} : { schema: adaptGateSchema(opts.schema) }),
+      ...(opts?.timeout === undefined ? {} : { timeout: opts.timeout }),
+    }),
     agent: async (def, input) => {
       const bound = boundAgentFor(def) as BoundAgent<typeof def.input, typeof def.output> | undefined
       if (bound === undefined) {

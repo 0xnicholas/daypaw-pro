@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/daypaw/store/README.md
-README.md: 4819c5d50b716ad9cfa7f8bf67443b7f22b182b5
-README.zh.md: 64e5ad69693a1797d478fb48f8c470ac6bbc39f1
+README.md: 955a21c73449e7dc462d79ffe5f55da9692d4ff5
+README.zh.md: c4935b76630579435e60f7a773d891213a08357a

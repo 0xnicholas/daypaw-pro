@@ -1,12 +1,14 @@
 /**
  * Journal storage seam: the one replaceable interface the walking skeleton
- * lands. Promise/timer seams land together with their primitives
- * (`ctx.waitFor` / `ctx.sleep`, demand-driven). Wrapping this seam is also
- * the fault-injection surface for the crash test suite (spec 01 §7/§9).
+ * lands; `ctx.waitFor` extended it with the promise rows (spec 01 §6).
+ * Promise resolution itself lives in the engine core (in-process push plus a
+ * poll fallback); the PromiseResolver/TimerScheduler seams extract when a
+ * second implementation appears. Wrapping this seam is also the
+ * fault-injection surface for the crash test suite (spec 01 §7/§9).
  * @module @daypaw/engine/seams
  */
 
-import type { JournalRow, RunDefKind, RunRow } from '@daypaw/store'
+import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
 
 /** Insert payload for a new run row. */
 export interface RunInsert {
@@ -38,6 +40,28 @@ export interface JournalStepInsert {
   readonly name: string
   readonly occurrence: number
   readonly startedAt: number
+}
+
+/** Insert payload for a pending durable promise (gate). */
+export interface PromiseInsert {
+  readonly runId: string
+  readonly gate: string
+  /** JSON Schema rendering projection of the gate's value contract, when one was declared. */
+  readonly schemaJson: string | undefined
+  /** Timeout deadline (epoch ms), when the gate declared one. */
+  readonly timeoutAt: number | undefined
+  readonly createdAt: number
+}
+
+/**
+ * First-wins settlement patch for a pending promise. `payloadJson` carries
+ * the resolved value, or the rejection reason for a `rejected` settlement.
+ */
+export interface PromiseSettle {
+  readonly state: 'resolved' | 'rejected' | 'timedout' | 'cancelled'
+  readonly payloadJson: string | undefined
+  readonly source: PromiseResolutionSource | undefined
+  readonly resolvedAt: number
 }
 
 /**
@@ -89,4 +113,44 @@ export interface JournalStore {
    * @param finishedAt - failure timestamp (epoch ms).
    */
   failJournalStep(runId: string, stepKey: string, errorJson: string, finishedAt: number): void
+  /**
+   * Move an unfinished run into `waiting` on one gate; a no-op when the run
+   * already waits (re-drive reaching the same `waitFor` again).
+   * @param runId - run identity.
+   * @param gate - gate name, recorded on `waiting_gate`.
+   * @param at - transition timestamp (epoch ms).
+   */
+  setRunWaiting(runId: string, gate: string, at: number): void
+  /**
+   * Move a waiting run back to `running` and clear `waiting_gate`; a no-op
+   * when the run is not waiting.
+   * @param runId - run identity.
+   * @param at - transition timestamp (epoch ms).
+   */
+  resumeRun(runId: string, at: number): void
+  /** @param row - pending-promise payload; state defaults to `pending`. */
+  insertPromise(row: PromiseInsert): void
+  /** @returns the promise row, or undefined when the gate never registered. */
+  selectPromise(runId: string, gate: string): PromiseRow | undefined
+  /**
+   * Settle a pending promise (first-wins): applies only while the row is
+   * `pending`; a second settler is a no-op returning false.
+   * @param runId - run identity.
+   * @param gate - gate name.
+   * @param patch - terminal state, payload, and source.
+   * @returns whether this call won the settlement.
+   */
+  settlePromise(runId: string, gate: string, patch: PromiseSettle): boolean
+  /**
+   * @param now - current time (epoch ms).
+   * @returns pending promises whose timeout already passed, for the boot-scan sweep.
+   */
+  selectOverduePromises(now: number): PromiseRow[]
+  /**
+   * Cancel every pending promise of one run (run cancellation settles its
+   * gates as `cancelled`, first-wins against concurrent resolvers).
+   * @param runId - run identity.
+   * @param at - cancellation timestamp (epoch ms).
+   */
+  cancelPendingPromises(runId: string, at: number): void
 }

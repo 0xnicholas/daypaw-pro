@@ -669,3 +669,191 @@ describe('fault injection at journal append points', () => {
     delete f.overrides.selectJournalStep
   })
 })
+
+describe('fault injection at gate append points', () => {
+  /** Start a run parked on one gate; resolves once the pending row exists. */
+  async function startWaiting(
+    f: Fixture,
+    runId: string,
+    body: (ctx: EngineStepCtx) => Promise<unknown> = async run => (await run.waitFor('approval')),
+  ) {
+    const core = f.makeCore()
+    const def = workflowDef(body)
+    core.register(def)
+    const handle = core.run(def, null, { runId })
+    await new Promise(resolve => setTimeout(resolve, 15))
+    return { core, handle }
+  }
+
+  it('fails the run when the gate lookup faults at waitFor entry', async () => {
+    const f = await fixture()
+    f.faults.selectPromise = new Error('inject: selectPromise')
+    const { handle } = await startWaiting(f, 'gf-1')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: selectPromise'
+    })
+    delete f.faults.selectPromise
+  })
+
+  it('fails the run when the pending-row insert faults', async () => {
+    const f = await fixture()
+    f.faults.insertPromise = new Error('inject: insertPromise')
+    const { handle } = await startWaiting(f, 'gf-2')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: insertPromise'
+    })
+    expect(f.store.selectPromise('gf-2', 'approval')).toBeUndefined()
+    delete f.faults.insertPromise
+  })
+
+  it('fails the run when the waiting transition faults', async () => {
+    const f = await fixture()
+    f.faults.setRunWaiting = new Error('inject: setRunWaiting')
+    const { handle } = await startWaiting(f, 'gf-3')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: setRunWaiting'
+    })
+    expect(f.store.selectRun('gf-3')?.status).toBe('failed')
+    delete f.faults.setRunWaiting
+  })
+
+  it('fails the run when the wait starts after the run row vanished', async () => {
+    const f = await fixture()
+    f.overrides.selectRun = () => undefined
+    const { handle } = await startWaiting(f, 'gf-4')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('ledger lost run gf-4')
+    })
+    delete f.overrides.selectRun
+  })
+
+  it('propagates a settle fault out of resolveGate and keeps the gate pending', async () => {
+    const f = await fixture()
+    const { core, handle } = await startWaiting(f, 'gf-5')
+    f.faults.settlePromise = new Error('inject: settlePromise')
+    expect(() =>{  core.resolveGate('gf-5', 'approval', { state: 'resolved', value: 1 }, 'sdk') })
+      .toThrow('inject: settlePromise')
+    expect(f.store.selectPromise('gf-5', 'approval')?.state).toBe('pending')
+    delete f.faults.settlePromise
+    expect(core.resolveGate('gf-5', 'approval', { state: 'resolved', value: 1 }, 'sdk')).toBe(true)
+    await expect(handle.result).resolves.toEqual({ state: 'resolved', value: 1 })
+  })
+
+  it('fails the run when the timeout write faults', async () => {
+    const f = await fixture()
+    f.faults.settlePromise = new Error('inject: settlePromise')
+    const { handle } = await startWaiting(f, 'gf-6', async run => (await run.waitFor('approval', { timeout: 10 })))
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: settlePromise'
+    })
+    delete f.faults.settlePromise
+  })
+
+  it('fails the run when the poll-tick lookup faults', async () => {
+    const f = await fixture()
+    const { handle } = await startWaiting(f, 'gf-7')
+    f.faults.selectPromise = new Error('inject: selectPromise')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: selectPromise'
+    })
+    delete f.faults.selectPromise
+  })
+
+  it('fails the run when the poll tick finds the promise row vanished', async () => {
+    const f = await fixture()
+    const { handle } = await startWaiting(f, 'gf-8')
+    f.overrides.selectPromise = () => undefined
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('ledger lost promise gf-8/approval')
+    })
+    delete f.overrides.selectPromise
+  })
+
+  it('fails the wait when delivery reads a still-pending row', async () => {
+    const f = await fixture()
+    const { core, handle } = await startWaiting(f, 'gf-9')
+    const pending = f.store.selectPromise('gf-9', 'approval')
+    f.overrides.selectPromise = () => pending
+    core.resolveGate('gf-9', 'approval', { state: 'resolved', value: 1 }, 'sdk')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('still pending')
+    })
+    delete f.overrides.selectPromise
+  })
+
+  it('fails the wait when delivery reads a vanished row', async () => {
+    const f = await fixture()
+    const { core, handle } = await startWaiting(f, 'gf-10')
+    f.overrides.selectPromise = () => undefined
+    core.resolveGate('gf-10', 'approval', { state: 'resolved', value: 1 }, 'sdk')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('ledger lost promise gf-10/approval')
+    })
+    delete f.overrides.selectPromise
+  })
+
+  it('fails the wait when the resume write faults during delivery', async () => {
+    const f = await fixture()
+    const { core, handle } = await startWaiting(f, 'gf-11')
+    f.faults.resumeRun = new Error('inject: resumeRun')
+    core.resolveGate('gf-11', 'approval', { state: 'resolved', value: 1 }, 'sdk')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: resumeRun'
+    })
+    delete f.faults.resumeRun
+  })
+
+  it('rejects cancel() when the promise-cancellation write faults', async () => {
+    const f = await fixture()
+    const { handle } = await startWaiting(f, 'gf-12')
+    f.faults.cancelPendingPromises = new Error('inject: cancelPendingPromises')
+    await expect(handle.cancel('stop')).rejects.toThrow('inject: cancelPendingPromises')
+    delete f.faults.cancelPendingPromises
+    await handle.cancel('stop')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => (error as { code?: string }).code === 'RUN_CANCELLED')
+  })
+
+  it('propagates an overdue-scan failure out of the boot scan', async () => {
+    const f = await fixture()
+    f.faults.selectOverduePromises = new Error('inject: selectOverduePromises')
+    const core = f.makeCore()
+    expect(() =>{  core.bootScan() }).toThrow('inject: selectOverduePromises')
+    delete f.faults.selectOverduePromises
+  })
+
+  it('rejects a wait entered after disposal', async () => {
+    const f = await fixture()
+    const core = f.makeCore()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const def = workflowDef(async (run) => {
+      await run.step('held', async () => { await gate; return 1 })
+      await run.waitFor('approval')
+      return 'unreachable'
+    })
+    core.register(def)
+    const handle = core.run(def, null, { runId: 'gf-13' })
+    await new Promise(resolve => setImmediate(resolve))
+    core.dispose()
+    release()
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => (error as { code?: string }).code === 'ENGINE_DISPOSED')
+  })
+
+  it('rejects resolveGate after disposal', async () => {
+    const f = await fixture()
+    const core = f.makeCore()
+    core.dispose()
+    expect(() =>{  core.resolveGate('gf-14', 'approval', { state: 'resolved', value: 1 }, 'sdk') })
+      .toThrow('ENGINE_DISPOSED')
+  })
+})

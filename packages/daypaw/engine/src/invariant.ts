@@ -15,10 +15,11 @@ export const name = 'daypaw-engine-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: the skeleton's run/journal state machines are
- * asserted by the fault-injection suite at every append point; relational
- * runtime checks land here together with `ctx.waitFor` / `ctx.sleep`, whose
- * promise/timer states they guard (spec 01 §9).
+ * No runtime invariant: the engine core is deliberately Cordis-free (no
+ * event stream to hook — gap-2 ruling in the backend-gaps resolution), and
+ * the run/journal/promise state machines are asserted by the
+ * fault-injection suite at every append point (spec 01 §9). Ledger
+ * relational checks land when the core gains a checkable surface.
  */
 const install: InvariantInstaller = () => {}
 

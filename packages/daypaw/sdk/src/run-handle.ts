@@ -24,7 +24,7 @@ export interface RunOptions {
   readonly meta?: Record<string, unknown>
 }
 
-/** Run status; `waiting` appears once `ctx.waitFor` lands. */
+/** Run status; `waiting` carries the gate the run suspended on. */
 export type RunStatus =
   | { readonly state: 'running' }
   | { readonly state: 'waiting'; readonly gate: string }

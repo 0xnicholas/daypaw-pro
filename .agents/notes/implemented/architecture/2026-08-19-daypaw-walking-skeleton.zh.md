@@ -14,7 +14,7 @@ ADR 0008 把走骨定义为最薄的端到端耐久竖切——`@daypaw/store` +
 - **attach 永不夺权；复活归 boot 扫描** —— 对未完且他方认领的 run，`run()` 按 `pollMs` 轮询而非认领。认领保留给 boot 扫描，因为无心跳时活体与死者的他方认领不可区分（ADR 0002 §2）；从活体驱动者手里夺权会造成双驱动。boot 扫描在构造时*且每次 `register()` 后*运行——服务构造期注册表必空，登记是复活最早的可行时刻；定义未登记的 run 保持未完并告警。
 - **终态竞态与销毁规则** —— body 在 run 已被他处结算后完成（取消在 step 边界生效）时，经 `finalizeRun` 条件更新的返回值以终态行的结局 reject；body 在引擎销毁后完成时 reject `ENGINE_DISPOSED` 且不碰 ledger，run 保持可复活。结果 promise 挂 handled 标记，使 boot 复活失败的 run 永不击垮进程。
 
-支撑动作：`retry_policy_json` 不进迁移 0001（issue #24）；迁移为 TS 模板字符串里的手写 SQL，使编译后的 `lib/` 自包含；服务上的 `register`/`run` 为异步——ledger 异步开库（方法内部 await 就绪，storage-sqlite 模式）；invariant 伴随包是显式「No runtime invariant:」标记——被检查的 promise/timer 状态尚不存在，走骨状态机断言归故障注入套件。
+支撑动作：`retry_policy_json` 不进迁移 0001（issue #24）；迁移为 TS 模板字符串里的手写 SQL，使编译后的 `lib/` 自包含；服务上的 `register`/`run` 为异步——ledger 异步开库（方法内部 await 就绪，storage-sqlite 模式）；invariant 伴随包是显式「No runtime invariant:」标记——core 不持可挂的 Cordis 事件流，run/journal/promise 状态机断言归故障注入套件。
 
 ## 曾考虑的替代方案
 
@@ -27,4 +27,4 @@ ADR 0008 把走骨定义为最薄的端到端耐久竖切——`@daypaw/store` +
 
 - 证明线通过：第一步效果出现后杀死、重启，第一步恰执行一次，在飞的步骤重执行（执行 at-least-once，step 提交 exactly-once）。
 - 两活进程驱动同一 ledger 仍在 v1 包络之外（引擎 README 记载）；attach 轮询路径覆盖运维场景。
-- promise/timer 缝、`waiting` 状态与真实关系 invariant 随 `ctx.waitFor` / `ctx.sleep` 落地（按需裁决，issue #24）。
+- 本 note 推迟的 promise 行、`waiting` 状态与 gate 决议已随 `ctx.waitFor` 落地（issue #47，[gate note](../feature/2026-08-23-durable-gate-waitfor.md)）；timers 表、`ctx.sleep` 与关系 invariant 仍是按需驱动的后续工作。

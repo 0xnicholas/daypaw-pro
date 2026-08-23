@@ -66,10 +66,26 @@ CREATE INDEX idx_runs_status ON runs(status);
 CREATE INDEX idx_journal_run ON journal(run_id);
 `
 
+const PROMISES_SQL = `
+CREATE TABLE promises (
+  run_id            TEXT NOT NULL REFERENCES runs(run_id),
+  gate              TEXT NOT NULL,
+  state             TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'resolved', 'rejected', 'timedout', 'cancelled')),
+  payload_json      TEXT,
+  schema_json       TEXT,
+  timeout_at        INTEGER,
+  resolution_source TEXT CHECK (resolution_source IN ('sdk', 'manager', 'webhook')),
+  created_at        INTEGER NOT NULL,
+  resolved_at       INTEGER,
+  PRIMARY KEY (run_id, gate)
+) STRICT;
+`
+
 /**
  * Ordered migration segments; the last entry's version is the current
  * schema version. Append-only: never edit a shipped segment.
  */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'init', sql: INIT_SQL },
+  { version: 2, name: 'promises', sql: PROMISES_SQL },
 ]

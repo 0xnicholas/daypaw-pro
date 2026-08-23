@@ -510,6 +510,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   EngineDefinition: 'durable definition record is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   EngineRunHandle: 'durable run handle is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   EngineRunOptions: 'durable run options are owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  GateResolutionSource: 'gate resolution origin is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  GateSettlement: 'gate settlement input is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   BeginCommandRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   InsertReferenceRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   ConsumeTokenRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
