@@ -11,3 +11,4 @@
 | [02 Agent Engine + SDK](02-agent-engine-sdk.md) | workflow 面写满；defineAgent 面已裁（ADR 0010，随支柱②里程碑实现） | ADR 0003 / 0010 |
 | [03 Agent Manager](03-agent-manager.md) | 远期子项目方向文档 | ADR 0004 / 0009 |
 | [04 EVO](04-evo.md) | 远期子项目方向文档 | ADR 0005 / 0009 |
+| [05 产品壳](05-product-shell.md) | 完整章（map #35 收官） | map #35 + #36 / #39 / #40 / #41 / #44 / #45 / #46 / #48（issue resolution，无 ADR） |
