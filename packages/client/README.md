@@ -22,7 +22,10 @@ The browser side of the dsh web GUI: shell boot, browser-host communication, sha
 | [`ui-layout/`](ui-layout/README.md) | Arranges the main application regions. |
 | [`ui-sidebar/`](ui-sidebar/README.md) | Presents workspace and session navigation. |
 | [`ui-workspace/`](ui-workspace/README.md) | Provides workspace selection and creation surfaces. |
+| [`ui-directory-picker-browse/`](ui-directory-picker-browse/README.md) | Fills workspace directory flows with the in-app browsing dialog. |
+| [`ui-directory-picker-native/`](ui-directory-picker-native/README.md) | Answers workspace directory picks through the OS-native chooser. |
 | [`ui-conversation/`](ui-conversation/README.md) | Presents the active conversation and its input surface. |
+| [`ui-deliverables/`](ui-deliverables/README.md) | Presents a finished turn's produced files and links inline file references. |
 | [`ui-tool/`](ui-tool/README.md) | Composes Tool call trees and keyed per-Tool views. |
 | [`ui-workflow-run/`](ui-workflow-run/README.md) | Replays durable workflow runs as nested Chat disclosures with live-only child navigation. |
 | [`ui-goal/`](ui-goal/README.md) | Presents and manages the current goal. |
@@ -37,6 +40,7 @@ The browser side of the dsh web GUI: shell boot, browser-host communication, sha
 | [`ui-plan/`](ui-plan/README.md) | Presents active plan-mode status and its exit control. |
 | [`ui-settings-plugins/`](ui-settings-plugins/README.md) | Owns the Plugins settings section, its tab extension point, and configurable host-plane plugin cards. |
 | [`ui-user-questions/`](ui-user-questions/README.md) | Presents interactive questions requested by the agent. |
+| [`ui-message-feedback/`](ui-message-feedback/README.md) | Adds per-message Like/Dislike feedback with an optional note. |
 | [`ui-agent-preset/`](ui-agent-preset/README.md) | Selects a session's agent preset and authors preset compositions. |
 | [`ui-settings/`](ui-settings/README.md) | Hosts the settings interface and its extension areas. |
 | [`ui-settings-general/`](ui-settings-general/README.md) | Provides the general settings section. |

@@ -22,7 +22,10 @@ dsh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-layout/`](ui-layout/README.md) | 排列应用的主要区域。 |
 | [`ui-sidebar/`](ui-sidebar/README.md) | 展示工作区与会话导航。 |
 | [`ui-workspace/`](ui-workspace/README.md) | 提供工作区选择与创建界面。 |
+| [`ui-directory-picker-browse/`](ui-directory-picker-browse/README.md) | 以应用内目录浏览对话框填充工作区目录流程。 |
+| [`ui-directory-picker-native/`](ui-directory-picker-native/README.md) | 以操作系统原生选择器应答工作区目录选取。 |
 | [`ui-conversation/`](ui-conversation/README.md) | 展示当前对话及其输入界面。 |
+| [`ui-deliverables/`](ui-deliverables/README.md) | 展示一个已完成轮次的产出文件，并链接内联文件引用。 |
 | [`ui-tool/`](ui-tool/README.md) | 编排工具调用树和按工具键控的视图。 |
 | [`ui-workflow-run/`](ui-workflow-run/README.md) | 把持久工作流运行回放为 Chat 嵌套折叠项，并只为实时子 Session 提供导航。 |
 | [`ui-goal/`](ui-goal/README.md) | 展示和管理当前目标。 |
@@ -37,6 +40,7 @@ dsh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-plan/`](ui-plan/README.md) | 展示生效中的 plan mode 状态及其退出控件。 |
 | [`ui-settings-plugins/`](ui-settings-plugins/README.md) | 拥有“插件”设置分区、它的标签页扩展点，以及可配置的宿主平面插件卡片。 |
 | [`ui-user-questions/`](ui-user-questions/README.md) | 展示 agent 请求的交互式问题。 |
+| [`ui-message-feedback/`](ui-message-feedback/README.md) | 为消息添加赞／踩反馈及可选备注。 |
 | [`ui-agent-preset/`](ui-agent-preset/README.md) | 选择会话的 agent 预设，并编写预设组合。 |
 | [`ui-settings/`](ui-settings/README.md) | 承载设置界面及其扩展区域。 |
 | [`ui-settings-general/`](ui-settings-general/README.md) | 提供常规设置分区。 |
