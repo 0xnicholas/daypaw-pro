@@ -1,6 +1,6 @@
 # CONTEXT.md — daypaw-pro 领域词汇表
 
-> 纯词汇表：术语与边界，不含实现细节。架构决策见 `docs/adr/`，进行中的规划见 wayfinder maps（issue #1、#20），架构现状总结报告见 `docs/reports/`。
+> 纯词汇表：术语与边界，不含实现细节。架构决策见 `docs/adr/`，进行中的规划见 wayfinder maps（issue #1、#20、#35），架构现状总结报告见 `docs/reports/`。
 
 ## 词汇
 
@@ -92,6 +92,34 @@ step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知�
 ### 认领（Claim）
 
 每 run 单写者的实施：进程以实例 id 经条件更新原子认领 run 的驱动权；进程边界即写权边界，旧驱动者随进程死亡自然失效。见 spec 01 §5。
+
+## 产品壳（Shell 呈现域）
+
+产品壳前端（map #35）把引擎概念翻译成业务语言的呈现词汇。本域词汇只在 UI 文案与 spec 呈现层使用；引擎/ledger/SDK 层仍只认原名，无代码层改名。映射裁决全文见 issue #40。
+
+### 任务（Task）
+
+run 的业务呈现名。状态文案：running→进行中；waiting→等待确认；done→已完成；failed→出错了（配「重试」，与 attempt/重跑语义对齐）；cancelled→已取消。派生态「等待你确认」= run 挂 pending 审批时的呈现，由审批面 join 得出，不是引擎状态。
+
+### 崩溃复活不可见
+
+boot 扫描复活对产品壳用户不可见：任务始终「进行中」，引擎韧性不产生业务文案。
+
+### 子任务内嵌
+
+父子血缘的呈现：任务列表只显示顶层任务，子任务收进父任务详情内嵌；`ctx.spawn` 火后不管子 run 在详情页单列一节。
+
+### 进度分两源
+
+agent run 的进度呈现 = 对话动态的业务语言投影；workflow run = step 名时间线。step 名是定义作者的业务文案义务（写业务可读短语）。journal/step 词汇不露 UI。
+
+### 审批确认
+
+dsh approval 的业务呈现：「<任务名> 请你确认：<业务动作摘要>」+ 同意/拒绝；原始命令/路径收详情展开，拒绝可附言回对话。
+
+### Agent 展示名
+
+defineAgent 展示字段（业务名 + 描述）的目录呈现：卡片 = 展示名 + 描述；`name@version` 收详情页，业务用户无版本操作入口。
 
 ## 管理面（Manager 域）
 
