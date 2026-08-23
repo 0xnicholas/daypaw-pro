@@ -1,0 +1,614 @@
+<!-- PROTOTYPE (throwaway): #45 设置 IA 与首跑。三变体 ?variant=A|B|C，底部条或 ←/→ 切换。-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daypaw 原型 · 设置 IA 与首跑</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;background:#F4F3F1;color:#1C1917;font-size:14px;line-height:1.6}
+button{font:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font:inherit;color:inherit}
+a{color:#D4552A;cursor:pointer;text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ---------- 壳：左侧导航 + 主区 ---------- */
+.shell{display:flex;height:100vh}
+.sidebar{width:236px;flex:none;background:#FBFAF9;border-right:1px solid #E7E4E0;display:flex;flex-direction:column;padding:16px 12px;overflow:auto}
+.brand{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;padding:2px 8px 14px}
+.paw{width:16px;height:16px;border-radius:50% 50% 50% 4px;background:#D4552A;flex:none}
+.btn-new{display:block;width:100%;padding:10px;border-radius:10px;background:#D4552A;color:#fff;font-weight:600;text-align:center;margin-bottom:16px}
+.btn-new:hover{background:#BC4620}
+.nav-sec{margin-bottom:12px}
+.nav-sec-t{font-size:12px;color:#A8A29E;padding:0 8px 4px;display:flex;justify-content:space-between}
+.trow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;color:#44403C;width:100%;text-align:left}
+.trow:hover{background:#F0EFEC}
+.trow .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.trow .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-foot{margin-top:auto;border-top:1px solid #E7E4E0;padding-top:8px}
+.ft-item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;color:#57534E;width:100%;text-align:left}
+.ft-item:hover{background:#F0EFEC}
+.ft-item.on{background:#F0EFEC;font-weight:600;color:#1C1917}
+.main{flex:1;overflow:auto;padding:24px 32px;position:relative}
+.wrap{max-width:780px;margin:0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.topbar h1{font-size:20px;font-weight:700}
+.topbar .sub{font-size:12px;color:#A8A29E;margin-top:2px}
+
+/* ---------- 视图切换（首跑视图 / 设置页） ---------- */
+.seg{display:inline-flex;background:#E9E7E3;border-radius:9px;padding:3px;gap:2px;flex:none}
+.seg button{padding:5px 14px;border-radius:7px;color:#57534E;font-size:13px}
+.seg button.on{background:#fff;color:#1C1917;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* ---------- 通用组件 ---------- */
+.card{background:#fff;border:1px solid #E7E4E0;border-radius:12px;padding:18px;margin-bottom:14px}
+.sec-h{font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.desc{color:#78716C;font-size:13px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.lbl{width:72px;flex:none;color:#57534E;font-size:13px}
+.inp{flex:1;padding:8px 10px;border:1px solid #D6D3D1;border-radius:8px;background:#fff;max-width:320px}
+.inp:focus{outline:2px solid #F0B49B;border-color:#D4552A}
+.inp:disabled{background:#F5F4F2;color:#A8A29E}
+.btn{padding:8px 16px;border-radius:9px;font-weight:600;font-size:13px;border:1px solid transparent}
+.btn.pri{background:#D4552A;color:#fff}
+.btn.pri:hover{background:#BC4620}
+.btn.ghost{border-color:#D6D3D1;color:#44403C;background:#fff}
+.btn.ghost:hover{background:#F5F4F2}
+.btn.sm{padding:5px 12px;font-size:12px}
+.badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600}
+.badge.amber{background:#FEF3C7;color:#92400E}
+.badge.green{background:#DCFCE7;color:#15803D}
+.badge.gray{background:#E7E5E4;color:#78716C}
+.tbd{font-size:11px;padding:2px 8px;border-radius:999px;background:#EDE9FE;color:#6D28D9;font-weight:600}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.st i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-wait{background:#FEF3C7;color:#92400E}
+.st-run{background:#DBEAFE;color:#1D4ED8}
+.st-done{background:#DCFCE7;color:#15803D}
+.st-err{background:#FEE2E2;color:#B91C1C}
+.st-cancel{background:#E7E5E4;color:#78716C}
+
+/* 原型注解：明确不属于被评估设计 */
+.note{border:1px dashed #D6D3D1;background:#FAFAF9;color:#78716C;font-size:12px;border-radius:10px;padding:8px 12px;margin-bottom:14px}
+.note b{color:#57534E}
+
+/* ---------- 任务列表 / 审批卡 ---------- */
+.task{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.task .info{flex:1;min-width:0}
+.task .tname{font-weight:600}
+.task .tdesc{font-size:12px;color:#A8A29E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.approval{border:1px solid #FCD34D;background:#FFFBEB;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.approval .ask{font-weight:600;margin-bottom:4px}
+.approval .detail{font-size:12px;color:#92600A;margin-bottom:10px}
+.approval .result{font-weight:600;color:#15803D}
+.approval .result.no{color:#B91C1C}
+.grp-t{font-size:12px;color:#A8A29E;margin:16px 0 8px}
+
+/* ---------- 变体 A：向导 ---------- */
+.wmask{position:fixed;inset:0;background:rgba(28,25,23,.45);display:flex;align-items:center;justify-content:center;z-index:40}
+.wcard{background:#fff;border-radius:16px;width:520px;max-width:92vw;padding:36px 40px 28px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.wskip{position:absolute;top:14px;right:16px;font-size:12px;color:#A8A29E}
+.wskip:hover{color:#57534E}
+.wstep{font-size:12px;color:#A8A29E;margin-bottom:6px}
+.wtitle{font-size:22px;font-weight:700;margin-bottom:10px}
+.wbody{color:#44403C;margin-bottom:18px}
+.wbody ul{margin:8px 0 0 20px;color:#57534E}
+.wactions{display:flex;gap:10px;margin-top:18px}
+.wdots{display:flex;gap:6px;justify-content:center;margin-top:22px}
+.wdots i{width:8px;height:8px;border-radius:50%;background:#E7E5E4}
+.wdots i.on{background:#D4552A}
+.wdots i.past{background:#F0B49B}
+.wcheck{list-style:none;margin:10px 0}
+.wcheck li{padding:4px 0;color:#44403C}
+
+/* ---------- 变体 A：分区 tab 设置 ---------- */
+.set-layout{display:flex;gap:20px;align-items:flex-start}
+.set-tabs{width:168px;flex:none;background:#fff;border:1px solid #E7E4E0;border-radius:12px;padding:8px}
+.set-tab{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:9px 12px;border-radius:8px;color:#57534E}
+.set-tab:hover{background:#F5F4F2}
+.set-tab.on{background:#F5F4F2;font-weight:600;color:#1C1917}
+.set-tab .warn{width:7px;height:7px;border-radius:50%;background:#F59E0B;margin-left:auto}
+.set-body{flex:1;min-width:0}
+
+/* ---------- 变体 B：checklist 卡 ---------- */
+.check{border:1px solid #E7E4E0;border-left:4px solid #D4552A;background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.check .ct{font-weight:700;display:flex;align-items:center;gap:10px}
+.check .prog{font-size:12px;color:#A8A29E;font-weight:400}
+.check .step-t{font-weight:600;margin:8px 0 4px}
+.check-slim{display:flex;align-items:center;gap:10px;border:1px solid #E7E4E0;background:#fff;border-radius:12px;padding:10px 16px;margin-bottom:18px;color:#57534E;font-size:13px}
+
+/* ---------- 变体 B：锚点导航 ---------- */
+.anchors{position:sticky;top:0;background:#F4F3F1;padding:6px 0 12px;display:flex;gap:16px;font-size:13px;z-index:5}
+.b-sec{margin-bottom:26px}
+.b-sec h2{font-size:16px;margin-bottom:10px;padding-top:8px}
+
+/* ---------- 变体 C：新任务 ---------- */
+.agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
+.acard{border:1px solid #E7E4E0;border-radius:10px;padding:14px;text-align:left;background:#fff;width:100%}
+.acard:hover{border-color:#D4552A;box-shadow:0 2px 8px rgba(212,85,42,.12)}
+.acard .an{font-weight:600;margin-bottom:4px}
+.acard .ad{font-size:12px;color:#78716C}
+.acard.on{border-color:#D4552A;background:#FFF7F3}
+.prompt-card{border:1px solid #FCD34D;background:#FFFBEB;border-radius:10px;padding:14px 16px;margin:12px 0}
+.prompt-card .pt{font-weight:700;margin-bottom:4px}
+.ta{width:100%;min-height:88px;border:1px solid #D6D3D1;border-radius:10px;padding:10px 12px;resize:vertical}
+.ta:disabled{background:#F5F4F2;color:#A8A29E}
+
+/* ---------- 变体 C：折叠面板设置 ---------- */
+details.panel{background:#fff;border:1px solid #E7E4E0;border-radius:12px;margin-bottom:12px}
+details.panel summary{padding:14px 18px;font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none}
+details.panel summary::-webkit-details-marker{display:none}
+details.panel summary::after{content:'▾';margin-left:auto;color:#A8A29E;font-weight:400}
+details.panel:not([open]) summary::after{content:'▸'}
+details.panel .pbody{padding:0 18px 16px}
+
+/* ---------- 模型设置（dsh 形态） ---------- */
+.provs{display:flex;gap:8px;margin-bottom:12px}
+.prov{padding:7px 14px;border:1px solid #D6D3D1;border-radius:999px;font-size:13px;color:#57534E;background:#fff}
+.prov.on{border-color:#D4552A;color:#D4552A;font-weight:600;background:#FFF7F3}
+.models{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.mcard{border:1px solid #E7E4E0;border-radius:10px;padding:12px 14px;text-align:left;background:#fff}
+.mcard:hover{border-color:#D4552A}
+.mcard.on{border-color:#D4552A;background:#FFF7F3}
+.mcard .mn{font-weight:600}
+.mcard .md{font-size:12px;color:#78716C}
+.efforts{display:inline-flex;background:#E9E7E3;border-radius:9px;padding:3px;gap:2px}
+.efforts button{padding:5px 16px;border-radius:7px;color:#57534E;font-size:13px}
+.efforts button.on{background:#fff;color:#1C1917;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* ---------- 底部变体切换条（不属于被评估设计） ---------- */
+#switcher{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:#111827;color:#fff;border:2px dashed #FBBF24;border-radius:999px;padding:8px 16px;z-index:100;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#switcher button{color:#FBBF24;font-size:18px;padding:0 6px;line-height:1}
+#switcher .vtag{background:#FBBF24;color:#111827;font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px}
+#switcher em{font-style:normal;color:#9CA3AF;font-size:11px}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-8px);background:#1C1917;color:#fff;padding:8px 18px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:all .2s;z-index:200}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="switcher">
+  <span class="vtag">原型</span>
+  <button onclick="cyc(-1)" aria-label="上一个变体">‹</button>
+  <span id="vlabel"></span>
+  <button onclick="cyc(1)" aria-label="下一个变体">›</button>
+  <em>←/→ 切换</em>
+</div>
+<div id="toast"></div>
+<script>
+'use strict';
+/* ================= 变体切换 ================= */
+const V_ORDER=['A','B','C'];
+const V_LABEL={
+  A:'A — 分区 tab 设置 + 向导式首跑',
+  B:'B — 单页滚动 + checklist 首跑',
+  C:'C — 任务引导式首跑 + 轻设置'
+};
+function curVariant(){
+  const v=new URLSearchParams(location.search).get('variant');
+  return V_ORDER.includes(v)?v:'A';
+}
+function setVariant(v){
+  history.replaceState(null,'','?variant='+v);
+  render();
+}
+function cyc(d){
+  const i=V_ORDER.indexOf(curVariant());
+  setVariant(V_ORDER[(i+d+V_ORDER.length)%V_ORDER.length]);
+}
+document.addEventListener('keydown',e=>{
+  const t=e.target;
+  if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"]'))return;
+  if(e.key==='ArrowLeft'){cyc(-1);}
+  else if(e.key==='ArrowRight'){cyc(1);}
+});
+
+/* ================= 演示状态（完成态持久：localStorage） ================= */
+const LS='daypaw-proto45';
+const DEF={
+  view:{A:'run',B:'run',C:'run'},     // 每个变体各自记「首跑视图 / 设置页」
+  keys:{deepseek:'',openai:'',anthropic:''},
+  keyEdit:'',                          // 正在编辑哪一家的 key
+  prov:'deepseek', model:'deepseek-chat', effort:'标准',
+  a:{step:0,done:false,tab:'general'}, // A：向导步序 + 完成态 + 设置 tab
+  b:{step:0,snooze:false,keyOpen:false},// B：checklist 步序（一次挂一步）
+  c:{open:true,agent:''},              // C：新任务入口 + 已选助手
+  appr:{}                              // 审批演示态
+};
+let S;
+try{S=Object.assign(JSON.parse(JSON.stringify(DEF)),JSON.parse(localStorage.getItem(LS)||'{}'));}
+catch(e){S=JSON.parse(JSON.stringify(DEF));}
+function persist(){try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){/* 私密模式下演示态不持久 */}}
+function resetDemo(){
+  try{localStorage.removeItem(LS);}catch(e){}
+  S=JSON.parse(JSON.stringify(DEF));
+  render();toast('演示状态已重置');
+}
+function hasKey(){return !!S.keys.deepseek;}
+function maskKey(k){return k.length>7?k.slice(0,3)+'…'+k.slice(-4):'已保存';}
+
+/* ================= mock 数据宇宙（与壳 IA 草图一致） ================= */
+const TASKS=[
+  {name:'周报汇总',st:'wait',desc:'已汇总 42 条群消息，周报草稿待你确认'},
+  {name:'发票核对',st:'run', desc:'正在核对 8 月报销发票（6/12）'},
+  {name:'客服问答归档',st:'err',desc:'读取表格时出错，可以重试'},
+  {name:'竞品动态简报',st:'done',desc:'已生成 8 月第 3 周简报'},
+  {name:'合同要点摘录',st:'done',desc:'已摘录 3 份合同的关键条款'}
+];
+const ST_TXT={wait:'等待你确认',run:'进行中',err:'出错了',done:'已完成',cancel:'已取消'};
+const ST_DOT={wait:'#F59E0B',run:'#3B82F6',err:'#EF4444',done:'#22C55E',cancel:'#A8A29E'};
+const AGENTS=[
+  {id:'a1',name:'周报助手',desc:'把一周群消息汇总成周报草稿'},
+  {id:'a2',name:'发票核对员',desc:'对照报销单逐张核对发票'},
+  {id:'a3',name:'市场观察员',desc:'跟踪竞品动态，定期出简报'}
+];
+const MODELS={
+  deepseek:[['deepseek-chat','日常对话与写作'],['deepseek-reasoner','复杂分析与推理']],
+  openai:[['gpt-4o','通用'],['gpt-4o-mini','轻快省钱']],
+  anthropic:[['claude-sonnet','通用'],['claude-haiku','轻快']]
+};
+const PROV_NAME={deepseek:'DeepSeek',openai:'OpenAI',anthropic:'Anthropic'};
+
+/* ================= 小工具 ================= */
+let toastTimer=null;
+function toast(m){
+  const t=document.getElementById('toast');
+  t.textContent=m;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function setView(v){S.view[curVariant()]=v;persist();render();}
+function approve(name,ok){
+  S.appr[name]=ok?'ok':'no';persist();render();
+  toast(ok?'已同意，任务继续':'已拒绝，附言已退回给助手');
+}
+function saveKey(prov,inputId){
+  const el=document.getElementById(inputId);
+  const v=el?el.value.trim():'';
+  if(!v){toast('先填入 key 再保存');return false;}
+  S.keys[prov]=v;S.keyEdit='';persist();render();toast('已保存，key 只存在你自己的电脑上');
+  return true;
+}
+function demoFillKey(){
+  S.keys.deepseek='sk-demo8f2a';S.keyEdit='';persist();render();
+  toast('已填入示例 key（演示）');
+}
+function removeKey(prov){S.keys[prov]='';persist();render();toast('已移除 key');}
+
+/* ================= 共享壳：左侧导航 ================= */
+function sidebar(){
+  const v=curVariant(),view=S.view[v];
+  const grp=(sts,title)=>{
+    const list=TASKS.filter(t=>sts.includes(t.st));
+    if(!list.length)return '';
+    return `<div class="nav-sec"><div class="nav-sec-t"><span>${title}</span><span>${list.length}</span></div>`+
+      list.map(t=>`<button class="trow" onclick="setView('run')"><span class="dot" style="background:${ST_DOT[t.st]}"></span><span class="nm">${t.name}</span></button>`).join('')+`</div>`;
+  };
+  return `<aside class="sidebar">
+    <div class="brand"><span class="paw"></span>Daypaw</div>
+    <button class="btn-new" onclick="onNewTask()">＋ 新任务</button>
+    ${grp(['wait'],'等待你确认')}
+    ${grp(['run','err'],'进行中')}
+    ${grp(['done'],'已完成')}
+    <div class="side-foot">
+      <button class="ft-item" onclick="toast('Agents 目录不在本原型范围')">◈ Agents</button>
+      <button class="ft-item ${view==='settings'?'on':''}" onclick="setView('settings')">⚙ 设置</button>
+    </div>
+  </aside>`;
+}
+function onNewTask(){
+  if(curVariant()==='C'){S.c.open=true;S.c.agent='';persist();render();}
+  else toast('本变体里「＋ 新任务」为装饰（只读演示）');
+}
+function segToggle(){
+  const view=S.view[curVariant()];
+  return `<div class="seg">
+    <button class="${view==='run'?'on':''}" onclick="setView('run')">首跑视图</button>
+    <button class="${view==='settings'?'on':''}" onclick="setView('settings')">设置页</button>
+  </div>`;
+}
+
+/* ================= 共享：收件箱列表 ================= */
+function taskCard(t){
+  let extra='';
+  if(t.st==='wait'){
+    const a=S.appr[t.name];
+    extra=`<div class="approval">
+      <div class="ask">${t.name} 请你确认：把周报草稿发到部门群</div>
+      <div class="detail">草稿包含 5 个小节 · 接收：部门群（32 人） · 原始内容收在详情里</div>
+      ${a==='ok'?`<div class="result">✓ 已同意，任务继续进行中</div>`
+        :a==='no'?`<div class="result no">✕ 已拒绝，附言已退回给助手</div>`
+        :`<div class="row" style="margin:0">
+          <button class="btn pri sm" onclick="approve('${t.name}',true)">同意</button>
+          <button class="btn ghost sm" onclick="approve('${t.name}',false)">拒绝</button>
+        </div>`}
+    </div>`;
+  }
+  const retry=t.st==='err'?`<button class="btn ghost sm" onclick="toast('演示：已重新排队（不会真的执行）')">重试</button>`:'';
+  return `${extra}<div class="card task">
+    <div class="info"><div class="tname">${t.name}</div><div class="tdesc">${t.desc}</div></div>
+    ${retry}<span class="st st-${t.st}"><i></i>${ST_TXT[t.st]}</span>
+  </div>`;
+}
+function inboxList(){
+  const grp=(sts,title)=>{
+    const list=TASKS.filter(t=>sts.includes(t.st));
+    if(!list.length)return '';
+    return `<div class="grp-t">${title} · ${list.length}</div>`+list.map(taskCard).join('');
+  };
+  return grp(['wait'],'等待你确认')+grp(['run','err'],'进行中')+grp(['done'],'已完成');
+}
+
+/* ================= 共享：设置分区内容 ================= */
+function secGeneral(){
+  return `<div class="card">
+    <div class="sec-h">通用</div>
+    <div class="row"><span class="lbl">语言</span>
+      <select class="inp"><option>简体中文</option><option>English</option></select></div>
+    <div class="row"><span class="lbl">外观主题</span>
+      <select class="inp" disabled><option>跟随系统</option></select><span class="tbd">TBD · #48</span></div>
+    <div class="row"><span class="lbl">界面密度</span>
+      <select class="inp" disabled><option>舒适</option></select><span class="tbd">TBD · #48</span></div>
+  </div>`;
+}
+function keyRow(prov){
+  const k=S.keys[prov],editing=S.keyEdit===prov;
+  const demo=prov==='deepseek';
+  let body;
+  if(editing){
+    body=`<input id="key-${prov}" class="inp" type="password" placeholder="sk-…">
+      <button class="btn pri sm" onclick="saveKey('${prov}','key-${prov}')">保存</button>
+      <button class="btn ghost sm" onclick="S.keyEdit='';render()">取消</button>`;
+  }else if(k){
+    body=`<span style="color:#57534E;font-family:ui-monospace,monospace;font-size:13px">${maskKey(k)}</span>
+      <button class="btn ghost sm" onclick="S.keyEdit='${prov}';render()">更新</button>
+      <button class="btn ghost sm" onclick="removeKey('${prov}')">移除</button>`;
+  }else{
+    body=demo
+      ?`<button class="btn ghost sm" onclick="S.keyEdit='${prov}';render()">设置</button>
+        <button class="btn ghost sm" onclick="demoFillKey()">演示：填入示例 key</button>`
+      :`<button class="btn ghost sm" disabled title="演示只接入 DeepSeek">设置</button>`;
+  }
+  return `<div class="row"><span class="lbl">${PROV_NAME[prov]}</span>
+    ${k?'<span class="badge green">已配置</span>':'<span class="badge amber">未配置</span>'}${body}</div>`;
+}
+function secCred(){
+  return `<div class="card" id="sec-cred">
+    <div class="sec-h">凭据 ${hasKey()?'<span class="badge green">已配置</span>':'<span class="badge amber">未配置</span>'}</div>
+    <p class="desc">Daypaw 不预置任何模型服务凭据。填入你自己的 API key 后，助手才能开始工作；key 只保存在你自己的电脑上。</p>
+    ${keyRow('deepseek')}${keyRow('openai')}${keyRow('anthropic')}
+    <div class="desc" style="margin:4px 0 0"><a onclick="toast('演示环境：这里会打开服务方的 key 申请页')">去哪里申请 key？</a></div>
+  </div>`;
+}
+function secModel(compact){
+  const ms=MODELS[S.prov];
+  return `<div class="card" id="sec-model">
+    <div class="sec-h">模型</div>
+    ${compact?'':'<p class="desc">按服务方分组选择模型；「思考强度」档位越高，回答越细，耗时和费用也越高。</p>'}
+    <div class="provs">${Object.keys(PROV_NAME).map(p=>
+      `<button class="prov ${S.prov===p?'on':''}" onclick="S.prov='${p}';S.model=MODELS['${p}'][0][0];persist();render()">${PROV_NAME[p]}</button>`).join('')}</div>
+    ${S.prov!=='deepseek'&&!S.keys[S.prov]?`<p class="desc">「${PROV_NAME[S.prov]}」还没配 key，选模型前请先到「凭据」添加。</p>`:''}
+    <div class="models">${ms.map(m=>
+      `<button class="mcard ${S.model===m[0]?'on':''}" onclick="S.model='${m[0]}';persist();render()">
+        <div class="mn">${m[0]}</div><div class="md">${m[1]}</div></button>`).join('')}</div>
+    <div class="row"><span class="lbl">思考强度</span>
+      <span class="efforts">${['轻快','标准','深入'].map(e=>
+        `<button class="${S.effort===e?'on':''}" onclick="S.effort='${e}';persist();render()">${e}</button>`).join('')}</span></div>
+  </div>`;
+}
+function secAbout(){
+  return `<div class="card">
+    <div class="sec-h">关于 / 诊断</div>
+    <div class="row"><span class="lbl">版本</span><span>Daypaw 0.1.0 · 构建 2026-08-23</span></div>
+    <div class="row"><span class="lbl"></span>
+      <button class="btn ghost sm" onclick="toast('诊断信息已复制（演示）')">复制诊断信息</button>
+      <button class="btn ghost sm" onclick="toast('已是最新版本（演示）')">检查更新</button></div>
+    <div class="desc" style="margin:0"><a onclick="toast('演示环境：这里会打开反馈页')">反馈问题</a></div>
+  </div>`;
+}
+
+/* ================= 变体 A：分区 tab 设置 + 向导式首跑 ================= */
+function aWizard(){
+  const step=S.a.step;
+  let body='';
+  if(step===0){
+    body=`<div class="wstep">第 1 步 / 共 3 步</div>
+      <div class="wtitle">欢迎使用 Daypaw</div>
+      <div class="wbody">让 AI 助手帮你处理重复工作：
+        <ul><li>用一句话交代任务，助手自己去跑</li>
+        <li>涉及发出去、改数据的关键步骤，先问你再做</li>
+        <li>每个任务的进展和结果都能随时回看</li></ul></div>
+      <div class="wactions">
+        <button class="btn pri" onclick="S.a.step=1;persist();render()">开始设置</button>
+        <button class="btn ghost" onclick="aSkip()">先随便看看</button>
+      </div>`;
+  }else if(step===1){
+    body=`<div class="wstep">第 2 步 / 共 3 步</div>
+      <div class="wtitle">先配一把钥匙</div>
+      <div class="wbody">Daypaw 不预置模型服务凭据，需要你自己的 API key 助手才能开工。没有 key 也可以先进去看看，助手会等你配好再开始。</div>
+      <div class="row"><input id="wKey" class="inp" type="password" placeholder="sk-…">
+        <button class="btn pri" onclick="if(saveKey('deepseek','wKey')){S.a.step=2;persist();render()}">保存并继续</button></div>
+      <div class="wactions">
+        <button class="btn ghost" onclick="S.a.step=2;persist();render()">稍后再说</button>
+        <a style="font-size:12px;align-self:center" onclick="toast('演示环境：这里会打开 key 申请页')">去哪里申请 key？</a>
+      </div>`;
+  }else if(step===2){
+    body=`<div class="wstep">第 3 步 / 共 3 步</div>
+      <div class="wtitle">选一个默认模型</div>
+      <div class="wbody" style="margin-bottom:10px">之后每个任务都可以单独换模型，这里先选一个顺手的默认值。</div>
+      ${secModel(true)}
+      <div class="wactions">
+        <button class="btn pri" onclick="S.a.step=3;persist();render()">继续</button>
+        <button class="btn ghost" onclick="S.a.step=3;persist();render()">用默认，直接继续</button>
+      </div>`;
+  }else{
+    body=`<div class="wtitle" style="margin-top:8px">${hasKey()?'都准备好了':'还差一把钥匙'}</div>
+      <ul class="wcheck">
+        <li>${hasKey()?'✓':'○'} 凭据（API key）${hasKey()?'':'—— 未配置，之后可在「设置 → 凭据」补齐'}</li>
+        <li>✓ 默认模型：${S.model} · ${S.effort}</li>
+      </ul>
+      <div class="wactions">
+        <button class="btn pri" onclick="aFinish()">进入工作台</button>
+        ${hasKey()?'':'<button class="btn ghost" onclick="aFinish();S.view.A=\'settings\';S.a.tab=\'cred\';persist();render()">现在去配</button>'}
+      </div>`;
+  }
+  return `<div class="wmask"><div class="wcard">
+    <button class="wskip" onclick="aSkip()">跳过引导 ✕</button>
+    ${body}
+    <div class="wdots">${[0,1,2,3].map(i=>`<i class="${i===step?'on':i<step?'past':''}"></i>`).join('')}</div>
+  </div></div>`;
+}
+function aSkip(){S.a.done=true;persist();render();toast('已跳过引导，之后可从「设置」补齐');}
+function aFinish(){S.a.done=true;persist();render();}
+function viewA(){
+  const view=S.view.A;
+  if(view==='run'){
+    const main=S.a.done
+      ?`<div class="note"><b>原型注解：</b>首次引导已完成 —— 完成态持久（localStorage 演示），重开不会再弹。
+        <a onclick="S.a.done=false;S.a.step=0;persist();render()">重新演示引导</a></div>
+        ${inboxList()}`
+      :inboxList();
+    return `${sidebar()}<main class="main"><div class="wrap">
+      <div class="topbar"><div><h1>收件箱</h1><div class="sub">方案 A · 首跑 = 全屏分步向导（可跳过）</div></div>${segToggle()}</div>
+      ${main}</div></main>${S.a.done?'':aWizard()}`;
+  }
+  const tabs=[['general','通用'],['cred','凭据'],['model','模型'],['about','关于 / 诊断']];
+  const bodies={general:secGeneral,cred:secCred,model:()=>secModel(false),about:secAbout};
+  return `${sidebar()}<main class="main"><div class="wrap">
+    <div class="topbar"><div><h1>设置</h1><div class="sub">方案 A · 左侧分区 tab + 右侧内容区 · 全部设置单面平铺</div></div>${segToggle()}</div>
+    <div class="set-layout">
+      <div class="set-tabs">${tabs.map(t=>
+        `<button class="set-tab ${S.a.tab===t[0]?'on':''}" onclick="S.a.tab='${t[0]}';persist();render()">${t[1]}
+         ${t[0]==='cred'&&!hasKey()?'<span class="warn"></span>':''}</button>`).join('')}</div>
+      <div class="set-body">${bodies[S.a.tab]()}</div>
+    </div></div></main>`;
+}
+
+/* ================= 变体 B：单页滚动设置 + 内嵌 checklist 首跑 ================= */
+function bCard(){
+  if(S.b.step>=2){
+    return `<div class="check-slim">✅ 新手引导已完成（完成态持久，localStorage 演示）
+      <a onclick="S.b.step=0;S.b.snooze=false;persist();render()">重新演示</a></div>`;
+  }
+  if(S.b.snooze){
+    return `<div class="check-slim">还有 ${2-S.b.step} 项设置未完成
+      <a onclick="S.b.snooze=false;persist();render()">继续</a>
+      <span style="color:#A8A29E;font-size:12px">· 「稍后」不打扰，下次打开再提醒</span></div>`;
+  }
+  if(S.b.step===0){
+    return `<div class="check">
+      <div class="ct">开始使用 Daypaw <span class="prog">第 1 步 / 共 2 步</span></div>
+      <div class="step-t">还差一步：配置 API key</div>
+      <p class="desc">Daypaw 不预置凭据，助手需要你的模型服务 key 才能开始工作。</p>
+      ${S.b.keyOpen
+        ?`<div class="row"><input id="bKey" class="inp" type="password" placeholder="sk-…">
+          <button class="btn pri sm" onclick="if(saveKey('deepseek','bKey')){S.b.step=1;persist();render()}">保存</button></div>`
+        :`<div class="row" style="margin:0">
+          <button class="btn pri sm" onclick="S.b.keyOpen=true;render()">现在配置</button>
+          <button class="btn ghost sm" onclick="demoFillKey();S.b.step=1;persist();render()">演示：填入示例 key</button>
+          <button class="btn ghost sm" onclick="S.b.snooze=true;persist();render()">稍后</button></div>`}
+      <div class="note" style="margin:10px 0 0"><b>原型注解：</b>一次只挂一步；完成一步才推进下一步；完成态持久（localStorage 演示）。</div>
+    </div>`;
+  }
+  return `<div class="check">
+    <div class="ct">开始使用 Daypaw <span class="prog">第 2 步 / 共 2 步</span></div>
+    <div class="step-t">选一个默认模型</div>
+    <p class="desc">当前：${PROV_NAME[S.prov]} · ${S.model} · ${S.effort}。每个任务之后都能单独换。</p>
+    <div class="row" style="margin:0">
+      <button class="btn pri sm" onclick="setView('settings');setTimeout(()=>{const el=document.getElementById('b-model');if(el)el.scrollIntoView({behavior:'smooth'})},50)">去模型设置里挑</button>
+      <button class="btn ghost sm" onclick="S.b.step=2;persist();render()">就用这个，完成</button>
+    </div>
+  </div>`;
+}
+function viewB(){
+  const view=S.view.B;
+  if(view==='run'){
+    return `${sidebar()}<main class="main"><div class="wrap">
+      <div class="topbar"><div><h1>收件箱</h1><div class="sub">方案 B · 首跑 = 收件箱顶部 checklist 卡，不挡主界面</div></div>${segToggle()}</div>
+      ${bCard()}
+      ${inboxList()}
+    </div></main>`;
+  }
+  return `${sidebar()}<main class="main"><div class="wrap">
+    <div class="topbar"><div><h1>设置</h1><div class="sub">方案 B · 全部设置一屏长滚动 · 锚点跳转 · 单面平铺</div></div>${segToggle()}</div>
+    <div class="anchors">
+      <a onclick="document.getElementById('b-general').scrollIntoView({behavior:'smooth'})">通用</a>
+      <a onclick="document.getElementById('b-cred').scrollIntoView({behavior:'smooth'})">凭据</a>
+      <a onclick="document.getElementById('b-model').scrollIntoView({behavior:'smooth'})">模型</a>
+      <a onclick="document.getElementById('b-about').scrollIntoView({behavior:'smooth'})">关于 / 诊断</a>
+    </div>
+    <div class="b-sec" id="b-general"><h2>通用</h2>${secGeneral()}</div>
+    <div class="b-sec" id="b-cred"><h2>凭据</h2>${secCred()}</div>
+    <div class="b-sec" id="b-model"><h2>模型</h2>${secModel(false)}</div>
+    <div class="b-sec" id="b-about"><h2>关于 / 诊断</h2>${secAbout()}</div>
+  </div></main>`;
+}
+
+/* ================= 变体 C：任务引导式首跑 + 轻设置 ================= */
+function cComposer(){
+  if(!S.c.agent){
+    return `<div class="card">
+      <div class="sec-h">新任务</div>
+      <div class="note"><b>原型注解：</b>无独立首跑流程 —— 首次打开直接落在收件箱，用户从「＋ 新任务」进入；缺什么在路过的地方提示。</div>
+      <p class="desc">选一个助手开始：</p>
+      <div class="agrid">${AGENTS.map(a=>
+        `<button class="acard" onclick="S.c.agent='${a.id}';persist();render()">
+          <div class="an">${a.name}</div><div class="ad">${a.desc}</div></button>`).join('')}</div>
+    </div>`;
+  }
+  const ag=AGENTS.find(a=>a.id===S.c.agent);
+  const blocked=!hasKey();
+  return `<div class="card">
+    <div class="sec-h">新任务 · ${ag.name}</div>
+    <p class="desc">${ag.desc}</p>
+    ${blocked?`<div class="prompt-card">
+      <div class="pt">「${ag.name}」需要 API key 才能开始工作</div>
+      <p class="desc" style="color:#92600A;margin-bottom:10px">Daypaw 不预置凭据。配置一次，之后所有助手都能直接用。</p>
+      <div class="row" style="margin:0">
+        <button class="btn pri sm" onclick="S.view.C='settings';persist();render();toast('已打开「设置 → 凭据」')">去设置里配置</button>
+        <button class="btn ghost sm" onclick="demoFillKey()">演示：填入示例 key</button>
+      </div>
+    </div>`:''}
+    <textarea class="ta" ${blocked?'disabled':''} placeholder="${blocked?'配好 key 后，在这里交代任务…':'交代任务，比如：汇总本周部门群消息，写一份周报草稿'}"></textarea>
+    <div class="row" style="margin:10px 0 0">
+      <button class="btn pri" ${blocked?'disabled style="opacity:.5"':''} onclick="toast('演示：任务已创建，进入「进行中」');S.c.open=false;persist();render()">开始任务</button>
+      <button class="btn ghost" onclick="S.c.agent='';persist();render()">换个助手</button>
+      <button class="btn ghost" onclick="S.c.open=false;persist();render()">收起</button>
+    </div>
+  </div>`;
+}
+function viewC(){
+  const view=S.view.C;
+  if(view==='run'){
+    return `${sidebar()}<main class="main"><div class="wrap">
+      <div class="topbar"><div><h1>收件箱</h1><div class="sub">方案 C · 首跑并入「＋ 新任务」流程，提示卡内嵌在对话区顶部</div></div>${segToggle()}</div>
+      ${S.c.open?cComposer():inboxList()}
+    </div></main>`;
+  }
+  return `${sidebar()}<main class="main"><div class="wrap">
+    <div class="topbar"><div><h1>设置</h1><div class="sub">方案 C · 最简设置：单页 + 折叠面板 · 单面平铺</div></div>${segToggle()}</div>
+    <details class="panel"><summary>通用</summary><div class="pbody">${secGeneral()}</div></details>
+    <details class="panel" ${hasKey()?'':'open'}><summary>凭据 ${hasKey()?'<span class="badge green">已配置</span>':'<span class="badge amber">未配置</span>'}</summary><div class="pbody">${secCred()}</div></details>
+    <details class="panel"><summary>模型 <span class="desc" style="margin:0">${PROV_NAME[S.prov]} · ${S.model} · ${S.effort}</span></summary><div class="pbody">${secModel(false)}</div></details>
+    <details class="panel"><summary>关于 / 诊断</summary><div class="pbody">${secAbout()}</div></details>
+  </div></main>`;
+}
+
+/* ================= 渲染入口 ================= */
+function render(){
+  const v=curVariant();
+  document.getElementById('app').innerHTML=
+    `<div class="shell">${v==='A'?viewA():v==='B'?viewB():viewC()}</div>`;
+  document.getElementById('vlabel').textContent=V_LABEL[v];
+}
+if(!new URLSearchParams(location.search).get('variant')){
+  history.replaceState(null,'','?variant=A');
+}
+render();
+</script>
+</body>
+</html>
