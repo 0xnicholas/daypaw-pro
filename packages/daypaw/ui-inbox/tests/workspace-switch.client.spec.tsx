@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
-/** WorkspaceSwitch: the middle column switches its container with the shared selection, and delegates the banner/settings holes. */
-import { afterEach, describe, expect, it } from 'vitest'
+/** WorkspaceSwitch: the middle column follows the shared selection and delegates the banner/settings/tasks/conversation holes. */
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { createSnapshotStore, type SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { WorkspaceSwitch, type WorkspaceSwitchProps } from '../src/client/WorkspaceSwitch.tsx'
-import type { InboxBannerOwnerProps, InboxSettingsPageOwnerProps } from '../src/client/contract.ts'
+import type {
+  InboxBannerOwnerProps, InboxSettingsPageOwnerProps, InboxTasksOwnerProps,
+} from '../src/client/contract.ts'
 import { InboxSelectionController } from '../src/client/selection.ts'
 import { zh } from '../src/client/locales.ts'
 
@@ -19,8 +23,35 @@ interface RenderedCall {
   opts: { fallback?: unknown } | undefined
 }
 
+function listState(): SessionListState {
+  const row = (id: string, running: boolean, blank = false): SessionListState['byId'][SessionId] => ({
+    id: id as SessionId,
+    displayTitle: `title-${id}`,
+    running,
+    blank,
+    updatedAt: 1,
+    ...(id === 'b' ? { agentPreset: 'standard' } : {}),
+  })
+  return {
+    // 'ghost' proves the masked-gap arm: an id the list names but byId lacks
+    // (reconnect re-pull window) projects no row.
+    ids: ['a', 'b', 'c', 'draft', 'ghost'] as SessionId[],
+    byId: {
+      a: row('a', true),
+      b: row('b', false),
+      c: row('c', false),
+      draft: row('draft', false, true),
+    } as SessionListState['byId'],
+    current: undefined,
+    phase: 'ready',
+    subagentsByParent: {},
+    jobsBySession: {},
+    currentAddress: undefined,
+  }
+}
+
 function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode) {
-  const controller = new InboxSelectionController()
+  const controller = new InboxSelectionController(vi.fn())
   const calls: RenderedCall[] = []
   const renderSlot: WorkspaceSwitchProps['renderSlot'] = ((key: string, owner: object, opts?: { fallback?: unknown }) => {
     const call: RenderedCall = { key, owner: owner as Record<string, unknown>, opts }
@@ -32,7 +63,7 @@ function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode) {
       sessionId={undefined}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook}
+      useSessions={bindSnapshotSelector(createSnapshotStore(listState()))} useWorkspaces={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
       select={(next) => { controller.select(next) }}
       renderSlot={renderSlot}
@@ -53,6 +84,30 @@ describe('WorkspaceSwitch', () => {
     act(() => { controller.select({ kind: 'group', group: 'done' }) })
     expect(screen.getByRole('heading', { name: '已完成' })).toBeTruthy()
     expect(screen.getByText('暂无已完成的任务')).toBeTruthy()
+  })
+
+  it('delegates the group task list with rows projected from the sessions list', () => {
+    const { controller, calls } = mountWorkspace(call =>
+      call.key === 'inbox.workspace.tasks' ? <div>task-list</div> : (call.opts?.fallback ?? null) as React.ReactNode)
+    expect(screen.getByText('task-list')).toBeTruthy()
+    const tasks = calls.find(call => call.key === 'inbox.workspace.tasks')!
+    const owner = tasks.owner as unknown as InboxTasksOwnerProps
+    // The owner injects the clock for the rows' 最近动态 labels.
+    expect(typeof owner.now).toBe('number')
+    // Only non-blank running rows land in the running group.
+    expect(owner.rows.map(row => row.title)).toEqual(['title-a'])
+    // The done group carries the two settled rows, the draft never lists.
+    act(() => { controller.select({ kind: 'group', group: 'done' }) })
+    const done = calls.findLast(call => call.key === 'inbox.workspace.tasks')!
+    const doneOwner = done.owner as unknown as InboxTasksOwnerProps
+    expect(doneOwner.rows.map(row => [row.title, row.agentPreset])).toEqual([['title-b', 'standard'], ['title-c', undefined]])
+    // openTask selects the task kind, which the controller drives to sessions.open.
+    doneOwner.openTask('b' as SessionId)
+    expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 'b' })
+    // The pending group stays the placeholder empty list until #58.
+    act(() => { controller.select({ kind: 'group', group: 'pending' }) })
+    const pending = calls.findLast(call => call.key === 'inbox.workspace.tasks')!
+    expect((pending.owner as unknown as InboxTasksOwnerProps).rows).toEqual([])
   })
 
   it('switches to the Agents placeholder page', () => {
@@ -91,5 +146,23 @@ describe('WorkspaceSwitch', () => {
     const page = calls.find(call => call.key === 'inbox.settings.page')!
     ;(page.owner as unknown as InboxSettingsPageOwnerProps).close()
     expect(controller.store.getSnapshot()).toEqual({ kind: 'group', group: 'running' })
+  })
+
+  it('renders the conversation slot for a task selection, falling back to the placeholder when empty', () => {
+    const { controller, calls } = mountWorkspace()
+    act(() => { controller.select({ kind: 'task', sessionId: 'a' as SessionId }) })
+    expect(screen.getByText('对话即将上线')).toBeTruthy()
+    expect(calls.some(call => call.key === 'inbox.workspace.conversation')).toBe(true)
+    // The group container (header + banner + list) is gone.
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
+  it('hands the conversation occupant an empty owner share', () => {
+    const { controller, calls } = mountWorkspace(call =>
+      call.key === 'inbox.workspace.conversation' ? <div>conversation-seat</div> : null)
+    act(() => { controller.select({ kind: 'task', sessionId: 'a' as SessionId }) })
+    expect(screen.getByText('conversation-seat')).toBeTruthy()
+    const conversation = calls.find(call => call.key === 'inbox.workspace.conversation')!
+    expect(conversation.owner).toEqual({})
   })
 })

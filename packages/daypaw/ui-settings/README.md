@@ -30,6 +30,6 @@ None; this package neither assembles nor sends a provider request.
 ## Known Limitations and Deferred Work
 
 - **The composer block is a lazy seat** — the fork shell has no composer yet, so the input block the banner raises is a no-op until the conversation column ticket lands; the wiring is asserted against a fake conversation service.
-- **No assembled-web snapshot coverage** — the fork composition has no runnable web snapshot harness, so this package's transcript output is covered by component and apply specs only (the same level as `@daypaw/ui-inbox`).
+- **No assembled-web snapshot pins this package's output** — the fork's assembled web lane (`apps/daypaw-web/tests/`, landed with the task-conversation ticket) boots this package but serializes only the task conversation; the settings page and banner stay covered by component and apply specs only.
 - **`deriveKeyRef`/`messageOf` restate upstream helpers** — the client bundle purity gate forbids a cross-plugin value import from `ui-settings-models`, so the two one-liners are rewritten here and asserted by this package's tests.
 - **Theme and density rows are placeholders** — both render 即将上线 until their capability tickets land.

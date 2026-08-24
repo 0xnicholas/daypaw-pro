@@ -1,0 +1,54 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`NewTaskDialog > matches the ready dialog snapshot 1`] = `
+<div>
+  <div
+    class="_root_4e5d42"
+  >
+    <label
+      class="_field_4e5d42"
+    >
+      <span
+        class="_label_4e5d42"
+      >
+        执行 Agent
+      </span>
+      <select
+        aria-label="执行 Agent"
+        class="_select_4e5d42"
+      >
+        <option
+          value="alpha"
+        >
+          alpha
+        </option>
+      </select>
+    </label>
+    <label
+      class="_field_4e5d42"
+    >
+      <span
+        class="_label_4e5d42"
+      >
+        任务内容
+      </span>
+      <textarea
+        aria-label="任务内容"
+        class="_textarea_4e5d42"
+        placeholder="描述要完成的任务…"
+      />
+    </label>
+    <div
+      class="_actions_4e5d42"
+    >
+      <button
+        class="_button_4d2f85 _primary_4d2f85 _md_4d2f85 _submit_4e5d42"
+        disabled=""
+        type="button"
+      >
+        开始任务
+      </button>
+    </div>
+  </div>
+</div>
+`;

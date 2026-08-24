@@ -45,6 +45,7 @@
     "@daypaw/web-frontend": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@daypaw/ui-settings": "workspace:^",
+    "@daypaw/ui-tasks": "workspace:^",
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",
     "@deepseek-ai/dsh-app-boot": "workspace:^",

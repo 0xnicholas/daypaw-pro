@@ -30,6 +30,6 @@ daypaw 的设置面与首跑 API-key 黄卡，fork 的 client UI 插件，占据
 ## Known Limitations and Deferred Work
 
 - **输入禁用是惰性席位**——fork 壳还没有对话栏，黄卡抬起的输入禁用是对话栏票落地前的 no-op；该接线以假 conversation 服务断言。
-- **无组装级 web 快照覆盖**——fork 组合没有可运行的 web 快照 harness，本包的界面输出只由组件与 apply 规格覆盖（与 `@daypaw/ui-inbox` 同级）。
+- **组装级 web 快照未钉本包输出**——fork 的组装 web 车道（`apps/daypaw-web/tests/`，随任务对话票落地）会启动本包，但只序列化任务对话；设置页与黄卡仍只由组件与 apply 规格覆盖。
 - **`deriveKeyRef`/`messageOf` 重述上游 helper**——client bundle purity gate 禁止从 `ui-settings-models` 跨插件 value import，两个一行函数在此重写并由本包测试断言。
 - **主题与密度行是占位**——两者都渲染「即将上线」，等各自的能力票落地。

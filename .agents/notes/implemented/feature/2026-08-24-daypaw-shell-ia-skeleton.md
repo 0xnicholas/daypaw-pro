@@ -32,4 +32,4 @@ The daypaw web surface renders the inbox-workbench skeleton end to end — left 
 
 ## Deferred
 
-Count/entry data wiring (board tickets), agent-selection dialog content (agent-catalog ticket), the real Agents page, selected-task detail, and the eventual removal of the shadowed ui-conversation row are all later-ticket scope, mirrored in the package README's Known Limitations. The 设置 page: [daypaw settings single page and the first-run API-key card](2026-08-24-daypaw-settings-first-run-card.md).
+Count/entry data wiring (board tickets), agent-selection dialog content (agent-catalog ticket), the real Agents page, selected-task detail, and the eventual removal of the shadowed ui-conversation row are all later-ticket scope, mirrored in the package README's Known Limitations. The 设置 page: [daypaw settings single page and the first-run API-key card](2026-08-24-daypaw-settings-first-run-card.md). The group counts, task list, new-task dialog, and conversation view: [daypaw task conversation](2026-08-24-daypaw-task-conversation.md).

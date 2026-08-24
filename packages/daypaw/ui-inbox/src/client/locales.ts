@@ -19,6 +19,7 @@ export const zh = {
   'workspace.empty.done': '暂无已完成的任务',
   'workspace.agents.placeholder': 'Agent 目录即将上线',
   'workspace.settings.placeholder': '设置页即将上线',
+  'workspace.conversation.placeholder': '对话即将上线',
   'detail.title': '任务详情',
   'detail.empty': '选择任务查看详情',
 } satisfies Record<string, string>
@@ -45,6 +46,7 @@ export const en = {
   'workspace.empty.done': 'No completed tasks',
   'workspace.agents.placeholder': 'The agent catalog is coming soon',
   'workspace.settings.placeholder': 'The settings page is coming soon',
+  'workspace.conversation.placeholder': 'The conversation view is coming soon',
   'detail.title': 'Task details',
   'detail.empty': 'Select a task to see its details',
 } satisfies Record<InboxKey, string>

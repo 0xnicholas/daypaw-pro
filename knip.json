@@ -756,10 +756,12 @@
     // does not duplicate (they stay upstream-owned).
     "apps/daypaw-web": {
       "entry": [
+        "tests/**/*.snapshot.ts",
         "src/node-module-stub.ts"
       ],
       "project": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ],
       "ignoreDependencies": [
         "@types/react",
@@ -775,6 +777,7 @@
       "ignoreDependencies": [
         "@daypaw/ui-inbox",
         "@daypaw/ui-settings",
+        "@daypaw/ui-tasks",
         "@deepseek-ai/.+"
       ]
     },
@@ -794,6 +797,19 @@
     },
     // Fork client UI plugin (settings page + first-run banner): same shape.
     "packages/daypaw/ui-settings": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
+    // Fork client UI plugin (new-task dialog + task list + conversation): same shape.
+    "packages/daypaw/ui-tasks": {
       "entry": [
         "tests/**/*.spec.ts",
         "tests/**/*.spec.tsx"

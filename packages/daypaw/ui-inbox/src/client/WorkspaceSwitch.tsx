@@ -1,21 +1,24 @@
 /**
  * Workspace switch (the 'conversation' occupant, priority -1 shadowing
  * ui-conversation's placeholder): the middle column container for the current
- * selection — an inbox group's task container topped by the
- * 'inbox.workspace.banner' strip (empty state until the board tickets wire
- * data), the Agents placeholder page, or the 设置 page rendered from the
- * 'inbox.settings.page' occupant (placeholder fallback while no occupant is
- * registered).
+ * selection — an inbox group's task list topped by the
+ * 'inbox.workspace.banner' strip (rows projected from the sessions list,
+ * rendered by the 'inbox.workspace.tasks' occupant with the owner's empty
+ * state as fallback), one task's conversation rendered by the
+ * 'inbox.workspace.conversation' occupant, the Agents placeholder page, or
+ * the 设置 page rendered from the 'inbox.settings.page' occupant
+ * (placeholder fallback while no occupant is registered).
  */
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'conversation' entry) in so
 // PropsRuntime<'conversation'> resolves.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-// Type-only: pulls this package's own SlotMap merge (the two child slots) in
+// Type-only: pulls this package's own SlotMap merge (the four child slots) in
 // so PropsRenderSlots resolves.
 import type {} from './contract.ts'
 import type { InboxGroup, InboxSelection } from './selection.ts'
+import { projectInboxBoard } from './task-projection.ts'
 import type { InboxKey } from './locales.ts'
 import css from './WorkspaceSwitch.module.css'
 
@@ -25,14 +28,17 @@ export interface WorkspaceSwitchInjected {
     /** Shared workbench selection, bound by the renderer as useSelection. */
     selection: SnapshotStore<InboxSelection>
   }
-  /** Select an inbox group or a secondary page. */
+  /** Select an inbox group, a task, or a secondary page. */
   select: (next: InboxSelection) => void
 }
+
+/** The child slots this occupant declares and renders. */
+type WorkspaceChildren = 'inbox.workspace.banner' | 'inbox.settings.page' | 'inbox.workspace.tasks' | 'inbox.workspace.conversation'
 
 /** Full component props: runtime share + child-slot render share + injected face + locale seat. */
 export type WorkspaceSwitchProps =
   PropsRuntime<'conversation'>
-  & PropsRenderSlots<'inbox.workspace.banner' | 'inbox.settings.page'>
+  & PropsRenderSlots<WorkspaceChildren>
   & InjectFace<WorkspaceSwitchInjected>
   & PropsLocale<'inbox'>
 
@@ -55,8 +61,11 @@ const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
  * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the workspace element tree.
  */
-export function WorkspaceSwitch({ useSelection, select, renderSlot, t }: WorkspaceSwitchProps) {
+export function WorkspaceSwitch({ useSelection, useSessions, select, renderSlot, t }: WorkspaceSwitchProps) {
   const selection = useSelection(s => s)
+  const list = useSessions(s => s)
+  const openTask = (sessionId: SessionId): void => { select({ kind: 'task', sessionId }) }
+
   if (selection.kind === 'agents') {
     return (
       <div className={css.root}>
@@ -81,11 +90,26 @@ export function WorkspaceSwitch({ useSelection, select, renderSlot, t }: Workspa
       </div>
     )
   }
+  if (selection.kind === 'task') {
+    return (
+      <div className={css.root}>
+        {renderSlot('inbox.workspace.conversation', {}, {
+          fallback: <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>,
+        })}
+      </div>
+    )
+  }
   return (
     <div className={css.root}>
       <header className={css.header}><h1 className={css.title}>{t(GROUP_TITLE[selection.group])}</h1></header>
       {renderSlot('inbox.workspace.banner', { openSettings: () => { select({ kind: 'settings' }) } })}
-      <div className={css.empty}>{t(GROUP_EMPTY[selection.group])}</div>
+      {renderSlot('inbox.workspace.tasks', {
+        rows: projectInboxBoard(list).rows[selection.group],
+        now: Date.now(),
+        openTask,
+      }, {
+        fallback: <div className={css.empty}>{t(GROUP_EMPTY[selection.group])}</div>,
+      })}
     </div>
   )
 }

@@ -1,0 +1,83 @@
+/* Task conversation view: the business-language flow over the workspace base
+   fill (owner-provided), a top running-status row, and the disabled follow-up
+   input seat at the foot. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: var(--dsw-alias-label-primary);
+  /* The flow (.flow) scrolls beside rows painted on the elevated l2 fill, so
+     a revealed scrollbar uses the l2 pair (SidebarRoot precedent). */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.statusRow {
+  flex: none;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.flow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.userRow {
+  align-self: flex-end;
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.assistantRow {
+  align-self: flex-start;
+  max-width: 80%;
+}
+
+.rowText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.errorRow {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.followup {
+  flex: none;
+  padding: 12px 20px;
+  border-top: 1px solid var(--dsw-alias-border-l2);
+}
+
+.followup > * {
+  width: 100%;
+}

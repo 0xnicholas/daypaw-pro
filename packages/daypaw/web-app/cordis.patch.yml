@@ -200,6 +200,13 @@
     - id: ui-settings-daypaw
       name: '@daypaw/ui-settings'
 
+    # daypaw task surfaces: the new-task dialog (agent picker + first prompt),
+    # the group task list, and the business-language conversation view — the
+    # three child seats ui-inbox declares on its nav and workspace
+    # registrations.
+    - id: ui-tasks-daypaw
+      name: '@daypaw/ui-tasks'
+
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'
 

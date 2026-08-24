@@ -32,4 +32,4 @@ Issue #59 要把[壳 IA 骨架](2026-08-24-daypaw-shell-ia-skeleton.md)的 设�
 
 ## 暂缓
 
-主题/密度分区、输入禁用的实际效果（对话栏票）、组装级 web 快照覆盖（fork 没有可运行的 web 快照 harness），以及重述 helper 的任何复用，均为后续票范围，在包 README 的 Known Limitations 中镜像记录。
+主题/密度分区、输入禁用的实际效果（对话栏票），以及重述 helper 的任何复用，均为后续票范围，在包 README 的 Known Limitations 中镜像记录。组装级 web 快照 harness：[daypaw 任务对话](2026-08-24-daypaw-task-conversation.md)。

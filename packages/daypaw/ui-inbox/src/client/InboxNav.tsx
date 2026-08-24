@@ -1,22 +1,27 @@
 /**
  * Inbox navigation column (the 'sidebar' occupant): wordmark, the big
- * 「+ 新任务」 button opening the new-task dialog stub, the three inbox
- * groups with count slots, and the Agents / 设置 secondary nav. Collapsed
- * renders the compact control rail (sidebar toggle + new-task icon button)
- * required by the 'sidebar' occupant contract. Group counts are placeholder
- * zeros until the board tickets wire the run/approval data.
+ * 「+ 新任务」 button opening the new-task dialog (body delegated to the
+ * 'inbox.new-task.dialog' occupant, stub copy while absent), the three inbox
+ * groups with live counts projected from the sessions list, and the
+ * Agents / 设置 secondary nav. Collapsed renders the compact control rail
+ * (sidebar toggle + new-task icon button) required by the 'sidebar' occupant
+ * contract.
  */
 import { useState } from 'react'
 import clsx from 'clsx'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'sidebar' entry) in so
 // PropsRuntime<'sidebar'> resolves.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+// Type-only: pulls this package's own SlotMap merge (the dialog child slot)
+// in so PropsRenderSlots resolves.
+import type {} from './contract.ts'
 import {
   Button, IconPanelLeftOutline16, IconPlusOutline16, Modal, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InboxGroup, InboxSelection } from './selection.ts'
+import { projectInboxBoard } from './task-projection.ts'
 import type { InboxKey } from './locales.ts'
 import css from './InboxNav.module.css'
 
@@ -26,15 +31,16 @@ export interface InboxNavInjected {
     /** Shared workbench selection, bound by the renderer as useSelection. */
     selection: SnapshotStore<InboxSelection>
   }
-  /** Select an inbox group or a secondary page. */
+  /** Select an inbox group, a task, or a secondary page. */
   select: (next: InboxSelection) => void
   /** Toggle the sidebar column through the layout service. */
   toggleSidebar: () => void
 }
 
-/** Full component props: layout owner share + injected face + locale seat. */
+/** Full component props: layout owner share + child render share + injected face + locale seat. */
 export type InboxNavProps =
   PropsRuntime<'sidebar'>
+  & PropsRenderSlots<'inbox.new-task.dialog'>
   & InjectFace<InboxNavInjected>
   & PropsLocale<'inbox'>
 
@@ -48,18 +54,22 @@ const GROUP_LABEL: Record<InboxGroup, InboxKey> = {
   done: 'nav.group.done',
 }
 
-/** Placeholder counts; the board tickets replace this constant with live data. */
-const GROUP_COUNT: Record<InboxGroup, number> = { pending: 0, running: 0, done: 0 }
-
 /**
  * Render the inbox navigation column.
- * @param props - composed slot props (runtime share + injected face + locale seat).
+ * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the column element tree.
  */
-export function InboxNav({ collapsed, useSelection, select, toggleSidebar, t }: InboxNavProps) {
+export function InboxNav({ collapsed, useSelection, useSessions, select, toggleSidebar, renderSlot, t }: InboxNavProps) {
   const selection = useSelection(s => s)
+  const list = useSessions(s => s)
+  const counts = projectInboxBoard(list).counts
   // Dialog open state is component-local: only this component knows it.
   const [dialogOpen, setDialogOpen] = useState(false)
+
+  const openTask = (sessionId: SessionId): void => {
+    setDialogOpen(false)
+    select({ kind: 'task', sessionId })
+  }
 
   const newTaskDialog = (
     <Modal
@@ -68,7 +78,12 @@ export function InboxNav({ collapsed, useSelection, select, toggleSidebar, t }: 
       title={t('dialog.new-task.title')}
       closeLabel={t('dialog.close')}
     >
-      <p className={css.dialogStub}>{t('dialog.new-task.stub')}</p>
+      {renderSlot('inbox.new-task.dialog', {
+        close: () => { setDialogOpen(false) },
+        openTask,
+      }, {
+        fallback: <p className={css.dialogStub}>{t('dialog.new-task.stub')}</p>,
+      })}
     </Modal>
   )
 
@@ -137,7 +152,7 @@ export function InboxNav({ collapsed, useSelection, select, toggleSidebar, t }: 
               onClick={() => { select({ kind: 'group', group }) }}
             >
               <span className={css.rowLabel}>{t(GROUP_LABEL[group])}</span>
-              <span className={css.count}>{GROUP_COUNT[group]}</span>
+              <span className={css.count}>{counts[group]}</span>
             </button>
           )
         })}

@@ -6,14 +6,15 @@
  * through their inject `hooks` compartments instead; the renderer binds it as
  * each component's `useSelection` hook.
  */
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore, type SessionId, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 
 /** The three inbox groups. */
 export type InboxGroup = 'pending' | 'running' | 'done'
 
-/** What the workbench shows: an inbox group, or a secondary-nav page. */
+/** What the workbench shows: an inbox group, one task's conversation, or a secondary-nav page. */
 export type InboxSelection =
   | { kind: 'group'; group: InboxGroup }
+  | { kind: 'task'; sessionId: SessionId }
   | { kind: 'agents' }
   | { kind: 'settings' }
 
@@ -29,10 +30,18 @@ export class InboxSelectionController {
   /** The selection source handed to the hooks compartments. */
   readonly store: SnapshotStore<InboxSelection> = createSnapshotStore(DEFAULT_SELECTION)
 
-  /** Select an inbox group or a secondary page.
+  /**
+   * @param openSession - runtime current-session write (sessions.open): task
+   *   selection drives it one-way, so the session-maybe conversation seat
+   *   resolves the selected task's session.
+   */
+  constructor(private readonly openSession: (sessionId: SessionId) => void) {}
+
+  /** Select an inbox group, a task, or a secondary page.
    * @param next - the new selection.
    */
   select(next: InboxSelection): void {
     this.store.set(next)
+    if (next.kind === 'task') this.openSession(next.sessionId)
   }
 }

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-daypaw-settings-first-run-card.md
-2026-08-24-daypaw-settings-first-run-card.md: 95e3dde771437669530a95564c97aa695b5c0af1
-2026-08-24-daypaw-settings-first-run-card.zh.md: 3b72ac5b3c661818f2d617e0204874021e6966f4
+2026-08-24-daypaw-settings-first-run-card.md: 6703affb4a5ff9a79b44a9028b636d8439aed58f
+2026-08-24-daypaw-settings-first-run-card.zh.md: eecc940692c77316376d1cbd6e2a266625af9c8c

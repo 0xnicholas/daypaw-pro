@@ -32,4 +32,4 @@ A keyless daypaw deployment boots with the yellow card atop the workspace, one c
 
 ## Deferred
 
-Theme/density sections, the composer block's live effect (conversation column ticket), assembled-web snapshot coverage (the fork has no runnable web snapshot harness), and any reuse of the restated helpers are later-ticket scope, mirrored in the package README's Known Limitations.
+Theme/density sections, the composer block's live effect (conversation column ticket), and any reuse of the restated helpers are later-ticket scope, mirrored in the package README's Known Limitations. The assembled-web snapshot harness: [daypaw task conversation](2026-08-24-daypaw-task-conversation.md).

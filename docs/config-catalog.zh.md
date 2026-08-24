@@ -3074,6 +3074,7 @@ export interface Config {
 
 - `@daypaw/ui-inbox`（[`packages/daypaw/ui-inbox/src/index.ts`](../packages/daypaw/ui-inbox/src/index.ts)）
 - `@daypaw/ui-settings`（[`packages/daypaw/ui-settings/src/index.ts`](../packages/daypaw/ui-settings/src/index.ts)）
+- `@daypaw/ui-tasks`（[`packages/daypaw/ui-tasks/src/index.ts`](../packages/daypaw/ui-tasks/src/index.ts)）
 - `@deepseek-ai/dsh-agent`（[`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts)）
 - `@deepseek-ai/dsh-api-gateway` — 需要 `typert`（[`packages/api/gateway/src/index.ts`](../packages/api/gateway/src/index.ts)）
 - `@deepseek-ai/dsh-api-remotes`（[`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts)）

@@ -32,4 +32,4 @@ daypaw web 面端到端渲染收件箱工作台骨架——左栏导航带分组
 
 ## 暂缓
 
-计数/条目数据接线（板块票）、agent 选择对话框内容（agent 目录票）、真正的 Agents 页、选中任务详情，以及最终移除被遮蔽的 ui-conversation 行，均为后续票范围，在包 README 的 Known Limitations 中镜像记录。设置 页：[daypaw 设置单页与首跑 API-key 黄卡](2026-08-24-daypaw-settings-first-run-card.md)。
+计数/条目数据接线（板块票）、agent 选择对话框内容（agent 目录票）、真正的 Agents 页、选中任务详情，以及最终移除被遮蔽的 ui-conversation 行，均为后续票范围，在包 README 的 Known Limitations 中镜像记录。设置 页：[daypaw 设置单页与首跑 API-key 黄卡](2026-08-24-daypaw-settings-first-run-card.md)。分组计数、任务列表、新任务对话框与对话视图：[daypaw 任务对话](2026-08-24-daypaw-task-conversation.md)。

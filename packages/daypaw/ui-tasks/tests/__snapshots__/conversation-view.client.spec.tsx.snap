@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ConversationView > matches the mixed-flow snapshot 1`] = `
+<div>
+  <div
+    class="_root_79f15d"
+  >
+    <div
+      class="_statusRow_79f15d"
+    >
+      进行中
+    </div>
+    <div
+      class="_flow_79f15d"
+    >
+      <div
+        class="_userRow_79f15d"
+      >
+        <p
+          class="_rowText_79f15d"
+        >
+          写一首诗
+        </p>
+      </div>
+      <div
+        class="_assistantRow_79f15d"
+      >
+        <p
+          class="_rowText_79f15d"
+        >
+          床前明月光
+        </p>
+      </div>
+      <div
+        class="_errorRow_79f15d"
+      >
+        出错了
+      </div>
+    </div>
+    <div
+      class="_followup_79f15d"
+    >
+      <span
+        class="_wrap_759a2d"
+      >
+        <input
+          aria-label="追问即将上线"
+          class="_input_759a2d"
+          disabled=""
+          placeholder="追问即将上线"
+          value=""
+        />
+      </span>
+    </div>
+  </div>
+</div>
+`;
