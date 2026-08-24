@@ -752,6 +752,30 @@
         "@deepseek-ai/.+"
       ]
     },
+    // Fork carrier of apps/web: same shape minus the e2e lanes this checkout
+    // does not duplicate (they stay upstream-owned).
+    "apps/daypaw-web": {
+      "entry": [
+        "src/node-module-stub.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@types/react",
+        "@types/react-dom",
+        "react",
+        "react-dom"
+      ]
+    },
+    // Fork carrier of packages/bundle/web-app: a closure manifest whose
+    // dependencies the cordis.patch.yml rows name, not the code. The frontend
+    // package stays referenced: resolveDistIndex() require.resolves its dist.
+    "packages/daypaw/web-app": {
+      "ignoreDependencies": [
+        "@deepseek-ai/.+"
+      ]
+    },
     "packages/client/modules": {
       "entry": [
         "tests/**/*.spec.ts"

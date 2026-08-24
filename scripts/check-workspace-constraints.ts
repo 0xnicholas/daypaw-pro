@@ -51,7 +51,7 @@ const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harn
 // Release members state that they are publishable. The daypaw fork family
 // stays private (ADR 0001): exclude it from the release-member directory set
 // so it only owes `private: true`.
-const releaseMemberDirectory = /^(?:packages\/(?!daypaw\/)[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
+const releaseMemberDirectory = /^(?:packages\/(?!daypaw\/)[^/]+\/[^/]+|apps\/(?!daypaw-)[^/]+|vendor\/[^/]+)$/
 /**
  * The two daypaw packages ADR 0011 publishes to npm under their own artifact
  * version line: the self-contained CLI and the library. They carry real

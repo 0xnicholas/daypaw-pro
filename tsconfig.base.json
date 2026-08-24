@@ -202,6 +202,9 @@
       // source; the invariant companion gets its own (more specific) pattern
       // so it resolves before the generic wildcard below it.
       "@daypaw/*/invariant": ["./packages/daypaw/*/src/invariant.ts"],
+      // The web-app bundle's startup row is its own subpath (same shape as
+      // dsh-web-app/startup above); the generic wildcard cannot map it.
+      "@daypaw/web-app/startup": ["./packages/daypaw/web-app/src/startup.ts"],
       "@daypaw/*": ["./packages/daypaw/*/src"],
       "@deepseek-ai/dsh-client-ui-input-trigger": ["./packages/client/ui-input-trigger/src"],
       "@deepseek-ai/dsh-client-ui-commands": ["./packages/client/ui-commands/src"],

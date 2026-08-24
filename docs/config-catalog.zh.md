@@ -31,6 +31,31 @@ export interface Config {
 
 Source: [`packages/daypaw/engine/src/index.ts:38`](../packages/daypaw/engine/src/index.ts)
 
+<a id="daypawweb-app"></a>
+
+## `@daypaw/web-app`
+
+需要：`webServer`
+
+```ts config-catalog
+/** Plugin config: composed deployment settings plus per-invocation command-line values. */
+export interface Config {
+  /** Print the URL line on activation; a non-interactive layer can turn it off. */
+  printUrl: boolean
+  /**
+   * Register the model-visible surface context (the `app:web-surface` prompt
+   * section and the `DSH_WEB_URL` bash variable). A one-shot non-interactive
+   * layer can turn it off when its user is not in the GUI, so the
+   * orientation text would be false.
+   */
+  surfaceContext: boolean
+  /** Explicit `--trusted-host` authorities from this invocation. */
+  trustedHosts: string[]
+}
+```
+
+Source: [`packages/daypaw/web-app/src/index.ts:44`](../packages/daypaw/web-app/src/index.ts)
+
 <a id="deepseek-aidsh-acp"></a>
 
 ## `@deepseek-ai/dsh-acp`
