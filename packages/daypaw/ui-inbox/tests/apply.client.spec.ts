@@ -53,6 +53,11 @@ describe('ui-inbox apply', () => {
     // Lowest live priority renders: the -1 occupants win both cells.
     expect(b.slots.entriesOfSlot('conversation')[0]?.options.priority).toBe(-1)
     expect(b.slots.entriesOfSlot('details')[0]?.options.priority).toBe(-1)
+    // The workspace occupant declares the two child holes it renders.
+    const workspaceEntry = b.slots.entriesOfSlot('conversation')[0]!
+    expect(Object.keys(workspaceEntry.children ?? {})).toEqual(['inbox.workspace.banner', 'inbox.settings.page'])
+    expect(b.slots.snapshot('inbox.workspace.banner')).toMatchObject([{ kind: 'list', scope: 'session-maybe' }])
+    expect(b.slots.snapshot('inbox.settings.page')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
     // Copy rides the standard locale seat on our three occupants (the
     // placeholder dummies above carry none).
     expect(b.slots.entries('sidebar')[0]?.locale).toBe('inbox')
@@ -70,6 +75,9 @@ describe('ui-inbox apply', () => {
     expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'group', group: 'running' })
     navFace.select({ kind: 'agents' })
     expect(workspaceFace.hooks.selection.getSnapshot()).toEqual({ kind: 'agents' })
+    // The workspace inject face carries the same selector for its slot owners.
+    workspaceFace.select({ kind: 'settings' })
+    expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'settings' })
     navFace.toggleSidebar()
     expect(b.layout.toggleSidebar).toHaveBeenCalledOnce()
   })
@@ -79,7 +87,7 @@ describe('ui-inbox apply', () => {
     await expect(b.ctx.plugin({ inject: [...inject], apply })).rejects.toThrow(/not declared/)
   })
 
-  it('removes every entry on teardown', async () => {
+  it('removes every entry and collapses the declared child slots on teardown', async () => {
     const b = await bench()
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
@@ -87,5 +95,7 @@ describe('ui-inbox apply', () => {
     expect(b.slots.entries('sidebar')).toHaveLength(0)
     expect(b.slots.entries('conversation')).toHaveLength(0)
     expect(b.slots.entries('details')).toHaveLength(0)
+    expect(b.slots.snapshot('inbox.workspace.banner')).toEqual([])
+    expect(b.slots.snapshot('inbox.settings.page')).toEqual([])
   })
 })

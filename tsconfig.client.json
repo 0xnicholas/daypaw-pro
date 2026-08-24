@@ -26,6 +26,7 @@
     // Client package outside packages/client with a local CSS module face.
     "packages/extensions/ui-cordis/src/css-modules.d.ts",
     "packages/daypaw/ui-inbox/src/css-modules.d.ts",
+    "packages/daypaw/ui-settings/src/css-modules.d.ts",
     "packages/client/tsdown.client.ts",
     "scripts/client-bundle-css.spec.ts",
     "scripts/client-bundle-purity.spec.ts"
@@ -96,6 +97,7 @@
     { "path": "./packages/client/web" },
     { "path": "./apps/web" },
     { "path": "./apps/daypaw-web" },
-    { "path": "./packages/daypaw/ui-inbox" }
+    { "path": "./packages/daypaw/ui-inbox" },
+    { "path": "./packages/daypaw/ui-settings" }
   ]
 }

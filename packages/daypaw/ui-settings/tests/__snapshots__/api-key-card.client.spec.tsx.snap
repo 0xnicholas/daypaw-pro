@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ApiKeyCard visibility > shows the yellow card while the key is missing, navigating to the credentials tab on click 1`] = `
+<div
+  class="_card_edc2db"
+>
+  <span
+    class="_cardText_edc2db"
+  >
+    小爪 需要 API key 才能开始工作
+  </span>
+  <button
+    class="_cardButton_edc2db"
+    type="button"
+  >
+    去设置里配置
+  </button>
+</div>
+`;

@@ -15,6 +15,12 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls ui-layout's SlotMap merge ('sidebar'/'conversation'/'details').
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+// Type-only: pulls this package's own SlotMap merge (the two child slots the
+// workspace occupant declares) into the program. The type re-export also
+// keeps the merge reachable from the built d.ts entry — downstream fork
+// plugins import '@daypaw/ui-inbox/client' for exactly these slot types.
+import type {} from './contract.ts'
+export type { InboxBannerOwnerProps, InboxSettingsPageOwnerProps } from './contract.ts'
 import type { InboxNavInjected } from './InboxNav.tsx'
 import { InboxNav } from './InboxNav.tsx'
 import type { WorkspaceSwitchInjected } from './WorkspaceSwitch.tsx'
@@ -64,7 +70,16 @@ export function apply(ctx: ClientContext): void {
       name: 'conversation',
       priority: SHADOW_PRIORITY,
       locale: NS,
-      inject: (): WorkspaceSwitchInjected => ({ hooks: { selection: selection.store } }),
+      children: {
+        // Both holes live one scope inside the session-maybe parent: banner
+        // occupants get the current-session-or-undefined inject parameter.
+        'inbox.workspace.banner': { kind: 'list', scope: 'session-maybe' },
+        'inbox.settings.page': { kind: 'single', scope: 'session-maybe' },
+      },
+      inject: (): WorkspaceSwitchInjected => ({
+        hooks: { selection: selection.store },
+        select: (next) => { selection.select(next) },
+      }),
     }, WorkspaceSwitch)
     const detail = ctx.slots.register({
       name: 'details',

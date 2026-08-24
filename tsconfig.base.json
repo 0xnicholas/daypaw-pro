@@ -202,6 +202,9 @@
       // source; the invariant companion gets its own (more specific) pattern
       // so it resolves before the generic wildcard below it.
       "@daypaw/*/invariant": ["./packages/daypaw/*/src/invariant.ts"],
+      // The /client browser entry (same shape as dsh-client-*/client above):
+      // fork UI plugins pull each other's SlotMap/Context merges type-only.
+      "@daypaw/*/client": ["./packages/daypaw/*/src/client"],
       // The web-app bundle's startup row is its own subpath (same shape as
       // dsh-web-app/startup above); the generic wildcard cannot map it.
       "@daypaw/web-app/startup": ["./packages/daypaw/web-app/src/startup.ts"],

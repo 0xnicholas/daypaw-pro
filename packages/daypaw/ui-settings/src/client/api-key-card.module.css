@@ -1,0 +1,37 @@
+/* First-run API-key banner: the yellow card atop the workspace container. */
+
+.card {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 20px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--dsw-alias-state-warn-secondary);
+  border-radius: 8px;
+  background: var(--dsw-alias-state-warn-tertiary);
+  color: var(--dsw-alias-state-warn-label);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.cardText {
+  min-width: 0;
+}
+
+.cardButton {
+  flex: none;
+  padding: 4px 12px;
+  border: 1px solid var(--dsw-alias-state-warn-secondary);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.cardButton:hover {
+  background: var(--dsw-alias-state-warn-secondary);
+}

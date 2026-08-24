@@ -189,9 +189,16 @@
     # ui-sidebar row wholesale — the fork nav occupies 'sidebar', and shadows
     # ui-conversation's 'conversation'/'details' placeholder occupants at
     # priority -1 (their declared seats stay live for the dormant ecosystem;
-    # ui-workspace/ui-settings seats pend silently with the upstream shell).
+    # ui-workspace seats pend silently with the upstream shell).
     - id: ui-inbox
       name: '@daypaw/ui-inbox'
+
+    # daypaw settings single page + first-run API-key banner: occupies the two
+    # ui-inbox child seats and declares 'settings.section' from the settings
+    # page, which wakes ui-settings-models' models section (the other upstream
+    # settings rows stay dormant on their sidebar.settings seat).
+    - id: ui-settings-daypaw
+      name: '@daypaw/ui-settings'
 
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'

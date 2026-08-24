@@ -774,12 +774,26 @@
     "packages/daypaw/web-app": {
       "ignoreDependencies": [
         "@daypaw/ui-inbox",
+        "@daypaw/ui-settings",
         "@deepseek-ai/.+"
       ]
     },
     // Fork client UI plugin: same shape as the upstream packages/client
     // UI packages whose specs are .tsx (entry + project globs).
     "packages/daypaw/ui-inbox": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
+    // Fork client UI plugin (settings page + first-run banner): same shape.
+    "packages/daypaw/ui-settings": {
       "entry": [
         "tests/**/*.spec.ts",
         "tests/**/*.spec.tsx"

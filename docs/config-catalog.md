@@ -3070,6 +3070,8 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
 
+- `@daypaw/ui-inbox` ([`packages/daypaw/ui-inbox/src/index.ts`](../packages/daypaw/ui-inbox/src/index.ts))
+- `@daypaw/ui-settings` ([`packages/daypaw/ui-settings/src/index.ts`](../packages/daypaw/ui-settings/src/index.ts))
 - `@deepseek-ai/dsh-agent` ([`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts))
 - `@deepseek-ai/dsh-api-gateway` — requires `typert` ([`packages/api/gateway/src/index.ts`](../packages/api/gateway/src/index.ts))
 - `@deepseek-ai/dsh-api-remotes` ([`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts))

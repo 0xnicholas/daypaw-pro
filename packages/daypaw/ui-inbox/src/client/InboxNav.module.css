@@ -12,6 +12,10 @@
   background: var(--dsw-specific-sidebar-fill);
   color: var(--dsw-alias-label-primary);
   font-size: 14px;
+  /* The group list (.groups) scrolls on the elevated sidebar fill, so a
+     revealed scrollbar uses the l2 pair (SidebarRoot precedent). */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 .root.collapsed {
