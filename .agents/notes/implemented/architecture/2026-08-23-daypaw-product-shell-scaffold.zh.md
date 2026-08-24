@@ -14,7 +14,7 @@ Status: implemented
 
 - **`apps/daypaw-web`（`@daypaw/web-frontend`）**——镜像 `apps/web` 的私有 vite 入口：相同的 alias、分包与 `window.__DSH_BOOT__` 拒绝逻辑，只带 fork 身份（包名/repository、`daypaw` 标题与 manifest、daypaw 语境的 standalone-serve 报错）。上游的 e2e/压力测试泳道不复制，仍归上游所有。
 - **`packages/daypaw/web-app`（`@daypaw/web-app`）**——镜像 `packages/bundle/web-app` 的私有胶水 bundle。spec §4 裁决的四点差异中三点照原文落地：`resolveDistIndex()` 解析 `@daypaw/web-frontend/dist/index.html`；`webSurfacePrompt()` 用 daypaw 语境（并声明本壳未接重建 watcher）；URL 行打印 `daypaw web:`。第四点——`DAYPAW_WEB_URL` 改名——**暂缓**：受管 shell 变量生活在保留的 `DSH_*` 命名空间（`shell-env` 在注册时拒绝其他前缀，`dsh-subprocess` 会从子进程环境剥掉 ambient `DSH_*`），不改宽上游契约就无法通过该注册表；暂由 `DSH_WEB_URL` 顶位（见包 README 的 Known Limitations）。两个 bundle 从不同时加载的可观察键保持上游取值：插件名 `web-app`/`web-startup`/`web-app-invariant`、prompt section `app:web-surface`、shellEnv 注册名 `web-runtime`、服务 `webStartup`/`webRuntime`。
-- **roster 占位裁决**——fork 的 `cordis.patch.yml` 把完整的上游浏览器 roster 保留为占位，使组合端到端可启动；移除壳不交付的行、换入重写版归板块票（#56–#60），`DAYPAW_PROFILE_BUNDLES` 在 profile 接线票（#61/#62）之前不动。
+- **roster 占位裁决**——fork 的 `cordis.patch.yml` 把上游浏览器 roster 保留为占位，使组合端到端可启动；ui-sidebar 行此后已被 fork 的 `ui-inbox` 替换（issue #55，[壳 IA 骨架](../feature/2026-08-24-daypaw-shell-ia-skeleton.md)），其余壳不交付的行的移除与重写版换入仍归板块票（#56–#60），`DAYPAW_PROFILE_BUNDLES` 在 profile 接线票（#61/#62）之前不动。
 
 共享上游文件只做追加式编辑，逐条登记在 [CORE_TOUCHES.md](../../../../docs/fork/CORE_TOUCHES.md)：`scripts/check-workspace-constraints.ts` 的 `apps/daypaw-*` 发布成员排除、`tsconfig.base.json` 的一条 `@daypaw/web-app/startup` paths 项、每个聚合各一条 references 行、`build:web` 扩展，以及两处 knip workspace 条目。
 

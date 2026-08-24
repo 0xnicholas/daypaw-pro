@@ -773,7 +773,22 @@
     // package stays referenced: resolveDistIndex() require.resolves its dist.
     "packages/daypaw/web-app": {
       "ignoreDependencies": [
+        "@daypaw/ui-inbox",
         "@deepseek-ai/.+"
+      ]
+    },
+    // Fork client UI plugin: same shape as the upstream packages/client
+    // UI packages whose specs are .tsx (entry + project globs).
+    "packages/daypaw/ui-inbox": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
       ]
     },
     "packages/client/modules": {

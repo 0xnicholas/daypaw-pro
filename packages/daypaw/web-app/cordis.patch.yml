@@ -185,8 +185,13 @@
     - id: ui-layout
       name: '@deepseek-ai/dsh-client-ui-layout'
 
-    - id: ui-sidebar
-      name: '@deepseek-ai/dsh-client-ui-sidebar'
+    # daypaw shell IA skeleton (inbox workbench): replaces the upstream
+    # ui-sidebar row wholesale — the fork nav occupies 'sidebar', and shadows
+    # ui-conversation's 'conversation'/'details' placeholder occupants at
+    # priority -1 (their declared seats stay live for the dormant ecosystem;
+    # ui-workspace/ui-settings seats pend silently with the upstream shell).
+    - id: ui-inbox
+      name: '@daypaw/ui-inbox'
 
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'

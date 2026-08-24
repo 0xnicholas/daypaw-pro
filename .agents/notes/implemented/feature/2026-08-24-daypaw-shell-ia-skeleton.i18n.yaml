@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-daypaw-shell-ia-skeleton.md
+2026-08-24-daypaw-shell-ia-skeleton.md: 7e4527eee3bafddd24304c9b64f64236bb73454c
+2026-08-24-daypaw-shell-ia-skeleton.zh.md: 27906778613352d7743cc806edfde348c8eba4ca

@@ -1,0 +1,74 @@
+/**
+ * Workspace switch (the 'conversation' occupant, priority -1 shadowing
+ * ui-conversation's placeholder): the middle column container for the current
+ * selection — an inbox group's task container (empty state until the board
+ * tickets wire data), the Agents placeholder page, or the 设置 placeholder
+ * page.
+ */
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+// Type-only: pulls ui-layout's SlotMap merge (the 'conversation' entry) in so
+// PropsRuntime<'conversation'> resolves.
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { InboxGroup, InboxSelection } from './selection.ts'
+import type { InboxKey } from './locales.ts'
+import css from './WorkspaceSwitch.module.css'
+
+/** Registration-side business face for the workspace column. */
+export interface WorkspaceSwitchInjected {
+  hooks: {
+    /** Shared workbench selection, bound by the renderer as useSelection. */
+    selection: SnapshotStore<InboxSelection>
+  }
+}
+
+/** Full component props: runtime share + injected face + locale seat. */
+export type WorkspaceSwitchProps =
+  PropsRuntime<'conversation'>
+  & InjectFace<WorkspaceSwitchInjected>
+  & PropsLocale<'inbox'>
+
+/** Per-group container title keys. */
+const GROUP_TITLE: Record<InboxGroup, InboxKey> = {
+  pending: 'nav.group.pending',
+  running: 'nav.group.running',
+  done: 'nav.group.done',
+}
+
+/** Per-group empty-state copy keys. */
+const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
+  pending: 'workspace.empty.pending',
+  running: 'workspace.empty.running',
+  done: 'workspace.empty.done',
+}
+
+/**
+ * Render the middle column for the current selection.
+ * @param props - composed slot props (runtime share + injected face + locale seat).
+ * @returns the workspace element tree.
+ */
+export function WorkspaceSwitch({ useSelection, t }: WorkspaceSwitchProps) {
+  const selection = useSelection(s => s)
+  if (selection.kind === 'agents') {
+    return (
+      <div className={css.root}>
+        <header className={css.header}><h1 className={css.title}>{t('nav.agents')}</h1></header>
+        <div className={css.empty}>{t('workspace.agents.placeholder')}</div>
+      </div>
+    )
+  }
+  if (selection.kind === 'settings') {
+    return (
+      <div className={css.root}>
+        <header className={css.header}><h1 className={css.title}>{t('nav.settings')}</h1></header>
+        <div className={css.empty}>{t('workspace.settings.placeholder')}</div>
+      </div>
+    )
+  }
+  return (
+    <div className={css.root}>
+      <header className={css.header}><h1 className={css.title}>{t(GROUP_TITLE[selection.group])}</h1></header>
+      <div className={css.empty}>{t(GROUP_EMPTY[selection.group])}</div>
+    </div>
+  )
+}
