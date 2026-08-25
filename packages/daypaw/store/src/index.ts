@@ -44,6 +44,13 @@ export type RunStatusDb = 'running' | 'waiting' | 'done' | 'failed' | 'cancelled
 /** Journal step status recorded on `journal.status` (spec §3.2). */
 export type JournalStatusDb = 'started' | 'completed' | 'failed'
 
+/**
+ * Journal row kind recorded on `journal.kind` (spec §3.2): `step` is an
+ * idempotent execution unit; `segment` is a steer segment boundary fact
+ * (issue #53), recorded complete at insert and never re-executed.
+ */
+export type JournalKindDb = 'step' | 'segment'
+
 /** Promise state recorded on `promises.state` (spec §3.3; aligns with the Resonate durable promise state machine). */
 export type PromiseStateDb = 'pending' | 'resolved' | 'rejected' | 'timedout' | 'cancelled'
 
@@ -79,7 +86,7 @@ export interface JournalRow {
   readonly step_key: string
   readonly name: string
   readonly occurrence: number
-  readonly kind: 'step'
+  readonly kind: JournalKindDb
   readonly status: JournalStatusDb
   readonly value_json: string | null
   readonly error_json: string | null

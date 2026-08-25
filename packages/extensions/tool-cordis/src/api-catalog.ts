@@ -589,6 +589,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row.' }],
         returns: 'whether this call won the settlement.',
       },
+      {
+        signature: '@Remote(\'steer\') async steer(runId: string, input: Json): Promise<number>',
+        description: 'Append a steer segment to an unfinished steerable run (issue #53): durable before delivery — a body parked in this process wakes immediately, elsewhere the parked poll or the next boot scan observes the segment row. Served to the browser as the Remote endpoint `durable/steer` (the `listDefinitions` precedent). See DurableEngineCore.steer.',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'input', description: 'JSON-serializable follow-up input; validated by the SDK face.' }],
+        returns: 'the assigned segment sequence (1-based).',
+      },
     ],
   },
   {
@@ -3088,7 +3094,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineDefinition',
-    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
+    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n    readonly steerable?: boolean;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
   },
   {
     name: 'EngineRunHandle',
@@ -3104,7 +3110,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineStepCtx',
-    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n    waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>;\n}',
+    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n    waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>;\n    steers(): readonly unknown[];\n    awaitSteer(known: number): Promise<void>;\n}',
   },
   {
     name: 'EngineStepOptions',
@@ -3323,12 +3329,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type JobStatus = \'running\' | \'stopping\' | \'completed\' | \'killed\' | \'failed\';',
   },
   {
+    name: 'JournalKindDb',
+    declaration: 'export type JournalKindDb = \'step\' | \'segment\';',
+  },
+  {
     name: 'JournalRow',
-    declaration: 'export interface JournalRow {\n    readonly run_id: string;\n    readonly step_key: string;\n    readonly name: string;\n    readonly occurrence: number;\n    readonly kind: \'step\';\n    readonly status: JournalStatusDb;\n    readonly value_json: string | null;\n    readonly error_json: string | null;\n    readonly attempt: number;\n    readonly session_id: string | null;\n    readonly session_seq: number | null;\n    readonly started_at: number;\n    readonly finished_at: number | null;\n}',
+    declaration: 'export interface JournalRow {\n    readonly run_id: string;\n    readonly step_key: string;\n    readonly name: string;\n    readonly occurrence: number;\n    readonly kind: JournalKindDb;\n    readonly status: JournalStatusDb;\n    readonly value_json: string | null;\n    readonly error_json: string | null;\n    readonly attempt: number;\n    readonly session_id: string | null;\n    readonly session_seq: number | null;\n    readonly started_at: number;\n    readonly finished_at: number | null;\n}',
   },
   {
     name: 'JournalStatusDb',
     declaration: 'export type JournalStatusDb = \'started\' | \'completed\' | \'failed\';',
+  },
+  {
+    name: 'Json',
+    declaration: 'export type Json = null | boolean | number | string | Json[] | {\n    [key: string]: Json;\n};',
   },
   {
     name: 'JsonSchemaNode',

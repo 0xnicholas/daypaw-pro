@@ -6,6 +6,9 @@
  * snapshot suite diffs the persisted session log — the model-visible surface
  * (prompt section, `submit` schema, input message, and after a kill the
  * synthetic resume steer).
+ * `--mode steer` drives the steerable definition directly (issue #53): a
+ * submit-less turn parks the run instead of failing it, and a `--steer`
+ * follow-up segment advances it under the same runId.
  */
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
@@ -30,8 +33,11 @@ const dbPath = argOf('db')
 const sessionsRoot = argOf('sessions')
 const overridePath = argOf('override')
 const runId = argOf('run-id') ?? 'agent-demo-1'
-if (dbPath === undefined || sessionsRoot === undefined || overridePath === undefined) {
-  console.error('usage: agent-main.ts --db <ledger.db> --sessions <dir> --override <replay.override.json> [--run-id <id>] [--hold-open]')
+const mode = argOf('mode')
+const steerJson = argOf('steer')
+if (dbPath === undefined || sessionsRoot === undefined || overridePath === undefined
+  || (mode !== undefined && mode !== 'steer') || (steerJson !== undefined && mode !== 'steer')) {
+  console.error('usage: agent-main.ts --db <ledger.db> --sessions <dir> --override <replay.override.json> [--run-id <id>] [--hold-open] [--mode steer [--steer <json>]]')
   process.exit(2)
 }
 // Long-lived-host posture: a ref'd heartbeat keeps the event loop alive while
@@ -49,6 +55,21 @@ const reviewer = defineAgent({
   tools: [],
   model: { provider: 'replay', model: 'replay-1', maxTokens: 4096 },
   maxTurns: 4,
+})
+
+// Steer-mode definition (issue #53), kept separate from `reviewer` so the
+// pinned single-segment scenarios keep their fail-on-submit-less-turn
+// semantics.
+const steerableReviewer = defineAgent({
+  name: 'steerable-reviewer',
+  version: '1',
+  input: z.object({ code: z.string() }),
+  output: z.object({ score: z.number() }),
+  prompt: [{ name: 'reviewer-persona', order: 10, text: 'You review code iteratively and report a numeric score from 0 to 100 once the review is complete.' }],
+  tools: [],
+  model: { provider: 'replay', model: 'replay-1', maxTokens: 4096 },
+  maxTurns: 4,
+  steerable: true,
 })
 
 const reviewFlow = defineWorkflow({
@@ -76,10 +97,21 @@ await ctx.plugin(JsonlSessionPersistence, { root: sessionsRoot })
 // back to the primary-ordering default (llm-replay's override-only contract).
 const replay = installLlmReplay(ctx, { file: `${overridePath}.session.jsonl`, overrideFile: overridePath })
 try {
-  await bindAgent(reviewer, ctx)
-  const workflow = await bind(reviewFlow, ctx.durable)
-  const handle = await workflow.run({ code: 'export const answer = 42' }, { runId })
-  console.log(JSON.stringify(await handle.result))
+  if (mode === 'steer') {
+    // Steer mode: drive the steerable agent directly (no workflow wrapper), so
+    // the host itself holds the run handle. Start-or-attach under --run-id —
+    // on a restart the boot scan revives the parked run first, then a --steer
+    // segment wakes it.
+    const agent = await bindAgent(steerableReviewer, ctx)
+    const handle = await agent.run({ code: 'export const answer = 42' }, { runId })
+    if (steerJson !== undefined) await handle.steer(JSON.parse(steerJson) as { code: string })
+    console.log(JSON.stringify(await handle.result))
+  } else {
+    await bindAgent(reviewer, ctx)
+    const workflow = await bind(reviewFlow, ctx.durable)
+    const handle = await workflow.run({ code: 'export const answer = 42' }, { runId })
+    console.log(JSON.stringify(await handle.result))
+  }
   replay.assertConsumed()
 } finally {
   if (keepAlive !== undefined) clearInterval(keepAlive)

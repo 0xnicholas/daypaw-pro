@@ -9,7 +9,7 @@ daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——sch
 单一独立 SQLite 库文件（WAL、`busy_timeout`、`foreign_keys ON`），属主独占创建，打开即迁移：
 
 - `runs` — 每个 durable run 一行：定义身份、输入、状态、认领、父子链、类型化输出/失败。
-- `journal` — 每个幂等 step 一行（`(run_id, step_key)` 主键即去重闸）：名字、occurrence、状态、已记录结果或失败。
+- `journal` — 每个幂等 step 一行（`(run_id, step_key)` 主键即去重闸）或每个 steer 段边界一行（`kind = 'segment'`，写入即完成态）：名字、occurrence、状态、已记录结果或失败。
 - `promises` — 每个 durable gate 一行（`(run_id, gate)` 主键）：五态结局、payload、JSON Schema 渲染投影、期限、resolve 来源。
 
 ## API

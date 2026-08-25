@@ -857,3 +857,208 @@ describe('fault injection at gate append points', () => {
       .toThrow('ENGINE_DISPOSED')
   })
 })
+
+describe('fault injection at steer append points (issue #53)', () => {
+  /** Steerable definition helper: the engine gate is the `steerable` flag, not the kind. */
+  function steerableDef(body: (ctx: EngineStepCtx) => Promise<unknown>): EngineDefinition {
+    return { kind: 'workflow', name: 'steerable', version: '1', steerable: true, body }
+  }
+
+  /** Start a run parked for its first steer; resolves once the body reached the park. */
+  async function startParked(
+    f: Fixture,
+    runId: string,
+    body: (ctx: EngineStepCtx) => Promise<unknown> = async (run) => { await run.awaitSteer(0); return 'steered' },
+  ) {
+    const core = f.makeCore()
+    const def = steerableDef(body)
+    core.register(def)
+    const handle = core.run(def, null, { runId })
+    await new Promise(resolve => setTimeout(resolve, 15))
+    return { core, handle }
+  }
+
+  it('propagates a segment-listing failure out of steer()', async () => {
+    const f = await fixture()
+    const { core } = await startParked(f, 'sf-1')
+    f.faults.selectJournalSegments = new Error('inject: selectJournalSegments')
+    expect(() =>{  core.steer('sf-1', 'x') }).toThrow('inject: selectJournalSegments')
+    delete f.faults.selectJournalSegments
+    expect(core.steer('sf-1', 'x')).toBe(1)
+  })
+
+  it('propagates a segment-insert failure out of steer() and records nothing', async () => {
+    const f = await fixture()
+    const { core } = await startParked(f, 'sf-2')
+    f.faults.insertJournalSegment = new Error('inject: insertJournalSegment')
+    expect(() =>{  core.steer('sf-2', 'x') }).toThrow('inject: insertJournalSegment')
+    expect(f.store.selectJournalSegments('sf-2')).toEqual([])
+    delete f.faults.insertJournalSegment
+  })
+
+  it('fails the run when the segment listing faults at awaitSteer entry', async () => {
+    const f = await fixture()
+    f.faults.selectJournalSegments = new Error('inject: selectJournalSegments')
+    const { handle } = await startParked(f, 'sf-3')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: selectJournalSegments'
+    })
+    delete f.faults.selectJournalSegments
+  })
+
+  it('fails the parked wait when the poll tick finds the run row vanished', async () => {
+    const f = await fixture()
+    const { handle } = await startParked(f, 'sf-4')
+    f.overrides.selectRun = () => undefined
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('ledger lost run sf-4')
+    })
+    delete f.overrides.selectRun
+  })
+
+  it('fails the parked wait when the poll tick finds the run failed elsewhere', async () => {
+    const f = await fixture()
+    const { handle } = await startParked(f, 'sf-5')
+    f.store.finalizeRun('sf-5', {
+      status: 'failed', outputJson: undefined, errorJson: JSON.stringify({ message: 'elsewhere' }),
+      cancelCause: undefined, finishedAt: Date.now(),
+    })
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('terminal state failed while parked for steer')
+    })
+  })
+
+  it('cancels the parked wait when the poll tick finds the run cancelled elsewhere', async () => {
+    const f = await fixture()
+    const { handle } = await startParked(f, 'sf-6')
+    f.store.finalizeRun('sf-6', {
+      status: 'cancelled', outputJson: undefined, errorJson: undefined,
+      cancelCause: undefined, finishedAt: Date.now(),
+    })
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const run = error as { code?: string; detail?: unknown }
+      return run.code === 'RUN_CANCELLED' && run.detail === undefined
+    })
+  })
+
+  it('fails the parked wait when the poll-tick segment listing faults', async () => {
+    const f = await fixture()
+    const { handle } = await startParked(f, 'sf-7')
+    f.faults.selectJournalSegments = new Error('inject: selectJournalSegments')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: selectJournalSegments'
+    })
+    delete f.faults.selectJournalSegments
+  })
+
+  it('rejects a second concurrent park on one run', async () => {
+    const f = await fixture()
+    const { handle } = await startParked(f, 'sf-8', async (run) => {
+      await Promise.all([run.awaitSteer(0), run.awaitSteer(0)])
+      return 'unreachable'
+    })
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('already parks for steer')
+    })
+  })
+
+  it('does not wake a park whose known count the new segment does not exceed', async () => {
+    const f = await fixture()
+    const wakes: number[] = []
+    const { core, handle } = await startParked(f, 'sf-9', async (run) => {
+      await run.awaitSteer(0)
+      wakes.push(1)
+      // Skip ahead: park for a third segment while only one exists.
+      await run.awaitSteer(2)
+      wakes.push(2)
+      return run.steers().length
+    })
+    expect(core.steer('sf-9', 'one')).toBe(1)
+    await new Promise(resolve => setTimeout(resolve, 30))
+    expect(wakes).toEqual([1])
+    expect(core.steer('sf-9', 'two')).toBe(2)
+    await new Promise(resolve => setTimeout(resolve, 30))
+    expect(wakes).toEqual([1])
+    expect(core.steer('sf-9', 'three')).toBe(3)
+    await expect(handle.result).resolves.toBe(3)
+  })
+
+  it('fails an abandoned parked wait when the body settles without awaiting it', async () => {
+    const f = await fixture()
+    const { handle } = await startParked(f, 'sf-10', async (run) => {
+      void run.awaitSteer(0)
+      return 'done-anyway'
+    })
+    await expect(handle.result).resolves.toBe('done-anyway')
+  })
+
+  it('revives a run that died parked with an unconsumed segment through the boot scan', async () => {
+    const f = await fixture()
+    const first = f.makeCore()
+    const deliveries: unknown[][] = []
+    const makeDef = () => {
+      const mine: unknown[] = []
+      deliveries.push(mine)
+      return steerableDef(async (run) => {
+        let seen = 0
+        for (;;) {
+          const segments = run.steers()
+          while (seen < segments.length) {
+            mine.push(segments[seen])
+            seen += 1
+            if (seen === 2) return seen
+          }
+          await run.awaitSteer(seen)
+        }
+      })
+    }
+    const firstDef = makeDef()
+    first.register(firstDef)
+    const handle = first.run(firstDef, null, { runId: 'sf-11' })
+    expect(first.steer('sf-11', 'one')).toBe(1)
+    await new Promise(resolve => setTimeout(resolve, 30))
+    // Crash while parked for the second segment; the steer was recorded
+    // before the crash, so the record is the re-drive's input.
+    expect(first.steer('sf-11', 'two')).toBe(2)
+    first.dispose()
+    await expect(handle.result).rejects.toThrow('ENGINE_DISPOSED')
+
+    const second = f.makeCore()
+    second.register(makeDef())
+    second.bootScan()
+    await second.idle()
+    expect(f.store.selectRun('sf-11')?.status).toBe('done')
+    expect(deliveries[1]).toEqual(['one', 'two'])
+  })
+
+  it('records a steer on a gate-waiting run without waking the gate', async () => {
+    const f = await fixture()
+    const core = f.makeCore()
+    const def = steerableDef(async (run) => {
+      const resolution = await run.waitFor('approval')
+      return { resolution, segments: run.steers() }
+    })
+    core.register(def)
+    const handle = core.run(def, null, { runId: 'sf-12' })
+    await new Promise(resolve => setTimeout(resolve, 15))
+    expect(core.steer('sf-12', 'while-waiting')).toBe(1)
+    expect(f.store.selectRun('sf-12')?.status).toBe('waiting')
+    expect(core.resolveGate('sf-12', 'approval', { state: 'resolved', value: 'yes' }, 'sdk')).toBe(true)
+    await expect(handle.result).resolves.toEqual({
+      resolution: { state: 'resolved', value: 'yes' },
+      segments: ['while-waiting'],
+    })
+  })
+
+  it('rejects steer after disposal', async () => {
+    const f = await fixture()
+    const core = f.makeCore()
+    core.dispose()
+    expect(() =>{  core.steer('sf-13', null) }).toThrow('ENGINE_DISPOSED')
+  })
+})

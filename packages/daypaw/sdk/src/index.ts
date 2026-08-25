@@ -128,7 +128,7 @@ export interface BoundWorkflow<I extends ZodType = ZodType, O extends ZodType = 
    * @param opts - run identity, cancellation, and metadata.
    * @returns the typed run handle.
    */
-  run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>>>
+  run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>, Infer<I>>>
 }
 
 /** Wrap the engine's step ctx with the SDK's `ctx.agent` primitive. */
@@ -137,6 +137,8 @@ function enrichStepCtx(ctx: EngineStepCtx): WorkflowCtx {
     runId: ctx.runId,
     signal: ctx.signal,
     step: (name, fn, opts) => ctx.step(name, fn, opts),
+    steers: () => ctx.steers(),
+    awaitSteer: known => ctx.awaitSteer(known),
     waitFor: (gate, opts) => ctx.waitFor(gate, {
       ...(opts?.schema === undefined ? {} : { schema: adaptGateSchema(opts.schema) }),
       ...(opts?.timeout === undefined ? {} : { timeout: opts.timeout }),

@@ -29,7 +29,7 @@ export interface WorkflowDefinition<I extends ZodType, O extends ZodType> {
   readonly name: string
   readonly version: string
   /** 幂等 start-or-attach（ADR 0003 §4；语义见 §4）。 */
-  run(input: Infer<I>, opts?: RunOptions): RunHandle<Infer<O>>
+  run(input: Infer<I>, opts?: RunOptions): RunHandle<Infer<O>, Infer<I>>
 }
 
 export declare function defineWorkflow<I extends ZodType, O extends ZodType>(
@@ -51,13 +51,15 @@ export type RunStatus =
   | { readonly state: 'failed'; readonly error: unknown }
   | { readonly state: 'cancelled'; readonly cause?: string }
 
-export interface RunHandle<T> {
+export interface RunHandle<T, I = unknown> {
   readonly id: string
   readonly definition: { readonly name: string; readonly version: string }
   /** done → resolve（output schema 校验后的类型化结果）；failed/cancelled → reject。 */
   readonly result: Promise<T>
   status(): RunStatus
   cancel(cause?: string): Promise<void>
+  /** 追问段（issue #53）：先按定义输入契约校验，落账 journal segment，run 在下一个段边界以同一 runId 消费；终态 run 与未 opt-in 定义 loud 失败。 */
+  steer(input: I): Promise<void>
   readonly meta: Record<string, unknown>
 }
 
@@ -125,6 +127,8 @@ export interface DefineAgentOptions<I extends ZodType, O extends ZodType> {
   readonly model: ModelRoute
   /** 跨复活累计的 turn 预算（唤醒前检查，超限即失败）；必填正整数。 */
   readonly maxTurns: number
+  /** steer 通道 opt-in（issue #53）：不带 submit 收尾的 turn 后 run park 而非失败，追问输入在段边界作为 user message 消费；未声明保持单段契约。 */
+  readonly steerable?: boolean
   /** 目录展示元数据（业务名 + 描述，spec 05 §5）：仅元数据，不改执行语义；声明期校验非空白，未声明时呈现层回落技术 name。 */
   readonly display?: DefinitionDisplay
 }
@@ -145,7 +149,7 @@ export declare function bindAgent<I extends ZodType, O extends ZodType>(
 
 export interface BoundAgent<I extends ZodType, O extends ZodType> {
   /** 与 workflow 面同一 run 语义：幂等 start-or-attach + 类型化 RunHandle。 */
-  run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>>>
+  run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>, Infer<I>>>
 }
 
 /** WorkflowCtx 上（bind 注入的增强 ctx；未绑定定义 loud throw）。 */
@@ -158,6 +162,8 @@ export interface WorkflowCtx {
 ```
 
 执行语义（ADR 0010 §2–§5，实现落定点）：sessionId ≡ runId；create vs resume 判别 = 持久化 session 是否存在（覆盖 insertRun 后崩溃窗口）；复活 resume 接回 + 合成续跑消息（`RESUME_MESSAGE`，英文常量，模型可见）steer 唤醒（dsh 无无内容唤醒）；submit 工具约定终止（SDK 注入，args schema = output schema，二次调用抛错，模型自然收尾）；输入 = 首条 user message（JSON text）；一个 dsh step = 一条 journal step（键 `dsh-step:<turn>:<step>`，值 = 事件切片；复活重驱动遍历同序，引擎去重返回已记录切片而非重执行，模型调用由 session resume 本身省掉）；`maxTurns` 实现为唤醒前预算检查——一次唤醒恰好跑一个 turn 到 quiescence，无需 live listener；`ctx.agent(def, input)` = 确定性子 runId 派生上的语法糖（引擎从 `(parentRunId, stepKey, occurrence)` 派生，与子 workflow 惯用式共享机制），两级各自耐久；轮内 LLM 瞬态失败归 dsh llm-retry（不改 occurrence 序），step 级失败才落 journal。运维注记：合成续跑消息与崩溃半轮的冗余失败尝试留在上下文 = defineAgent 的诚实代价。
+
+steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无 submit 时 run 经 `ctx.awaitSteer` park（零算力）而非失败；每个已落账段在段边界以 user message 投递（`agent.steer`，JSON text，形状同初始输入），一次唤醒恰好跑一个 turn 到 quiescence；`maxTurns` 在每次唤醒前检查、跨段共享。重驱动按 session log 的 `user/message` 事件序数计已投递段（排除 `RESUME_MESSAGE` 唤醒；model-visible means logged，log 即回放源），崩溃不重复投递、内容相同的追问按序数互不混淆。复活三分支：进程死期间落账的段即复活唤醒（无合成 `RESUME_MESSAGE`）；干净 parked 的 run 复活即重新 park、不消耗 turn；崩溃发生在 turn 中途仍以 `RESUME_MESSAGE` 唤醒（仅非 steerable 定义或被中断的 turn）。未声明 `steerable` 的定义语义不变：不带 submit 的 turn 使 run 失败（`ended (last turn: ...) without calling submit`），`ctx.agent` 子 run 不会挂住父 workflow。产出物不变：`output_json` 仅由终态 finalize 写入，中间段永不形成产出物。
 
 ## 2. ctx 原语面
 
@@ -184,6 +190,8 @@ export interface WorkflowCtx {
 | 重驱动遇已完成 step | 读 `value_json` 返回，不重执行 | — |
 | `ctx.waitFor`（已实现）/ `ctx.sleep`（按需落地） | `promises` 行 pending + `runs`→`waiting`/`waiting_gate`；`timers` 行 `wake_at` | `status()` = `{state:'waiting', gate}` |
 | `handle.cancel(cause)` | UPDATE `runs`→`cancelled`+`cancel_cause` → driver AbortSignal | `result` reject `RunCancelledError` |
+| `handle.steer(input)`（steerable 定义，issue #53） | INSERT `journal` `kind='segment'`（`steer:<seq>`，插入即 `completed`）→ 本进程 parked driver 直推唤醒 / 跨进程 `pollMs` 轮询兜底 | parked run 的 `status()` 保持 `{state:'running'}` |
+| steerable run 段边界消费 | 段输入作为 user message 进入同一 session（`agent.steer`），一次唤醒跑一个 turn 到 quiescence | — |
 | step 失败（v1 无 retry 面） | `journal` `failed` + `runs`→`failed`+`error_json` | `result` reject `RunFailedError` |
 | 成功收尾 | output schema 校验后写 `output_json`，`runs`→`done` | `result` resolve 类型化结果 |
 | boot 扫描复活 | claim 条件更新认领 → 重驱动（不需原调用者） | `status()` 随行变化 |
@@ -201,7 +209,7 @@ preset / composition / session / subagent seam / `session/event` ↔ 新模型�
 [ADR 0007](../adr/0007-test-strategy.md) 定调：
 
 - **崩溃/重放双层**（engine 本体，keyless）：主力 = 进程内故障注入——包装 ledger 写入层，穷举「每个 append 点前后抛异常」，配注入时钟跨「重启」推进 durable timer；断言每 effect 恰执行一次、重放不重不漏、step 去重、gate 状态机、boot 扫描。补充 = 真 SIGKILL——tsx spawn 子进程跑 run、杀掉、重启验恢复（半写路径/文件锁）；如需进上游 `processBoundTests` 单列 lane 则逐条 core-touch 登记。
-- **SDK 行为面**：跑真 engine（进程内 + 临时目录 SQLite，mock 边界仅 LLM/时钟）；五原语各配契约测试（含确定性子 runId 派生、`opts.key` 逃生口、GateResolution/RunStatus 判别联合）；tsc 类型面独立断言套件（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/issues/10)原型路径）。
+- **SDK 行为面**：跑真 engine（进程内 + 临时目录 SQLite，mock 边界仅 LLM/时钟）；五原语各配契约测试（含确定性子 runId 派生、`opts.key` 逃生口、GateResolution/RunStatus 判别联合）、steerable 多段生命周期（submit-less turn park、段边界投递、parked/死期落账/中断 turn 三种复活分支、序数去重）；tsc 类型面独立断言套件（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/issues/10)原型路径）。
 - **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader 的组合测试；canonical example（walking skeleton 宿主，`examples/daypaw-*`）拥有 keyless snapshot + with-key smoke（无 key 自跳）。
 - **invariant companion**：engine 包必须带 `src/invariant.ts`（上游 glob 约定自动接入不变量宿主，缺即 throw）。
 - **覆盖率**：per-file 100% 门（CI ci-coverage lane）。

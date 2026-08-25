@@ -29,6 +29,8 @@ node --import tsx/esm examples/daypaw-skeleton/src/agent-main.ts \
 
 [tests/agent.snapshot.ts](tests/agent.snapshot.ts) pins the model-visible surface: the persisted session log diffs against committed expected output (persona prompt section, injected `submit` schema, input message), and a second scenario SIGKILLs the host mid-turn, restarts, and pins the synthetic resume steer the revived model sees.
 
+A third scenario exercises the steer channel (issue #53) through `--mode steer`, which drives a separate steerable definition directly: [tests/sigkill.spec.ts](tests/sigkill.spec.ts) parks a run on a submit-less turn, SIGKILLs the host, and revives it from a `--steer` segment under the same runId, while the snapshot suite pins one session log carrying both the initial input and the steered follow-up.
+
 ## Model Experience
 
 The workflow demo orchestrates no model calls. The agent demo's model-visible surface is exactly what its snapshot pins; see above.

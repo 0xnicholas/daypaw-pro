@@ -48,6 +48,21 @@ export interface JournalStepInsert {
   readonly startedAt: number
 }
 
+/**
+ * Insert payload for one steer segment boundary (issue #53). A segment row
+ * is a fact, not an execution unit: it lands `completed` at insert and no
+ * re-drive ever re-executes it. Step keys derive as `steer:<seq>`; the
+ * `steer:` prefix never collides with step keys.
+ */
+export interface JournalSegmentInsert {
+  readonly runId: string
+  /** Segment sequence, 1-based in record order (segment 0 is the run input on the `runs` row). */
+  readonly seq: number
+  /** JSON-encoded steered input. */
+  readonly inputJson: string
+  readonly createdAt: number
+}
+
 /** Insert payload for a pending durable promise (gate). */
 export interface PromiseInsert {
   readonly runId: string
@@ -121,6 +136,16 @@ export interface JournalStore {
   selectJournalStep(runId: string, stepKey: string): JournalRow | undefined
   /** @param row - started-step payload; status defaults to `started`. */
   insertJournalStep(row: JournalStepInsert): void
+  /**
+   * Record one steer segment boundary, complete at insert (issue #53).
+   * @param row - segment payload; the step key derives as `steer:<seq>`.
+   */
+  insertJournalSegment(row: JournalSegmentInsert): void
+  /**
+   * @param runId - run identity.
+   * @returns the run's steer segment rows in record order.
+   */
+  selectJournalSegments(runId: string): JournalRow[]
   /**
    * Record a step's recorded-result commit (the dedup gate's write side).
    * @param runId - run identity.

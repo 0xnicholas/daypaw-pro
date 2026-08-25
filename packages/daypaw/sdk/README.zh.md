@@ -36,7 +36,7 @@ const { total } = await handle.result   // typed: { total: number }
 - `defineWorkflow(options)` —— 身份、zod 输入/输出契约、step body；返回未绑定定义。
 - `bind(def, engine)` —— 登记供执行与 boot 复活（同一定义对象重复绑定是 no-op），返回 `{ run(input, opts?) }`。
 - `DurableEngine` —— 引擎 Cordis 插件类的再导出，消费方无需直接 import vendored 的 `@daypaw/engine` 副本。
-- `RunHandle` —— `id`、`definition`、类型化 `result`（启动前校验输入，resolve 前校验输出）、`status()`（`RunStatus` 判别联合）、`cancel(cause?)`、`meta`。
+- `RunHandle` —— `id`、`definition`、类型化 `result`（启动前校验输入，resolve 前校验输出）、`status()`（`RunStatus` 判别联合）、`cancel(cause?)`、`meta`。`steer(input)` 向 run 追加一个追问输入（issue #53）：先按定义的输入契约校验，再落账为 journal segment，在该 run 的下一个段边界以同一 runId 被消费；对终态 run 与未声明 steer 的定义 loud 失败。
 - `ctx.waitFor(gate, { schema?, timeout? })` —— durable gate（HITL 挂起）：body 内挂起 run（`status()` 报 `{state:'waiting', gate}`），等待零算力、进程可退出；结局以 `GateResolution` 联合值返回（`resolved` / `rejected` / `timedout` / `cancelled`，终态非异常）。经 `ctx.durable.resolveGate(runId, gate, settlement, source)` 结算，first-wins 幂等；zod `schema` 在写入侧与投递侧双重校验。
 - 错误 —— 引擎失败以 `RunFailedError`（附 cause）浮出，取消以 `RunCancelledError`；输入/输出契约违反以 zod 错误 reject。
 
@@ -73,9 +73,10 @@ export async function compose(ctx: Context) {
 }
 ```
 
-- `defineAgent(options)` —— 声明式 spec：身份、zod 契约、静态组合行（prompt 段、dsh 工具、模型路由）、声明期校验的必填 `maxTurns` 预算，以及面向宿主目录视图的可选 `display` 元数据（`title` + `description`，声明期校验非空）。
+- `defineAgent(options)` —— 声明式 spec：身份、zod 契约、静态组合行（prompt 段、dsh 工具、模型路由）、声明期校验的必填 `maxTurns` 预算、面向宿主目录视图的可选 `display` 元数据（`title` + `description`，声明期校验非空），以及开启下述多段生命周期的可选 `steerable` 标志（默认 false）。
 - `bindAgent(def, ctx)` —— 把 spec 编译为不透明引擎 body（引擎对 `kind: 'agent'` 无感知）并登记供执行与 boot 复活；声明的 `display` 随定义落进注册表，`ctx.durable.listDefinitions()` 随身份读回。未声明时只读视图省略 `display` 键，目录呈现回落到技术 `name`、无描述行——display 仅是元数据，不进入执行语义。宿主 Context 必须挂 `ctx.durable`、dsh agent 栈（`agents`、`sessions`）与 session persistence 后端；缺任一则 bind 期 loud throw。同一定义对象重复绑定是 no-op，返回首个 face——闭包锁定首个宿主 Context。
 - 一次 agent run = 一个 dsh session，sessionId ≡ runId：首驱动 create，复活 resume 并以合成续跑消息唤醒。每个 dsh step 落一条引擎 journal step（`dsh-step:<turn>:<step>`），重驱动的 body 重放 session log 而不再调模型。
+- **多段 run**（`steerable: true`，issue #53）：不带 `submit` 收尾的 turn 让 run 以零算力 park 而非失败；每次 `handle.steer(input)` 在下一个段边界以 user message 投递（`agent.steer`，JSON text，形状与初始输入相同）——一次唤醒恰好跑一个 turn 到 quiescence。`maxTurns` 预算在每次唤醒前检查、跨段共享。重驱动按 session log 中 user message 的序数计已投递段（排除 resume 唤醒），崩溃不会重复投递，内容相同的追问也互不相同；进程不在时落账的段成为复活唤醒、无合成续跑消息，而干净 parked 的 run 复活时重新 park、不消耗 turn。未声明 steerable 的定义保持单段契约：不带 submit 的 turn 使 run 失败，`ctx.agent` 子 run 因而不会挂住父 workflow。产出物不变——`output_json` 只由终态 finalize 写入，中间段永不形成产出物。
 - `ctx.agent(def, input)` —— 确定性派生子 runId（`<parentRunId>/<stepKey>/<kind>:<name>#<occurrence>`）上的等待式子 run，父子联接记 ledger；裸子 workflow 惯用式（`ctx.step` 内 `child.run()`）共享同一派生机制。
 
 ## Model Experience
@@ -84,7 +85,7 @@ export async function compose(ctx: Context) {
 
 #### What the model sees
 
-`defineWorkflow` / `bind` 不贡献任何内容——它们为模型调用之上的编排层提供类型。`defineAgent` 拥有自己完整的模型可见面：声明的 prompt 段组装进系统提示，注入的 `submit` 工具以输出契约为参数 schema，run 输入成为首条 user message，复活的 run 由一条点名重启的合成续跑消息唤醒。
+`defineWorkflow` / `bind` 不贡献任何内容——它们为模型调用之上的编排层提供类型。`defineAgent` 拥有自己完整的模型可见面：声明的 prompt 段组装进系统提示，注入的 `submit` 工具以输出契约为参数 schema，run 输入成为首条 user message，每个被 steer 的追问作为同一 session 里的后续 user message 到达，崩溃中断的 run 由一条点名重启的合成续跑消息唤醒。
 
 #### Token effect
 
@@ -101,4 +102,5 @@ prompt 段与工具表按定义稳定，一个 run 的请求共享一个前缀�
 - **agent run 必须有 persistence 后端** —— 缺失时 `bindAgent` loud throw：耐久是 agent 面的存在理由，不是可选项。
 - **retry 面推迟** —— `StepOptions.retry` 与 `PermanentStepError` 随 retry 迁移到来；v1 首次 step 失败即 run failed。
 - **`meta` 仅调用方侧** —— 走骨不落盘；见引擎 README。
+- **首条输入落账前崩溃会以无输入对话复活** —— 窗口只有 session 物化到首条 user message append 之间的几条同步语句；复活后转为重停泊（或无段 0 的 resume 唤醒），直到下一条 steer，且 steer 只携带自己的追问。
 - **`@daypaw/engine` / `@daypaw/store` 不独立发布** —— 随本 tarball vendored（ADR 0011）；经本包 import 其面，绝不直接引用。

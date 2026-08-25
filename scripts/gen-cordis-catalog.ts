@@ -518,6 +518,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   RunLineage: 'run lineage result is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunRow: 'ledger run row contract is owned by packages/daypaw/store/README.md (fork docs, outside the upstream subsystems catalog)',
   JournalRow: 'ledger journal row contract is owned by packages/daypaw/store/README.md (fork docs, outside the upstream subsystems catalog)',
+  Json: 'steer wire input JSON type is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   BeginCommandRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   InsertReferenceRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',
   ConsumeTokenRequest: 'event-local request contract is owned by packages/client/ui-input-trigger/src/types.ts',

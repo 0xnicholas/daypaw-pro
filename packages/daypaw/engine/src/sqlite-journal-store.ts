@@ -8,7 +8,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import type { JournalRow, PromiseRow, RunRow } from '@daypaw/store'
 import type {
-  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
+  JournalSegmentInsert, JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
 } from './seams.ts'
 
 type Statement = ReturnType<DatabaseSync['prepare']>
@@ -32,6 +32,8 @@ export class SqliteJournalStore implements JournalStore {
   private readonly selectStepsByRunStmt: Statement
   private readonly selectStepStmt: Statement
   private readonly insertStepStmt: Statement
+  private readonly insertSegmentStmt: Statement
+  private readonly selectSegmentsStmt: Statement
   private readonly completeStepStmt: Statement
   private readonly failStepStmt: Statement
   private readonly setRunWaitingStmt: Statement
@@ -69,6 +71,11 @@ export class SqliteJournalStore implements JournalStore {
     this.insertStepStmt = db.prepare(`INSERT INTO journal (
       run_id, step_key, name, occurrence, started_at
     ) VALUES (?, ?, ?, ?, ?)`)
+    this.insertSegmentStmt = db.prepare(`INSERT INTO journal (
+      run_id, step_key, name, occurrence, kind, status, value_json, started_at, finished_at
+    ) VALUES (?, ?, 'steer', ?, 'segment', 'completed', ?, ?, ?)`)
+    this.selectSegmentsStmt = db.prepare(
+      "SELECT * FROM journal WHERE run_id = ? AND kind = 'segment' ORDER BY occurrence")
     this.completeStepStmt = db.prepare(`UPDATE journal
       SET status = 'completed', value_json = ?, finished_at = ?
       WHERE run_id = ? AND step_key = ?`)
@@ -151,6 +158,18 @@ export class SqliteJournalStore implements JournalStore {
   /** @inheritdoc */
   insertJournalStep(row: JournalStepInsert): void {
     this.insertStepStmt.run(row.runId, row.stepKey, row.name, row.occurrence, row.startedAt)
+  }
+
+  /** @inheritdoc */
+  insertJournalSegment(row: JournalSegmentInsert): void {
+    this.insertSegmentStmt.run(
+      row.runId, `steer:${row.seq}`, row.seq, row.inputJson, row.createdAt, row.createdAt,
+    )
+  }
+
+  /** @inheritdoc */
+  selectJournalSegments(runId: string): JournalRow[] {
+    return this.selectSegmentsStmt.all(runId) as unknown as JournalRow[]
   }
 
   /** @inheritdoc */

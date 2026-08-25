@@ -17,10 +17,12 @@ import { openLedgerDatabase } from '@daypaw/store'
 import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
 import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
+import type { Json } from './types.ts'
 import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 
 export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
+export type { Json } from './types.ts'
 export type {
   DefinitionDisplay, DefinitionView, EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
   EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope,
@@ -28,7 +30,7 @@ export type {
 } from './core.ts'
 export { SqliteJournalStore } from './sqlite-journal-store.ts'
 export type {
-  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
+  JournalSegmentInsert, JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
 } from './seams.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -169,6 +171,22 @@ export default class DurableEngine extends TypertRemoteService {
    */
   async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean> {
     return (await this.coreOrFail()).resolveGate(runId, gate, settlement, source)
+  }
+
+  /**
+   * Append a steer segment to an unfinished steerable run (issue #53):
+   * durable before delivery — a body parked in this process wakes
+   * immediately, elsewhere the parked poll or the next boot scan observes the
+   * segment row. Served to the browser as the Remote endpoint
+   * `durable/steer` (the `listDefinitions` precedent). See
+   * {@link DurableEngineCore.steer}.
+   * @param runId - run identity.
+   * @param input - JSON-serializable follow-up input; validated by the SDK face.
+   * @returns the assigned segment sequence (1-based).
+   */
+  @Remote('steer')
+  async steer(runId: string, input: Json): Promise<number> {
+    return (await this.coreOrFail()).steer(runId, input)
   }
 
   private async coreOrFail(): Promise<DurableEngineCore> {

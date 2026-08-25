@@ -11,7 +11,10 @@ import AgentRegistry from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -56,7 +59,7 @@ afterEach(async () => {
 })
 
 /** The reviewer definition reused across tests; maxTurns fits one wake plus one resume wake. */
-function reviewerDef(maxTurns = 4): AgentDefinition<
+function reviewerDef(maxTurns = 4, steerable = false): AgentDefinition<
   z.ZodObject<{ code: z.ZodString }>,
   z.ZodObject<{ answer: z.ZodNumber }>
 > {
@@ -69,7 +72,18 @@ function reviewerDef(maxTurns = 4): AgentDefinition<
     tools: [],
     model: { provider: 'mock', model: 'mock', maxTokens: 4096 },
     maxTurns,
+    ...steerable ? { steerable } : {},
   })
+}
+
+/** All model-visible user text a composition's adapter was asked about. */
+function userTexts(adapter: MockAdapter): string[] {
+  return adapter.requests
+    .flatMap(request => request.messages)
+    .filter(message => message.role === 'user')
+    .flatMap(message => message.content)
+    .filter(block => block.type === 'text')
+    .map(block => block.text)
 }
 
 /**
@@ -592,5 +606,249 @@ describe('bindAgent over a real dsh composition', () => {
     })
     await ctx.loader.await()
     await expect(bindAgent(reviewerDef(), ctx)).rejects.toThrow(/requires a session persistence backend/)
+  })
+})
+
+describe('steer channel: multi-segment agent runs (issue #53)', () => {
+  const timeout = 60_000
+
+  it('parks a steerable run after a submit-less turn and advances on steer under the same runId', { timeout }, async () => {
+    const { ctx, adapter, ledgerPath } = await loadComposition([
+      textResponse('I need more context'),
+      toolCallResponse('c2', 'submit', { answer: 7 }),
+      textResponse('done'),
+    ])
+    const bound = await bindAgent(reviewerDef(4, true), ctx)
+    const handle = await bound.run({ code: 'return 1' }, { runId: 'agent-steer-1' })
+    // Turn 1 ends without submit: the run parks instead of failing.
+    await until(() => adapter.requests.length === 1)
+    await until(() => readJournal(ledgerPath, 'agent-steer-1').some(step => step.step_key === 'dsh-step:1:1' && step.status === 'completed'))
+    expect(handle.status()).toEqual({ state: 'running' })
+
+    await handle.steer({ code: 'here is more context' })
+    await expect(handle.result).resolves.toEqual({ answer: 7 })
+    expect(adapter.requests).toHaveLength(3)
+    // The steered input reached the model as a user message in the same session.
+    const texts = userTexts(adapter)
+    expect(texts.some(text => text === JSON.stringify({ code: 'here is more context' }))).toBe(true)
+    expect(texts.some(text => text.includes('host process restarted'))).toBe(false)
+
+    const [row] = readRuns(ledgerPath)
+    expect(row?.run_id).toBe('agent-steer-1')
+    expect(row?.status).toBe('done')
+    expect(JSON.parse(row?.output_json as string)).toEqual({ answer: 7 })
+    const journal = readJournal(ledgerPath, 'agent-steer-1')
+    const segment = journal.find(step => step.kind === 'segment')
+    expect(segment?.step_key).toBe('steer:1')
+    expect(JSON.parse(segment?.value_json as string)).toEqual({ code: 'here is more context' })
+    // Both turns' dsh steps are journaled under turn-scoped dedup keys.
+    expect(journal.filter(step => step.kind === 'step').map(step => step.step_key))
+      .toEqual(['dsh-step:1:1', 'dsh-step:2:1', 'dsh-step:2:2'])
+  })
+
+  it('revives a run crashed while parked and steers it without a synthetic resume wake', { timeout }, async () => {
+    const first = await loadComposition([textResponse('no structured answer')])
+    const def = reviewerDef(4, true)
+    const bound1 = await bindAgent(def, first.ctx)
+    const crashed = await bound1.run({ code: 'x' }, { runId: 'agent-steer-park-1' })
+    crashed.result.catch(() => {})
+    // Parked: turn 1 completed without submit.
+    await until(() => first.adapter.requests.length === 1)
+    await until(async () => (await first.ctx.sessionPersistence.list())
+      .some(header => String(header.id) === 'agent-steer-park-1'))
+    await until(() => readJournal(first.ledgerPath, 'agent-steer-park-1')
+      .some(step => step.step_key === 'dsh-step:1:1' && step.status === 'completed'))
+    contexts = contexts.filter(item => item !== first.ctx)
+    await first.ctx.fiber.dispose()
+
+    const second = await loadComposition(
+      [toolCallResponse('c9', 'submit', { answer: 9 }), textResponse('done')],
+      { ledgerPath: first.ledgerPath, sessionsRoot: first.sessionsRoot },
+    )
+    const bound2 = await bindAgent(reviewerDef(4, true), second.ctx)
+    // The revival of a cleanly parked run re-parks without spending a turn;
+    // the steer below is the next wake either way (push to the parked driver,
+    // or the pending segment becomes the revival wake when it lands first).
+    const revived = await bound2.run({ code: 'x' }, { runId: 'agent-steer-park-1' })
+    await revived.steer({ code: 'follow up' })
+    await expect(revived.result).resolves.toEqual({ answer: 9 })
+    expect(second.adapter.requests).toHaveLength(2)
+    const texts = userTexts(second.adapter)
+    expect(texts.some(text => text.includes('host process restarted'))).toBe(false)
+    expect(texts.some(text => text === JSON.stringify({ code: 'follow up' }))).toBe(true)
+    // The revived session kept the first turn's history: request 2 carries both user inputs.
+    const lastRequest = second.adapter.requests[1]
+    const lastTexts = lastRequest?.messages
+      .filter(message => message.role === 'user')
+      .flatMap(message => message.content)
+      .filter(block => block.type === 'text')
+      .map(block => block.text) ?? []
+    expect(lastTexts).toContain(JSON.stringify({ code: 'x' }))
+    expect(lastTexts).toContain(JSON.stringify({ code: 'follow up' }))
+    await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
+  })
+
+  it('delivers a segment recorded while the process was dead as the revival wake', { timeout }, async () => {
+    const first = await loadComposition([textResponse('no structured answer')])
+    const bound1 = await bindAgent(reviewerDef(4, true), first.ctx)
+    const crashed = await bound1.run({ code: 'x' }, { runId: 'agent-steer-dead-1' })
+    crashed.result.catch(() => {})
+    await until(() => first.adapter.requests.length === 1)
+    await until(async () => (await first.ctx.sessionPersistence.list())
+      .some(header => String(header.id) === 'agent-steer-dead-1'))
+    contexts = contexts.filter(item => item !== first.ctx)
+    await first.ctx.fiber.dispose()
+
+    const second = await loadComposition(
+      [toolCallResponse('c9', 'submit', { answer: 5 }), textResponse('done')],
+      { ledgerPath: first.ledgerPath, sessionsRoot: first.sessionsRoot },
+    )
+    // The steer lands while no process drives the run — before registration
+    // triggers the boot scan.
+    await second.ctx.durable.steer('agent-steer-dead-1', { code: 'while dead' })
+    const bound2 = await bindAgent(reviewerDef(4, true), second.ctx)
+    const revived = await bound2.run({ code: 'x' }, { runId: 'agent-steer-dead-1' })
+    await expect(revived.result).resolves.toEqual({ answer: 5 })
+    const texts = userTexts(second.adapter)
+    expect(texts.some(text => text === JSON.stringify({ code: 'while dead' }))).toBe(true)
+    expect(texts.some(text => text.includes('host process restarted'))).toBe(false)
+    const journal = readJournal(first.ledgerPath, 'agent-steer-dead-1')
+    expect(journal.find(step => step.kind === 'segment')?.step_key).toBe('steer:1')
+    await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
+  })
+
+  it('wakes a steerable run crashed mid-turn with the synthetic resume steer', { timeout }, async () => {
+    const first = await loadComposition(['hang'])
+    const bound1 = await bindAgent(reviewerDef(4, true), first.ctx)
+    const crashed = await bound1.run({ code: 'x' }, { runId: 'agent-steer-crash-1' })
+    crashed.result.catch(() => {})
+    await until(() => first.adapter.requests.length === 1)
+    // The partial first turn must reach durable storage before the "crash".
+    await until(async () => (await first.ctx.sessionPersistence.list())
+      .some(header => String(header.id) === 'agent-steer-crash-1'))
+    contexts = contexts.filter(item => item !== first.ctx)
+    await first.ctx.fiber.dispose()
+
+    const second = await loadComposition(
+      [toolCallResponse('c9', 'submit', { answer: 3 }), textResponse('done')],
+      { ledgerPath: first.ledgerPath, sessionsRoot: first.sessionsRoot },
+    )
+    const bound2 = await bindAgent(reviewerDef(4, true), second.ctx)
+    const revived = await bound2.run({ code: 'x' }, { runId: 'agent-steer-crash-1' })
+    await expect(revived.result).resolves.toEqual({ answer: 3 })
+    // The persistence layer closed the orphaned turn with the interrupted
+    // marker, so the revival continues the turn with the resume wake instead
+    // of re-parking.
+    const texts = userTexts(second.adapter)
+    expect(texts.some(text => text.includes('host process restarted'))).toBe(true)
+    await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
+  })
+
+  it('re-parks a revival whose recorded segments are all delivered, spending no turn', { timeout }, async () => {
+    const first = await loadComposition([textResponse('need more'), textResponse('still not enough')])
+    const bound1 = await bindAgent(reviewerDef(4, true), first.ctx)
+    const crashed = await bound1.run({ code: 'x' }, { runId: 'agent-steer-repark-1' })
+    crashed.result.catch(() => {})
+    // Turn 1 parks; the steer is delivered and turn 2 parks again.
+    await until(() => first.adapter.requests.length === 1)
+    await until(() => readJournal(first.ledgerPath, 'agent-steer-repark-1')
+      .some(step => step.step_key === 'dsh-step:1:1' && step.status === 'completed'))
+    await crashed.steer({ code: 'more' })
+    await until(() => first.adapter.requests.length === 2)
+    await until(() => readJournal(first.ledgerPath, 'agent-steer-repark-1')
+      .some(step => step.step_key === 'dsh-step:2:1' && step.status === 'completed'))
+    // Turn 2's close must be durable before the "crash", or the revival would
+    // re-deliver the segment (model-visible ⟺ logged ordinal dedup).
+    await until(async () => {
+      const inspection = await first.ctx.sessionPersistence.inspect(SessionId('agent-steer-repark-1'))
+      return inspection.events.some(event => event.type === 'turn/end' && event.data.turn === 2)
+    })
+    contexts = contexts.filter(item => item !== first.ctx)
+    await first.ctx.fiber.dispose()
+
+    const second = await loadComposition([], { ledgerPath: first.ledgerPath, sessionsRoot: first.sessionsRoot })
+    const bound2 = await bindAgent(reviewerDef(4, true), second.ctx)
+    const revived = await bound2.run({ code: 'x' }, { runId: 'agent-steer-repark-1' })
+    // No new segment is recorded: the revival re-parks without a wake.
+    await revived.cancel('test-complete')
+    await expect(revived.result).rejects.toBeInstanceOf(RunCancelledError)
+    expect(second.adapter.requests).toHaveLength(0)
+    const journal = readJournal(first.ledgerPath, 'agent-steer-repark-1')
+    expect(journal.filter(step => step.kind === 'segment').map(step => step.step_key)).toEqual(['steer:1'])
+    await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
+  })
+
+  it('fails loud when a recorded segment violates the input contract', { timeout }, async () => {
+    const { ctx, adapter, ledgerPath } = await loadComposition([textResponse('need more')])
+    const bound = await bindAgent(reviewerDef(4, true), ctx)
+    const handle = await bound.run({ code: 'x' }, { runId: 'agent-steer-invalid-1' })
+    await until(() => adapter.requests.length === 1)
+    await until(() => readJournal(ledgerPath, 'agent-steer-invalid-1')
+      .some(step => step.step_key === 'dsh-step:1:1' && step.status === 'completed'))
+    // A writer holding only the engine face records a segment the agent's
+    // input contract rejects; consumption fails the run rather than feeding
+    // the model an unvalidated shape.
+    await ctx.durable.steer('agent-steer-invalid-1', { notCode: 1 })
+    await expect(handle.result).rejects.toSatisfy(
+      (error: unknown) => error instanceof RunFailedError
+        && error.cause instanceof Error
+        && /code/.test(error.cause.message),
+    )
+    const [row] = readRuns(ledgerPath)
+    expect(row?.status).toBe('failed')
+  })
+
+  it('ignores a foreign multi-block user message when deduping delivered segments', { timeout }, async () => {
+    const first = await loadComposition([textResponse('no structured answer')])
+    const bound1 = await bindAgent(reviewerDef(4, true), first.ctx)
+    const crashed = await bound1.run({ code: 'x' }, { runId: 'agent-steer-foreign-1' })
+    crashed.result.catch(() => {})
+    await until(() => first.adapter.requests.length === 1)
+    await until(async () => (await first.ctx.sessionPersistence.list())
+      .some(header => String(header.id) === 'agent-steer-foreign-1'))
+    // A writer outside the run flow records a complete turn whose user message
+    // carries two text blocks. Run-owned inputs are always single-text, so the
+    // ordinal dedup must not count it.
+    const inspection = await first.ctx.sessionPersistence.inspect(SessionId('agent-steer-foreign-1'))
+    const nextSeq = (inspection.events.at(-1)?.seq ?? 0) + 1
+    const foreignTurn: SessionEvent[] = [
+      {
+        type: 'turn/start', seq: nextSeq, time: Date.now(),
+        data: { turn: 2 },
+      },
+      {
+        type: 'user/message', seq: nextSeq + 1, time: Date.now(),
+        data: createUserMessage({
+          content: [
+            { type: 'text', text: 'foreign part 1' },
+            { type: 'text', text: 'foreign part 2' },
+          ],
+          source: { kind: 'user' },
+        }),
+        surfaceOp: 'append',
+      },
+      {
+        type: 'turn/end', seq: nextSeq + 2, time: Date.now(),
+        data: { turn: 2, reason: { kind: 'completed' } },
+      },
+    ]
+    await first.ctx.sessionPersistence.append(SessionId('agent-steer-foreign-1'), foreignTurn)
+    contexts = contexts.filter(item => item !== first.ctx)
+    await first.ctx.fiber.dispose()
+
+    const second = await loadComposition(
+      [toolCallResponse('c9', 'submit', { answer: 6 }), textResponse('done')],
+      { ledgerPath: first.ledgerPath, sessionsRoot: first.sessionsRoot },
+    )
+    // The steer lands while no process drives the run. Were the foreign
+    // message miscounted as a delivered segment, the revival would re-park
+    // and this run would never complete.
+    await second.ctx.durable.steer('agent-steer-foreign-1', { code: 'real follow up' })
+    const bound2 = await bindAgent(reviewerDef(4, true), second.ctx)
+    const revived = await bound2.run({ code: 'x' }, { runId: 'agent-steer-foreign-1' })
+    await expect(revived.result).resolves.toEqual({ answer: 6 })
+    const texts = userTexts(second.adapter)
+    expect(texts.some(text => text === JSON.stringify({ code: 'real follow up' }))).toBe(true)
+    await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
   })
 })

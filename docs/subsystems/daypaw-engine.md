@@ -24,6 +24,13 @@ interface EngineDefinition {
    * name and description. Metadata only — never execution semantics.
    */
   readonly display?: DefinitionDisplay
+  /**
+   * Steer channel opt-in (issue #53): `steer()` accepts follow-up input for
+   * runs of this definition, whose body is expected to consume recorded
+   * segments through `EngineStepCtx.steers`/`awaitSteer`. Undefined or false
+   * means steering a run of this definition fails loud.
+   */
+  readonly steerable?: boolean
   /** Opaque body thunk; the engine calls it with a step ctx and the run input. */
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
 }
@@ -134,7 +141,20 @@ async journalTimeline(runId: string): Promise<JournalRow[]>
  * @returns whether this call won the settlement.
  */
 async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>
+
+/**
+ * Append a steer segment to an unfinished steerable run (issue #53):
+ * durable before delivery — a body parked in this process wakes
+ * immediately, elsewhere the parked poll or the next boot scan observes the
+ * segment row. Served to the browser as the Remote endpoint
+ * `durable/steer` (the `listDefinitions` precedent). See
+ * {@link DurableEngineCore.steer}.
+ * @param runId - run identity.
+ * @param input - JSON-serializable follow-up input; validated by the SDK face.
+ * @returns the assigned segment sequence (1-based).
+ */
+@Remote('steer') async steer(runId: string, input: Json): Promise<number>
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:67`](../../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:69`](../../packages/daypaw/engine/src/index.ts)
 <!-- END GENERATED cordis-surface -->

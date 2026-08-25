@@ -84,7 +84,7 @@ packages/daypaw/
 - **`JournalStore` 查询面**：run 列表 + 状态过滤 + 血缘、按 run 的 journal step 时间线枚举，经 `ctx.durable` 暴露。查询知识收进引擎 seam——单一事实源，随 `SCHEMA_VERSION` 演进天然同步；否决 host 侧 SQL 散点方案。
 - **定义注册表只读视图**：agent 目录页的 core 查询（注册表为 core 私有 Map，host 够不到）。
 - **`defineAgent` 展示字段**：下限 = 业务名 + 描述，与注册表只读视图配套；集合细目落定 = `title` + `description`（spec 02 §1.2），未声明时呈现层回落到技术 `name`。
-- **steer 通道**（用户裁决）：SDK/引擎加 steer，run 从单段变多段。呈现语义：对话中追问进行中的 run 追加进同一任务的对话流，不产生新任务；产出物以 run 终态 `output_json` 为准（§4 `ui-deliverables` 的识别依据），中间段不单独形成产出物区。
+- **steer 通道**（用户裁决；[#53](https://github.com/0xnicholas/daypaw-pro/issues/53)）：SDK/引擎加 steer，run 从单段变多段。呈现语义：对话中追问进行中的 run 追加进同一任务的对话流，不产生新任务；产出物以 run 终态 `output_json` 为准（§4 `ui-deliverables` 的识别依据），中间段不单独形成产出物区。
 
 host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjections`/mux 投影**（attach 路径 `pollMs` 为现成先例）。
 

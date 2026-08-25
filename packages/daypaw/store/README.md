@@ -9,7 +9,7 @@ Shared SQLite contract for the daypaw engine ledger. This package owns the physi
 One standalone SQLite database file (WAL, `busy_timeout`, `foreign_keys ON`), created owner-only, migrated on open:
 
 - `runs` — one row per durable run: definition identity, input, status, claim, parent link, typed output/failure.
-- `journal` — one row per idempotent step (`(run_id, step_key)` primary key is the dedup gate): name, occurrence, status, recorded result or failure.
+- `journal` — one row per idempotent step (`(run_id, step_key)` primary key is the dedup gate) or per steer segment boundary (`kind = 'segment'`, recorded complete at insert): name, occurrence, status, recorded result or failure.
 - `promises` — one row per durable gate (`(run_id, gate)` primary key): five-state settlement, payload, JSON Schema rendering projection, deadline, resolution source.
 
 ## API

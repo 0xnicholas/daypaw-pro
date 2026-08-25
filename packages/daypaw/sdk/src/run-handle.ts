@@ -8,7 +8,7 @@
 
 import type { ZodType, z } from 'zod'
 import type DurableEngine from '@daypaw/engine'
-import type { EngineDefinition, EngineRunOptions } from '@daypaw/engine'
+import type { EngineDefinition, EngineRunOptions, Json } from '@daypaw/engine'
 import { currentStepScope } from '@daypaw/engine'
 
 /** zod schema → inferred TS type. */
@@ -33,7 +33,7 @@ export type RunStatus =
   | { readonly state: 'cancelled'; readonly cause?: string }
 
 /** Caller-side handle for one run. */
-export interface RunHandle<T> {
+export interface RunHandle<T, I = unknown> {
   /** Persistent run identity. */
   readonly id: string
   /** Identity of the definition this run belongs to. */
@@ -47,6 +47,14 @@ export interface RunHandle<T> {
    * @param cause - human-readable cancel cause.
    */
   cancel(cause?: string): Promise<void>
+  /**
+   * Append a follow-up input to this run (issue #53): validated against the
+   * definition's input contract, recorded as a journal segment, and consumed
+   * by the run at its next segment boundary under the same runId. Fails loud
+   * on terminal runs and on definitions that did not opt into steering.
+   * @param input - follow-up input, validated against `def.input`.
+   */
+  steer(input: I): Promise<void>
   /** Caller-side metadata passed via {@link RunOptions}. */
   readonly meta: Record<string, unknown>
 }
@@ -146,7 +154,7 @@ export async function startRun<I extends ZodType, O extends ZodType>(
   def: RunnableDef<I, O>,
   input: Infer<I>,
   opts?: RunOptions,
-): Promise<RunHandle<Infer<O>>> {
+): Promise<RunHandle<Infer<O>, Infer<I>>> {
   const parsedInput = def.input.parse(input)
   const engineOpts: EngineRunOptions = {
     ...runIdentity(def, opts),
@@ -166,6 +174,10 @@ export async function startRun<I extends ZodType, O extends ZodType>(
     result,
     status: () => handle.status(),
     cancel: cause => handle.cancel(cause),
+    // The Remote boundary constrains input to Json; the zod-validated output
+    // is statically unknown (spec 02 §2 rejects a compile-time Json
+    // constraint) and is JSON-serialized verbatim at segment insert.
+    steer: async (followUp) => { await engine.steer(handle.id, def.input.parse(followUp) as Json) },
     meta: opts?.meta ?? {},
   }
 }

@@ -15,6 +15,7 @@ const mainPath = fileURLToPath(new URL('../src/agent-main.ts', import.meta.url))
 const snapshotsDir = join(dirname(fileURLToPath(import.meta.url)), 'snapshots')
 const happyDir = join(snapshotsDir, 'agent-happy')
 const reviveDir = join(snapshotsDir, 'agent-revive')
+const steerDir = join(snapshotsDir, 'agent-steer')
 const refreshing = process.env.DSH_SNAPSHOT === 'refresh'
 
 interface Host {
@@ -176,6 +177,38 @@ describe('defineAgent compilation snapshots', () => {
       expect(log).toContain('REVIEW RESUMED')
 
       const rows = readRuns(db)
+      expect(rows.every(row => row.status === 'done')).toBe(true)
+    } finally {
+      await cleanup()
+    }
+  }, 60_000)
+
+  it('pins the multi-segment model-visible surface of a steered run', async () => {
+    const { db, sessions, cleanup } = await stage()
+    try {
+      // The steer lands right after start; the run consumes the segment at the
+      // segment boundary — after turn 1 quiesces without submit.
+      const host = spawnHost([
+        '--db', db, '--sessions', sessions,
+        '--override', join(steerDir, 'replay.override.json'),
+        '--run-id', 'agent-steer-1',
+        '--mode', 'steer',
+        '--steer', '{"code":"export const extra = 1"}',
+      ])
+      const { code } = await host.exit
+      expect(code).toBe(0)
+      expect(host.stdout).toBe('{"score":63}\n')
+
+      // One session log carries both user messages: the initial input and the
+      // steered follow-up, with no synthetic resume steer in between.
+      const log = await expectSessionLog(sessions, join(steerDir, 'session.expected.jsonl'))
+      expect(log).toContain('You review code iteratively and report a numeric score from 0 to 100 once the review is complete.')
+      expect(log).toContain('export const answer = 42')
+      expect(log).toContain('export const extra = 1')
+      expect(log).not.toContain('The host process restarted')
+
+      const rows = readRuns(db)
+      expect(rows.map(row => row.run_id)).toEqual(['agent-steer-1'])
       expect(rows.every(row => row.status === 'done')).toBe(true)
     } finally {
       await cleanup()

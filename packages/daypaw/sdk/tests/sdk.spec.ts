@@ -2,6 +2,7 @@ import { afterEach, describe, expect, expectTypeOf, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { Context } from '@deepseek-ai/cordis'
 import DurableEngine from '@daypaw/engine'
 import { bind, defineWorkflow } from '@daypaw/sdk'
@@ -66,7 +67,7 @@ describe('defineWorkflow + bind', () => {
     const engine = await bootEngine(await tmpPath('daypaw-sdk-happy-'))
     const workflow = await bind(counterWorkflow, engine)
     const handle = await workflow.run({ seed: 40 })
-    expectTypeOf(handle).toEqualTypeOf<RunHandle<{ total: number }>>()
+    expectTypeOf(handle).toEqualTypeOf<RunHandle<{ total: number }, { seed: number }>>()
     expectTypeOf(handle.result).toEqualTypeOf<Promise<{ total: number }>>()
     expectTypeOf(handle.status().state).toEqualTypeOf<RunStatus['state']>()
     await expect(handle.result).resolves.toEqual({ total: 42 })
@@ -258,6 +259,65 @@ describe('defineWorkflow + bind', () => {
       if (!(error instanceof Error) || error.name !== 'RunFailedError') return false
       return (error as { cause?: { message?: string } }).cause?.message === 'attach-boom'
     })
+  })
+
+  it('steer validates the input contract first, then hits the engine loud failure for non-steerable runs', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-steer-'))
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const held = defineWorkflow({
+      name: 'held-flow',
+      version: '1',
+      input: z.object({ seed: z.number() }),
+      output: z.object({ total: z.number() }),
+      body: async (ctx, input) => {
+        await ctx.step('hold', async () => { await gate; return input.seed })
+        return { total: input.seed }
+      },
+    })
+    const workflow = await bind(held, engine)
+    const handle = await workflow.run({ seed: 1 }, { runId: 'sdk-steer-1' })
+    await expect(handle.steer({ seed: 'nope' } as unknown as { seed: number })).rejects.toThrow()
+    await expect(handle.steer({ seed: 2 })).rejects.toThrow(/not steerable/)
+    // A rejected steer never disturbs the run itself.
+    release()
+    await expect(handle.result).resolves.toEqual({ total: 1 })
+  })
+
+  it('exposes steer segment reads to a workflow body (steers/awaitSteer passthrough)', async () => {
+    const path = await tmpPath('daypaw-sdk-steerread-')
+    const engine = await bootEngine(path)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const reader = defineWorkflow({
+      name: 'steer-reader',
+      version: '1',
+      input: z.object({}),
+      output: z.object({ segments: z.number() }),
+      body: async (ctx) => {
+        await ctx.step('hold', async () => { await gate; return null })
+        // The segment was recorded during the hold: the wait never parks.
+        await ctx.awaitSteer(0)
+        return { segments: ctx.steers().length }
+      },
+    })
+    const workflow = await bind(reader, engine)
+    const handle = await workflow.run({}, { runId: 'sdk-steerread-1' })
+    await until(() => {
+      const db = new DatabaseSync(path, { readOnly: true })
+      try {
+        return db.prepare("SELECT 1 FROM journal WHERE run_id = ? AND step_key = 'hold#0'").get('sdk-steerread-1') !== undefined
+      } finally {
+        db.close()
+      }
+    })
+    // A foreign writer's segment row (workflows declare no steerable face).
+    const poker = new DatabaseSync(path)
+    poker.exec(`INSERT INTO journal (run_id, step_key, name, occurrence, kind, status, value_json, started_at, finished_at)
+      VALUES ('sdk-steerread-1', 'steer:1', 'steer', 1, 'segment', 'completed', '"foreign"', 0, 0)`)
+    poker.close()
+    release()
+    await expect(handle.result).resolves.toEqual({ segments: 1 })
   })
 })
 

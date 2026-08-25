@@ -131,6 +131,23 @@ export interface EngineStepCtx {
    * @returns the terminal gate outcome as a value.
    */
   waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
+  /**
+   * Read every recorded steer segment input in record order (issue #53).
+   * Segment 0 is the run input on the `runs` row and is not listed; segment
+   * `i` of this list is journal row `steer:<i + 1>`. A plain read — a
+   * re-driven body re-reads all segments, so consumption dedup across drives
+   * is the body's business (the SDK agent body dedups via the session log).
+   * @returns the recorded segment inputs, oldest first.
+   */
+  steers(): readonly unknown[]
+  /**
+   * Park until a segment beyond `known` is recorded, the driver aborts
+   * (cancellation / disposal), or the run row leaves an unfinished state
+   * under another writer. Returns immediately when `steers()` already holds
+   * more than `known` entries, so the check-then-wait pair cannot race.
+   * @param known - count of segments the body already consumed.
+   */
+  awaitSteer(known: number): Promise<void>
 }
 
 /**
@@ -179,6 +196,13 @@ export interface EngineDefinition {
    * name and description. Metadata only — never execution semantics.
    */
   readonly display?: DefinitionDisplay
+  /**
+   * Steer channel opt-in (issue #53): `steer()` accepts follow-up input for
+   * runs of this definition, whose body is expected to consume recorded
+   * segments through `EngineStepCtx.steers`/`awaitSteer`. Undefined or false
+   * means steering a run of this definition fails loud.
+   */
+  readonly steerable?: boolean
   /** Opaque body thunk; the engine calls it with a step ctx and the run input. */
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
 }
@@ -256,6 +280,16 @@ interface GateWaiterEntry {
   fail(error: unknown): void
 }
 
+/** One in-process parked steer wait, keyed by `runId`. */
+interface SteerWaiterEntry {
+  /** Segments the body already consumed; wake only when the recorded count exceeds it. */
+  readonly known: number
+  /** Wake the parked body. */
+  deliver(): void
+  /** Reject the body's wait (cancellation, engine disposal, ledger loss). */
+  fail(error: unknown): void
+}
+
 function gateWaiterKey(runId: string, gate: string): string {
   return `${runId}\u0000${gate}`
 }
@@ -284,6 +318,7 @@ export class DurableEngineCore {
   private readonly drivers = new Map<string, DriverEntry>()
   private readonly polls = new Map<string, PollEntry>()
   private readonly gateWaiters = new Map<string, GateWaiterEntry>()
+  private readonly steerWaiters = new Map<string, SteerWaiterEntry>()
   private disposed = false
 
   /**
@@ -380,6 +415,36 @@ export class DurableEngineCore {
     })
     if (waiter !== undefined) this.deliverRecordedResolution(runId, gate, waiter)
     return won
+  }
+
+  /**
+   * Append a steer segment to an unfinished steerable run (issue #53): the
+   * segment row is recorded first (durable before delivery), then a body
+   * parked in this process wakes immediately; elsewhere the parked poll or
+   * the next boot scan observes the row. A parked run stays `running` — a
+   * steer never resolves a gate nor wakes a `waiting` run early.
+   * @param runId - run identity.
+   * @param input - JSON-serializable follow-up input; validated by the SDK face.
+   * @returns the assigned segment sequence (1-based).
+   */
+  steer(runId: string, input: unknown): number {
+    this.assertNotDisposed()
+    const row = this.store.selectRun(runId)
+    if (row === undefined) throw new Error(`durable engine: steer targets unknown run ${runId}`)
+    if (isTerminal(row.status)) {
+      throw new Error(`durable engine: steer targets terminal run ${runId} (${row.status})`)
+    }
+    const def = this.definitions.get(definitionKey(row.def_kind, row.def_name, row.def_version))
+    if (def !== undefined && def.steerable !== true) {
+      throw new Error(
+        `durable engine: run ${runId} belongs to ${row.def_kind}/${row.def_name}/${row.def_version}, which is not steerable`,
+      )
+    }
+    const seq = this.store.selectJournalSegments(runId).length + 1
+    this.store.insertJournalSegment({ runId, seq, inputJson: JSON.stringify(input), createdAt: Date.now() })
+    const waiter = this.steerWaiters.get(runId)
+    if (waiter !== undefined && seq > waiter.known) waiter.deliver()
+    return seq
   }
 
   /**
@@ -608,6 +673,10 @@ export class DurableEngineCore {
           new Error(`run ${runId} settled while a gate wait was still pending`)))
       }
     }
+    // A body that died mid-park (or returned with a steer wait still pending)
+    // leaves its waiter registered; fail it so no poll outlives the driver.
+    this.steerWaiters.get(runId)?.fail(new EngineRunError('RUN_FAILED', runId,
+      new Error(`run ${runId} settled while a steer wait was still pending`)))
   }
 
   private stepCtxFor(entry: DriverEntry, signal: AbortSignal): EngineStepCtx {
@@ -693,6 +762,13 @@ export class DurableEngineCore {
         }
         this.store.setRunWaiting(runId, gate, Date.now())
         return this.suspendOnGate(entry, signal, gate, schema, timeoutAt) as Promise<GateResolution<T>>
+      },
+      steers: (): readonly unknown[] =>
+        this.store.selectJournalSegments(runId).map(row => JSON.parse(row.value_json ?? 'null') as unknown),
+      awaitSteer: (known: number): Promise<void> => {
+        assertDrivable()
+        if (this.store.selectJournalSegments(runId).length > known) return Promise.resolve()
+        return this.suspendOnSteer(entry, signal, known)
       },
     }
   }
@@ -791,6 +867,85 @@ export class DurableEngineCore {
       }, timeoutAt - Date.now())
     }
     this.gateWaiters.set(key, waiter)
+    return waiting
+  }
+
+  /**
+   * Park the driver until a steer segment beyond `known` is recorded: wake on
+   * the first of a same-process steer push, the cross-process poll fallback,
+   * or driver abort (cancellation / disposal). The poll also observes a row
+   * settled by another writer, so a cross-process cancel cannot strand the
+   * wait. Mirrors {@link suspendOnGate} minus schema and timeout — a parked
+   * steer wait has neither.
+   * @param entry - the driver parking.
+   * @param signal - driver abort signal.
+   * @param known - count of segments the body already consumed.
+   */
+  private suspendOnSteer(entry: DriverEntry, signal: AbortSignal, known: number): Promise<void> {
+    const runId = entry.handle.id
+    if (this.steerWaiters.has(runId)) {
+      throw new Error(`durable engine: run ${runId} already parks for steer in this process`)
+    }
+    let deliver!: () => void
+    let fail!: (error: unknown) => void
+    const waiting = new Promise<void>((resolve, reject) => {
+      deliver = resolve
+      fail = reject
+    })
+    // A body that abandons its wait (floating call, or death by a sibling
+    // branch) holds no consumer; mark handled so the abandonment rejection
+    // never crashes the process. Real awaiters still receive it.
+    waiting.catch(() => {})
+    // Delivery is idempotent, so repeated deliver/fail after the first
+    // outcome is a no-op; cleanup is idempotent too.
+    const waiter: SteerWaiterEntry = {
+      known,
+      deliver: () => {
+        cleanup()
+        deliver()
+      },
+      fail: (error) => {
+        cleanup()
+        fail(error)
+      },
+    }
+    const cleanup = () => {
+      this.steerWaiters.delete(runId)
+      clearInterval(pollTimer)
+      signal.removeEventListener('abort', onAbort)
+    }
+    const onAbort = () => {
+      if (this.disposed) {
+        waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
+      } else {
+        waiter.fail(new EngineRunError('RUN_CANCELLED', runId))
+      }
+    }
+    const pollTimer = setInterval(() => {
+      try {
+        const row = this.store.selectRun(runId)
+        if (row === undefined) {
+          waiter.fail(new Error(`durable engine: ledger lost run ${runId}`))
+          return
+        }
+        if (row.status === 'cancelled') {
+          // Mirror assertDrivable: abort first so the driver codes the
+          // rejection RUN_CANCELLED instead of wrapping it as a failure.
+          entry.abort(row.cancel_cause ?? undefined)
+          waiter.fail(new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined))
+          return
+        }
+        if (isTerminal(row.status)) {
+          waiter.fail(new Error(`durable engine: run ${runId} reached terminal state ${row.status} while parked for steer`))
+          return
+        }
+        if (this.store.selectJournalSegments(runId).length > known) waiter.deliver()
+      } catch (error) {
+        waiter.fail(error)
+      }
+    }, this.options.pollMs)
+    signal.addEventListener('abort', onAbort, { once: true })
+    this.steerWaiters.set(runId, waiter)
     return waiting
   }
 

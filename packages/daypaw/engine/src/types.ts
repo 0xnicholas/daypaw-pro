@@ -30,3 +30,10 @@ export interface DefinitionView {
   /** Declared display metadata; the key is absent when the definition declares none (wire-safe: no undefined values). */
   readonly display?: DefinitionDisplay
 }
+
+/**
+ * JSON value at a Typert Remote boundary: the wire carries JSON, so `unknown`
+ * is not a legal Remote parameter — `steer`'s follow-up input arrives as
+ * `Json` and is validated against the definition's contract by the SDK face.
+ */
+export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }

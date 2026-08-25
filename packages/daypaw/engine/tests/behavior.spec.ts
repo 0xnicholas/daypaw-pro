@@ -12,8 +12,9 @@ import type { EngineDefinition, EngineRunError, EngineStepCtx } from '@daypaw/en
 function workflowDef(
   body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>,
   name = 'demo',
+  steerable = false,
 ): EngineDefinition {
-  return { kind: 'workflow', name, version: '1', body }
+  return { kind: 'workflow', name, version: '1', ...steerable ? { steerable } : {}, body }
 }
 
 async function boot(path: string, pollMs = 20): Promise<{ ctx: Context; engine: DurableEngine }> {
@@ -504,5 +505,183 @@ describe('durable engine service', () => {
     const [after] = readRuns(path)
     expect(after?.parent_run_id).toBe('parent-1')
     expect(after?.parent_step_key).toBe('agent:reviewer#0')
+  })
+})
+
+describe('steer channel (issue #53)', () => {
+  it('records a segment row and delivers the steered input to a parked body', async () => {
+    const path = await tmpPath('daypaw-engine-steer-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    const def = workflowDef(async (run) => {
+      await run.awaitSteer(0)
+      return run.steers()[0]
+    }, 'demo', true)
+    await engine.register(def)
+    const handle = await engine.run(def, { first: true }, { runId: 'steer-1' })
+    await new Promise(resolve => setImmediate(resolve))
+    await expect(engine.steer('steer-1', { followUp: 'more' })).resolves.toBe(1)
+    await expect(handle.result).resolves.toEqual({ followUp: 'more' })
+    const [row] = readRuns(path)
+    expect(row?.status).toBe('done')
+    const segments = readJournal(path).filter(step => step.kind === 'segment')
+    expect(segments.map(step => [step.step_key, step.status, JSON.parse(step.value_json as string) as unknown])).toEqual([
+      ['steer:1', 'completed', { followUp: 'more' }],
+    ])
+  })
+
+  it('consumes multiple steers in record order at segment boundaries', async () => {
+    const path = await tmpPath('daypaw-engine-steer-order-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    const consumed: unknown[] = []
+    const def = workflowDef(async (run) => {
+      let seen = 0
+      while (seen < 2) {
+        await run.awaitSteer(seen)
+        const segments = run.steers()
+        while (seen < segments.length) {
+          consumed.push(segments[seen])
+          seen += 1
+        }
+      }
+      return consumed
+    }, 'demo', true)
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'steer-order-1' })
+    await engine.steer('steer-order-1', 'alpha')
+    await engine.steer('steer-order-1', 'beta')
+    await expect(handle.result).resolves.toEqual(['alpha', 'beta'])
+    expect(consumed).toEqual(['alpha', 'beta'])
+    expect(readJournal(path).filter(step => step.kind === 'segment').map(step => step.step_key))
+      .toEqual(['steer:1', 'steer:2'])
+  })
+
+  it('fails loud on an unknown, terminal, or non-steerable run', async () => {
+    const path = await tmpPath('daypaw-engine-steer-loud-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const plain = workflowDef(async run => run.step('held', async () => { await gate; return 'plain' }), 'plain')
+    const parked = workflowDef(async (run) => { await run.awaitSteer(0); return 'steered' }, 'parked', true)
+    await engine.register(plain)
+    await engine.register(parked)
+    const running = await engine.run(plain, null, { runId: 'steer-loud-running' })
+    await engine.run(parked, null, { runId: 'steer-loud-parked' })
+    await expect(engine.steer('steer-loud-ghost', null)).rejects.toThrow(/unknown run/)
+    await expect(engine.steer('steer-loud-running', null)).rejects.toThrow(/not steerable/)
+    await expect(engine.steer('steer-loud-parked', 'ok')).resolves.toBe(1)
+    release()
+    await expect(running.result).resolves.toBe('plain')
+    await expect(engine.steer('steer-loud-running', null)).rejects.toThrow(/terminal/)
+  })
+
+  it('delivers a cross-process steer through the parked poll fallback', async () => {
+    const path = await tmpPath('daypaw-engine-steer-cross-')
+    const first = await boot(path)
+    const second = await boot(path)
+    contexts.push(first.ctx, second.ctx)
+    const def = workflowDef(async (run) => {
+      await run.awaitSteer(0)
+      return run.steers()[0]
+    }, 'demo', true)
+    await first.engine.register(def)
+    await second.engine.register(def)
+    const handle = await first.engine.run(def, null, { runId: 'steer-cross-1' })
+    await new Promise(resolve => setImmediate(resolve))
+    await expect(second.engine.steer('steer-cross-1', { via: 'poll' })).resolves.toBe(1)
+    await expect(handle.result).resolves.toEqual({ via: 'poll' })
+  })
+
+  it('rejects a parked wait on cancellation and leaves the segments recorded', async () => {
+    const path = await tmpPath('daypaw-engine-steer-cancel-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    const effects: string[] = []
+    const def = workflowDef(async (run) => {
+      await run.awaitSteer(0)
+      effects.push('first')
+      await run.awaitSteer(1)
+      return 'unreached'
+    }, 'demo', true)
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'steer-cancel-1' })
+    await engine.steer('steer-cancel-1', 'held')
+    await until(() => effects.includes('first'))
+    await handle.cancel('operator-stop')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const run = runError(error)
+      return run.code === 'RUN_CANCELLED' && run.detail === 'operator-stop'
+    })
+    expect(readJournal(path).filter(step => step.kind === 'segment').map(step => step.step_key)).toEqual(['steer:1'])
+  })
+
+  it('revives a crashed parked run and consumes recorded segments without a new steer', async () => {
+    const path = await tmpPath('daypaw-engine-steer-revive-')
+    const first = await boot(path)
+    // One observation array per drive: a re-driven body re-reads every
+    // recorded segment from the ledger, so consumption dedup across drives is
+    // the body's business (the SDK agent body does it via the session log).
+    const makeDef = (deliveries: unknown[]) => workflowDef(async (run) => {
+      let seen = 0
+      for (;;) {
+        const segments = run.steers()
+        while (seen < segments.length) {
+          deliveries.push(segments[seen])
+          seen += 1
+          if (seen === 2) return seen
+        }
+        await run.awaitSteer(seen)
+      }
+    }, 'demo', true)
+    const firstDeliveries: unknown[] = []
+    const firstDef = makeDef(firstDeliveries)
+    await first.engine.register(firstDef)
+    const handle = await first.engine.run(firstDef, null, { runId: 'steer-revive-1' })
+    await first.engine.steer('steer-revive-1', 'one')
+    await until(() => firstDeliveries.length === 1)
+    // Crash while parked waiting for the second segment.
+    await first.ctx.fiber.dispose()
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => runError(error).code === 'ENGINE_DISPOSED')
+    // The second steer lands while no process drives the run.
+    const poker = new DatabaseSync(path)
+    poker.exec(`INSERT INTO journal (run_id, step_key, name, occurrence, kind, status, value_json, started_at, finished_at)
+      VALUES ('steer-revive-1', 'steer:2', 'steer', 2, 'segment', 'completed', '"two"', 0, 0)`)
+    poker.close()
+
+    const second = await boot(path)
+    contexts.push(second.ctx)
+    const secondDeliveries: unknown[] = []
+    const revivedDef = makeDef(secondDeliveries)
+    await second.engine.register(revivedDef)
+    await second.engine.idle()
+    const revived = await second.engine.run(revivedDef, null, { runId: 'steer-revive-1' })
+    await expect(revived.result).resolves.toBe(2)
+    expect(secondDeliveries).toEqual(['one', 'two'])
+  })
+
+  it('resolves awaitSteer without parking when the segment predates the wait, reading a NULL payload as null', async () => {
+    const path = await tmpPath('daypaw-engine-steer-null-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    let release!: () => void
+    const hold = new Promise<void>((resolve) => { release = resolve })
+    const def = workflowDef(async (run) => {
+      await run.step('hold', async () => { await hold; return null })
+      // The segment landed during the hold step, so the wait never parks.
+      await run.awaitSteer(0)
+      return run.steers()
+    }, 'demo', true)
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'steer-null-1' })
+    await until(() => readJournal(path).some(row => row.step_key === 'hold#0'))
+    // A foreign writer's segment row without a payload (durable-boundary tolerance).
+    const poker = new DatabaseSync(path)
+    poker.exec(`INSERT INTO journal (run_id, step_key, name, occurrence, kind, status, value_json, started_at, finished_at)
+      VALUES ('steer-null-1', 'steer:1', 'steer', 1, 'segment', 'completed', NULL, 0, 0)`)
+    poker.close()
+    release()
+    await expect(handle.result).resolves.toEqual([null])
   })
 })
