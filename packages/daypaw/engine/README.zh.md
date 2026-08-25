@@ -11,7 +11,12 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 - `register(def)` —— 登记不透明定义（kind/name/version + body thunk）供执行与 boot 复活。同身份不同 body 拒绝；登记会触发 boot 扫描，可能复活前一进程留下的未完 run。
 - `run(def, input, { runId?, signal?, parent? })` —— 幂等 start-or-attach：未知 runId 插入并驱动；终态 run 从行结算；本进程在驱动的 run 返回活句柄；其余按 `pollMs` 轮询——attach 永不夺权，复活是 boot 扫描的职责。`parent`（`{ runId, stepKey }`）在插入时记录调用方血缘（`parent_run_id` / `parent_step_key`）；已有 runId 则 attach，不改写血缘。
 - `idle()` —— 本进程不驱动任何 run 时 resolve。
+- `listRuns(filter?)` —— ledger 中的 run 行，新者在前，可选按单一 `status` 过滤。
+- `runLineage(runId)` —— 一次调用取回 run 自身行、父 run 与直接子 run（子按先来在前）；runId 未知时各字段皆空。
+- `journalTimeline(runId)` —— 该 run 的 journal step，按开始顺序。
 - `resolveGate(runId, gate, settlement, source)` —— gate 结算的唯一缝（first-wins）：SDK 直调 / Manager UI /（留口）webhook 同路。本进程持有 waiter 时先按值契约校验再落账，不合格即 throw 不记录；第二写入者 no-op 返回 `false`。本进程等待中的驱动立即续跑；别进程写入由 driver 侧 `pollMs` 轮询兜底，进程已死则由 boot 扫描续跑。
+
+查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。
 
 配置（schemastery）：`path`（ledger 文件或 `:memory:`）、`pollMs`（attach 轮询间隔，默认 1s）。
 

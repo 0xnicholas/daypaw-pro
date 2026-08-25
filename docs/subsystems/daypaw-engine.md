@@ -62,6 +62,28 @@ async run(def: EngineDefinition, input: unknown, opts?: EngineRunOptions): Promi
 async idle(): Promise<void>
 
 /**
+ * List run rows from the ledger, newest first (spec 05 §5).
+ * @param filter - optional status restriction.
+ * @returns matching run rows.
+ */
+async listRuns(filter?: RunListFilter): Promise<RunRow[]>
+
+/**
+ * Read one run's parent/child lineage in one call: its own row, its
+ * parent, and its direct children.
+ * @param runId - run identity.
+ * @returns the lineage; every field is empty when the runId is unknown.
+ */
+async runLineage(runId: string): Promise<RunLineage>
+
+/**
+ * Enumerate one run's journal steps in start order (spec 05 §5).
+ * @param runId - run identity.
+ * @returns the run's journal steps in start order.
+ */
+async journalTimeline(runId: string): Promise<JournalRow[]>
+
+/**
  * Settle a gate (first-wins): the one resolve seam for SDK direct calls,
  * Manager UI, and (deferred) webhooks. See {@link DurableEngineCore.resolveGate}.
  * @param runId - run identity.
@@ -73,5 +95,5 @@ async idle(): Promise<void>
 async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:61`](../../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:63`](../../packages/daypaw/engine/src/index.ts)
 <!-- END GENERATED cordis-surface -->

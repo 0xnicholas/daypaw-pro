@@ -8,7 +8,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import type { JournalRow, PromiseRow, RunRow } from '@daypaw/store'
 import type {
-  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert,
+  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
 } from './seams.ts'
 
 type Statement = ReturnType<DatabaseSync['prepare']>
@@ -26,6 +26,10 @@ export class SqliteJournalStore implements JournalStore {
   private readonly claimRunStmt: Statement
   private readonly finalizeRunStmt: Statement
   private readonly selectUnfinishedStmt: Statement
+  private readonly selectRunsStmt: Statement
+  private readonly selectRunsByStatusStmt: Statement
+  private readonly selectChildrenStmt: Statement
+  private readonly selectStepsByRunStmt: Statement
   private readonly selectStepStmt: Statement
   private readonly insertStepStmt: Statement
   private readonly completeStepStmt: Statement
@@ -55,6 +59,12 @@ export class SqliteJournalStore implements JournalStore {
       SET status = ?, output_json = ?, error_json = ?, cancel_cause = ?, finished_at = ?, updated_at = ?
       WHERE run_id = ? AND status IN ${UNFINISHED}`)
     this.selectUnfinishedStmt = db.prepare(`SELECT run_id FROM runs WHERE status IN ${UNFINISHED}`)
+    // `rowid` tiebreaks equal-millisecond timestamps into true insertion
+    // order, keeping "newest first" / "start order" stable under fast runs.
+    this.selectRunsStmt = db.prepare('SELECT * FROM runs ORDER BY created_at DESC, rowid DESC')
+    this.selectRunsByStatusStmt = db.prepare('SELECT * FROM runs WHERE status = ? ORDER BY created_at DESC, rowid DESC')
+    this.selectChildrenStmt = db.prepare('SELECT * FROM runs WHERE parent_run_id = ? ORDER BY created_at, rowid')
+    this.selectStepsByRunStmt = db.prepare('SELECT * FROM journal WHERE run_id = ? ORDER BY started_at, rowid')
     this.selectStepStmt = db.prepare('SELECT * FROM journal WHERE run_id = ? AND step_key = ?')
     this.insertStepStmt = db.prepare(`INSERT INTO journal (
       run_id, step_key, name, occurrence, started_at
@@ -115,6 +125,22 @@ export class SqliteJournalStore implements JournalStore {
   /** @inheritdoc */
   selectUnfinishedRunIds(): string[] {
     return (this.selectUnfinishedStmt.all() as { run_id: string }[]).map(row => row.run_id)
+  }
+
+  /** @inheritdoc */
+  selectRuns(filter?: RunListFilter): RunRow[] {
+    if (filter?.status === undefined) return this.selectRunsStmt.all() as unknown as RunRow[]
+    return this.selectRunsByStatusStmt.all(filter.status) as unknown as RunRow[]
+  }
+
+  /** @inheritdoc */
+  selectChildRuns(parentRunId: string): RunRow[] {
+    return this.selectChildrenStmt.all(parentRunId) as unknown as RunRow[]
+  }
+
+  /** @inheritdoc */
+  selectJournalSteps(runId: string): JournalRow[] {
+    return this.selectStepsByRunStmt.all(runId) as unknown as JournalRow[]
   }
 
   /** @inheritdoc */

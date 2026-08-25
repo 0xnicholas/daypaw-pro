@@ -560,6 +560,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [],
       },
       {
+        signature: 'async listRuns(filter?: RunListFilter): Promise<RunRow[]>',
+        description: 'List run rows from the ledger, newest first (spec 05 §5).',
+        parameters: [{ name: 'filter', description: 'optional status restriction.' }],
+        returns: 'matching run rows.',
+      },
+      {
+        signature: 'async runLineage(runId: string): Promise<RunLineage>',
+        description: 'Read one run\'s parent/child lineage in one call: its own row, its parent, and its direct children.',
+        parameters: [{ name: 'runId', description: 'run identity.' }],
+        returns: 'the lineage; every field is empty when the runId is unknown.',
+      },
+      {
+        signature: 'async journalTimeline(runId: string): Promise<JournalRow[]>',
+        description: 'Enumerate one run\'s journal steps in start order (spec 05 §5).',
+        parameters: [{ name: 'runId', description: 'run identity.' }],
+        returns: 'the run\'s journal steps in start order.',
+      },
+      {
         signature: 'async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>',
         description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate.',
         parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row.' }],
@@ -3291,6 +3309,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type JobStatus = \'running\' | \'stopping\' | \'completed\' | \'killed\' | \'failed\';',
   },
   {
+    name: 'JournalRow',
+    declaration: 'export interface JournalRow {\n    readonly run_id: string;\n    readonly step_key: string;\n    readonly name: string;\n    readonly occurrence: number;\n    readonly kind: \'step\';\n    readonly status: JournalStatusDb;\n    readonly value_json: string | null;\n    readonly error_json: string | null;\n    readonly attempt: number;\n    readonly session_id: string | null;\n    readonly session_seq: number | null;\n    readonly started_at: number;\n    readonly finished_at: number | null;\n}',
+  },
+  {
+    name: 'JournalStatusDb',
+    declaration: 'export type JournalStatusDb = \'started\' | \'completed\' | \'failed\';',
+  },
+  {
     name: 'JsonSchemaNode',
     declaration: 'export interface JsonSchemaNode {\n    type?: JsonSchemaType;\n    oneOf?: JsonSchemaNode[];\n    properties?: Record<string, JsonSchemaNode>;\n    required?: string[];\n    additionalProperties?: boolean;\n    items?: JsonSchemaNode;\n    enum?: JsonSchemaScalar[];\n    const?: JsonSchemaScalar;\n    description?: string;\n    title?: string;\n    default?: JsonValue;\n    examples?: JsonValue;\n}',
   },
@@ -3723,8 +3749,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type RunDefKind = \'workflow\' | \'agent\';',
   },
   {
+    name: 'RunLineage',
+    declaration: 'export interface RunLineage {\n    readonly run: RunRow | undefined;\n    readonly parent: RunRow | undefined;\n    readonly children: readonly RunRow[];\n}',
+  },
+  {
+    name: 'RunListFilter',
+    declaration: 'export interface RunListFilter {\n    readonly status?: RunStatusDb;\n}',
+  },
+  {
     name: 'RunnerFailureRule',
     declaration: 'export interface RunnerFailureRule {\n    allowedExitCodes?: readonly number[];\n    fatalSignatures: readonly string[];\n    informationalLines?: readonly string[];\n}',
+  },
+  {
+    name: 'RunRow',
+    declaration: 'export interface RunRow {\n    readonly run_id: string;\n    readonly def_kind: RunDefKind;\n    readonly def_name: string;\n    readonly def_version: string;\n    readonly input_json: string;\n    readonly status: RunStatusDb;\n    readonly waiting_gate: string | null;\n    readonly parent_run_id: string | null;\n    readonly parent_step_key: string | null;\n    readonly attempt: number;\n    readonly retried_from_run_id: string | null;\n    readonly output_json: string | null;\n    readonly error_json: string | null;\n    readonly cancel_cause: string | null;\n    readonly claimed_by: string | null;\n    readonly claimed_at: number | null;\n    readonly created_at: number;\n    readonly updated_at: number;\n    readonly finished_at: number | null;\n}',
+  },
+  {
+    name: 'RunStatusDb',
+    declaration: 'export type RunStatusDb = \'running\' | \'waiting\' | \'done\' | \'failed\' | \'cancelled\';',
   },
   {
     name: 'SandboxEnforcement',

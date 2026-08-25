@@ -11,21 +11,23 @@
 import { randomUUID } from 'node:crypto'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import type { JournalRow, RunRow } from '@daypaw/store'
 import { openLedgerDatabase } from '@daypaw/store'
 import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
-import type { EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement } from './core.ts'
+import type { EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
+import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 
 export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
 export type {
   EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
   EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope,
-  GateResolution, GateResolutionSource, GateSchema, GateSettlement, WaitForOptions,
+  GateResolution, GateResolutionSource, GateSchema, GateSettlement, RunLineage, WaitForOptions,
 } from './core.ts'
 export { SqliteJournalStore } from './sqlite-journal-store.ts'
 export type {
-  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert,
+  JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
 } from './seams.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -110,6 +112,34 @@ export default class DurableEngine extends Service {
    */
   async idle(): Promise<void> {
     await (await this.coreOrFail()).idle()
+  }
+
+  /**
+   * List run rows from the ledger, newest first (spec 05 §5).
+   * @param filter - optional status restriction.
+   * @returns matching run rows.
+   */
+  async listRuns(filter?: RunListFilter): Promise<RunRow[]> {
+    return (await this.coreOrFail()).listRuns(filter)
+  }
+
+  /**
+   * Read one run's parent/child lineage in one call: its own row, its
+   * parent, and its direct children.
+   * @param runId - run identity.
+   * @returns the lineage; every field is empty when the runId is unknown.
+   */
+  async runLineage(runId: string): Promise<RunLineage> {
+    return (await this.coreOrFail()).runLineage(runId)
+  }
+
+  /**
+   * Enumerate one run's journal steps in start order (spec 05 §5).
+   * @param runId - run identity.
+   * @returns the run's journal steps in start order.
+   */
+  async journalTimeline(runId: string): Promise<JournalRow[]> {
+    return (await this.coreOrFail()).journalTimeline(runId)
   }
 
   /**

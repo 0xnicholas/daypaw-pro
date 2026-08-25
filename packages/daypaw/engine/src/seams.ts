@@ -8,7 +8,13 @@
  * @module @daypaw/engine/seams
  */
 
-import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
+import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow, RunStatusDb } from '@daypaw/store'
+
+/** Status restriction for {@link JournalStore.selectRuns}. */
+export interface RunListFilter {
+  /** Keep only runs in this status; omitted matches every status. */
+  readonly status?: RunStatusDb
+}
 
 /** Insert payload for a new run row. */
 export interface RunInsert {
@@ -93,6 +99,24 @@ export interface JournalStore {
   finalizeRun(runId: string, patch: RunFinalize): boolean
   /** @returns ids of every run in a non-terminal status, for boot scan. */
   selectUnfinishedRunIds(): string[]
+  /**
+   * Read side of the run table (spec 05 §5): the one query home for hosts,
+   * so query knowledge evolves with the schema instead of scattering SQL
+   * into host code.
+   * @param filter - optional status restriction.
+   * @returns matching run rows, newest first (insertion order reversed).
+   */
+  selectRuns(filter?: RunListFilter): RunRow[]
+  /**
+   * @param parentRunId - parent run identity.
+   * @returns the run's direct children, oldest first (insertion order).
+   */
+  selectChildRuns(parentRunId: string): RunRow[]
+  /**
+   * @param runId - run identity.
+   * @returns the run's journal steps in start order.
+   */
+  selectJournalSteps(runId: string): JournalRow[]
   /** @returns the step row, or undefined when the step never started. */
   selectJournalStep(runId: string, stepKey: string): JournalRow | undefined
   /** @param row - started-step payload; status defaults to `started`. */

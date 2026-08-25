@@ -11,8 +11,8 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
-import type { PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
-import type { JournalStore } from './seams.ts'
+import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
+import type { JournalStore, RunListFilter } from './seams.ts'
 
 /** Run status reported by handles. */
 export type EngineRunStatus =
@@ -173,6 +173,16 @@ export interface EngineDefinition {
   readonly version: string
   /** Opaque body thunk; the engine calls it with a step ctx and the run input. */
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
+}
+
+/** Parent/child lineage of one run (spec 05 §5). */
+export interface RunLineage {
+  /** The run's own row; `undefined` when the runId is unknown. */
+  readonly run: RunRow | undefined
+  /** The parent run row; `undefined` for a top-level run or an absent parent row. */
+  readonly parent: RunRow | undefined
+  /** Direct children, oldest first. */
+  readonly children: readonly RunRow[]
 }
 
 /** Options for starting (or attaching to) a run. */
@@ -413,6 +423,37 @@ export class DurableEngineCore {
     while (this.drivers.size > 0) {
       await Promise.all([...this.drivers.values()].map(entry => entry.onSettled))
     }
+  }
+
+  /**
+   * List run rows from the ledger, newest first.
+   * Like {@link EngineRunHandle.status}, reads stay available after disposal.
+   * @param filter - optional status restriction.
+   * @returns matching run rows.
+   */
+  listRuns(filter?: RunListFilter): RunRow[] {
+    return this.store.selectRuns(filter)
+  }
+
+  /**
+   * Read one run's parent/child lineage in one call.
+   * @param runId - run identity.
+   * @returns the run's own row, its parent, and its direct children.
+   */
+  runLineage(runId: string): RunLineage {
+    const run = this.store.selectRun(runId)
+    if (run === undefined) return { run: undefined, parent: undefined, children: [] }
+    const parent = run.parent_run_id === null ? undefined : this.store.selectRun(run.parent_run_id)
+    return { run, parent, children: this.store.selectChildRuns(runId) }
+  }
+
+  /**
+   * Enumerate one run's journal steps in start order.
+   * @param runId - run identity.
+   * @returns the run's journal steps in start order.
+   */
+  journalTimeline(runId: string): JournalRow[] {
+    return this.store.selectJournalSteps(runId)
   }
 
   /**

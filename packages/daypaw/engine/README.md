@@ -11,7 +11,12 @@ The durable execution engine (`ctx.durable`): run lifecycle, step-dedup re-drive
 - `register(def)` — record an opaque definition (kind/name/version + body thunk) for execution and boot-time revival. Same identity with a different body rejects; registering runs a boot scan that may revive unfinished runs left by a previous process.
 - `run(def, input, { runId?, signal?, parent? })` — idempotent start-or-attach: unknown runId inserts and drives; a terminal run settles from its row; a run this process drives returns its live handle; anything else is polled (`pollMs`) — attaching never claims, reviving is the boot scan's job. `parent` (`{ runId, stepKey }`) records the caller's lineage on insert (`parent_run_id` / `parent_step_key`); an existing runId attaches without rewriting lineage.
 - `idle()` — resolves when this process drives no run.
+- `listRuns(filter?)` — run rows from the ledger, newest first, optionally restricted to one `status`.
+- `runLineage(runId)` — one call for a run's own row, its parent, and its direct children (oldest first); every field is empty for an unknown runId.
+- `journalTimeline(runId)` — the run's journal steps in start order.
 - `resolveGate(runId, gate, settlement, source)` — the one settle seam for gates (first-wins): SDK direct calls, Manager UI, and (deferred) webhooks share it. When this process holds the waiter, the value contract validates before the write — an invalid settlement throws and records nothing; a second settler is a no-op returning `false`. A driver waiting in this process resumes immediately; cross-process writes are observed through the driver's `pollMs` poll fallback, and a dead process's waits revive through the boot scan.
+
+The query methods (`listRuns` / `runLineage` / `journalTimeline`) are the ledger's one query home (spec 05 §5): hosts read runs, lineage, and step timelines through `ctx.durable`, never through host-side SQL, so query knowledge evolves with the schema. Presentation vocabulary stays above this seam — the rows keep engine names.
 
 Configuration (schemastery): `path` (ledger file or `:memory:`), `pollMs` (attach poll interval, default 1s).
 
