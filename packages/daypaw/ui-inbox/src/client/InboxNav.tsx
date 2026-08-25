@@ -2,8 +2,8 @@
  * Inbox navigation column (the 'sidebar' occupant): wordmark, the big
  * 「+ 新任务」 button opening the new-task dialog (body delegated to the
  * 'inbox.new-task.dialog' occupant, stub copy while absent), the three inbox
- * groups with live counts projected from the sessions list, and the
- * Agents / 设置 secondary nav. Collapsed renders the compact control rail
+ * groups with live counts projected from the sessions list plus the run
+ * ledger, and the Agents / 设置 secondary nav. Collapsed renders the compact control rail
  * (sidebar toggle + new-task icon button) required by the 'sidebar' occupant
  * contract.
  */
@@ -22,6 +22,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InboxGroup, InboxSelection } from './selection.ts'
 import { projectInboxBoard } from './task-projection.ts'
+import type { RunsBoardState } from './runs-store.ts'
 import type { InboxKey } from './locales.ts'
 import css from './InboxNav.module.css'
 
@@ -30,6 +31,8 @@ export interface InboxNavInjected {
   hooks: {
     /** Shared workbench selection, bound by the renderer as useSelection. */
     selection: SnapshotStore<InboxSelection>
+    /** The run-board poll snapshot, bound by the renderer as useBoard. */
+    board: SnapshotStore<RunsBoardState>
   }
   /** Select an inbox group, a task, or a secondary page. */
   select: (next: InboxSelection) => void
@@ -59,10 +62,11 @@ const GROUP_LABEL: Record<InboxGroup, InboxKey> = {
  * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the column element tree.
  */
-export function InboxNav({ collapsed, useSelection, useSessions, select, toggleSidebar, renderSlot, t }: InboxNavProps) {
+export function InboxNav({ collapsed, useSelection, useBoard, useSessions, select, toggleSidebar, renderSlot, t }: InboxNavProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
-  const counts = projectInboxBoard(list).counts
+  const runs = useBoard(s => s.runs)
+  const counts = projectInboxBoard(list, runs).counts
   // Dialog open state is component-local: only this component knows it.
   const [dialogOpen, setDialogOpen] = useState(false)
 

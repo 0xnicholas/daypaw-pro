@@ -10,6 +10,8 @@ import type {
   InboxBannerOwnerProps, InboxSettingsPageOwnerProps, InboxTasksOwnerProps,
 } from '../src/client/contract.ts'
 import { InboxSelectionController } from '../src/client/selection.ts'
+import type { RunsBoardState } from '../src/client/runs-store.ts'
+import type { WireRun } from '../src/client/runs-api.ts'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -50,7 +52,7 @@ function listState(): SessionListState {
   }
 }
 
-function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode) {
+function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode, runs: readonly WireRun[] = []) {
   const controller = new InboxSelectionController(vi.fn())
   const calls: RenderedCall[] = []
   const renderSlot: WorkspaceSwitchProps['renderSlot'] = ((key: string, owner: object, opts?: { fallback?: unknown }) => {
@@ -65,6 +67,7 @@ function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode) {
       useInput={neverHook} inputActions={undefined as never}
       useSessions={bindSnapshotSelector(createSnapshotStore(listState()))} useWorkspaces={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
+      useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
       select={(next) => { controller.select(next) }}
       renderSlot={renderSlot}
       t={t}
@@ -104,6 +107,9 @@ describe('WorkspaceSwitch', () => {
     // openTask selects the task kind, which the controller drives to sessions.open.
     doneOwner.openTask('b' as SessionId)
     expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 'b' })
+    // openRun selects a session-less workflow run (no sessions.open drive).
+    doneOwner.openRun('run-wf')
+    expect(controller.store.getSnapshot()).toEqual({ kind: 'run', runId: 'run-wf' })
     // The pending group stays the placeholder empty list until #58.
     act(() => { controller.select({ kind: 'group', group: 'pending' }) })
     const pending = calls.findLast(call => call.key === 'inbox.workspace.tasks')!
@@ -175,5 +181,30 @@ describe('WorkspaceSwitch', () => {
     expect(screen.getByText('conversation-seat')).toBeTruthy()
     const conversation = calls.find(call => call.key === 'inbox.workspace.conversation')!
     expect(conversation.owner).toEqual({})
+  })
+
+  it('lists run rows in the group containers: a workflow run rows without a session, an agent run dedupes its twin', () => {
+    const runs: WireRun[] = [
+      { runId: 'w1', defKind: 'workflow', defName: 'close-the-books', status: 'running', parentRunId: null, outputJson: null, updatedAt: 500 },
+      { runId: 'a', defKind: 'agent', defName: 'fix-tests', status: 'waiting', parentRunId: null, outputJson: null, updatedAt: 400 },
+    ]
+    const { calls } = mountWorkspace(undefined, runs)
+    const tasks = calls.find(call => call.key === 'inbox.workspace.tasks')!
+    const owner = tasks.owner as unknown as InboxTasksOwnerProps
+    // updatedAt desc: the workflow run leads; the agent run takes its twin's
+    // displayTitle and the twin session row is skipped.
+    expect(owner.rows.map(row => [row.title, row.sessionId, row.run?.defKind])).toEqual([
+      ['close-the-books', undefined, 'workflow'],
+      ['title-a', 'a', 'agent'],
+    ])
+  })
+
+  it('renders the run placeholder for a session-less workflow-run selection', () => {
+    const { controller, calls } = mountWorkspace()
+    act(() => { controller.select({ kind: 'run', runId: 'w1' }) })
+    expect(screen.getByText('该任务没有对话，进度与产出见右栏详情')).toBeTruthy()
+    // No conversation seat, no group container.
+    expect(calls.every(call => call.key !== 'inbox.workspace.conversation')).toBe(true)
+    expect(screen.queryByRole('heading')).toBeNull()
   })
 })

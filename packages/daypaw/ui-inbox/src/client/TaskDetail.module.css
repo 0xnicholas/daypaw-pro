@@ -1,5 +1,5 @@
-/* Detail column placeholder: empty-state container until the board tickets
-   wire selected-task detail data. */
+/* Detail column: header (title + run status + retry) over the delegated
+   'inbox.detail.body' occupant, with the empty-state fallback. */
 
 .root {
   display: flex;
@@ -20,6 +20,25 @@
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
+}
+
+.status {
+  margin-left: 8px;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.retry {
+  margin-left: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
 }
 
 .empty {

@@ -125,6 +125,7 @@ export default class DurableEngine extends TypertRemoteService {
    * @param filter - optional status restriction.
    * @returns matching run rows.
    */
+  @Remote('listRuns')
   async listRuns(filter?: RunListFilter): Promise<RunRow[]> {
     return (await this.coreOrFail()).listRuns(filter)
   }
@@ -135,6 +136,7 @@ export default class DurableEngine extends TypertRemoteService {
    * @param runId - run identity.
    * @returns the lineage; every field is empty when the runId is unknown.
    */
+  @Remote('runLineage')
   async runLineage(runId: string): Promise<RunLineage> {
     return (await this.coreOrFail()).runLineage(runId)
   }
@@ -144,6 +146,7 @@ export default class DurableEngine extends TypertRemoteService {
    * @param runId - run identity.
    * @returns the run's journal steps in start order.
    */
+  @Remote('journalTimeline')
   async journalTimeline(runId: string): Promise<JournalRow[]> {
     return (await this.coreOrFail()).journalTimeline(runId)
   }
@@ -187,6 +190,20 @@ export default class DurableEngine extends TypertRemoteService {
   @Remote('steer')
   async steer(runId: string, input: Json): Promise<number> {
     return (await this.coreOrFail()).steer(runId, input)
+  }
+
+  /**
+   * Rerun a terminal top-level run (issue #57): a fresh row with the same
+   * definition identity and input, chained to its source by attempt number
+   * and `retried_from_run_id`, driven immediately. Served to the browser as
+   * the Remote endpoint `durable/rerun` (the `listDefinitions` precedent).
+   * See {@link DurableEngineCore.rerun}.
+   * @param runId - source run identity.
+   * @returns the new run's id.
+   */
+  @Remote('rerun')
+  async rerun(runId: string): Promise<string> {
+    return (await this.coreOrFail()).rerun(runId).id
   }
 
   private async coreOrFail(): Promise<DurableEngineCore> {

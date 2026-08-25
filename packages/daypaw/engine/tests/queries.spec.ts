@@ -79,7 +79,7 @@ describe('engine query face (ctx.durable)', () => {
 
     const ofParent = await engine.runLineage('parent-1')
     expect(ofParent.run?.run_id).toBe('parent-1')
-    expect(ofParent.parent).toBeUndefined()
+    expect(ofParent.parent).toBeNull()
     expect(ofParent.children.map(row => row.run_id)).toEqual(['child-1', 'child-2'])
     expect(ofParent.children[0]).toMatchObject({ parent_run_id: 'parent-1', parent_step_key: 'spawn#0' })
 
@@ -88,7 +88,7 @@ describe('engine query face (ctx.durable)', () => {
     expect(ofChild.parent?.run_id).toBe('parent-1')
     expect(ofChild.children).toEqual([])
 
-    expect(await engine.runLineage('unknown')).toEqual({ run: undefined, parent: undefined, children: [] })
+    expect(await engine.runLineage('unknown')).toEqual({ run: null, parent: null, children: [] })
   })
 
   it('enumerates a run journal step timeline in start order', async () => {

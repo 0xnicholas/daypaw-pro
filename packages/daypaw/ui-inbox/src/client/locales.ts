@@ -20,8 +20,15 @@ export const zh = {
   'workspace.agents.placeholder': 'Agent 目录即将上线',
   'workspace.settings.placeholder': '设置页即将上线',
   'workspace.conversation.placeholder': '对话即将上线',
+  'workspace.run.placeholder': '该任务没有对话，进度与产出见右栏详情',
+  'status.running': '进行中',
+  'status.waiting': '等待确认',
+  'status.done': '已完成',
+  'status.failed': '出错了',
+  'status.cancelled': '已取消',
   'detail.title': '任务详情',
   'detail.empty': '选择任务查看详情',
+  'detail.retry': '重试',
 } satisfies Record<string, string>
 
 /** The inbox namespace key union. */
@@ -47,6 +54,13 @@ export const en = {
   'workspace.agents.placeholder': 'The agent catalog is coming soon',
   'workspace.settings.placeholder': 'The settings page is coming soon',
   'workspace.conversation.placeholder': 'The conversation view is coming soon',
+  'workspace.run.placeholder': 'This task has no conversation — see its progress and outputs in the details column',
+  'status.running': 'In progress',
+  'status.waiting': 'Awaiting confirmation',
+  'status.done': 'Completed',
+  'status.failed': 'Failed',
+  'status.cancelled': 'Cancelled',
   'detail.title': 'Task details',
   'detail.empty': 'Select a task to see its details',
+  'detail.retry': 'Retry',
 } satisfies Record<InboxKey, string>

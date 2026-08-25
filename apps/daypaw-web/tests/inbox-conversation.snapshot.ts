@@ -69,7 +69,10 @@ describe('assembled inbox conversation', () => {
     // streams in and settles (the status row leaves when the run ends).
     // Re-query every poll: a re-render replaces the flow's DOM nodes.
     await screen.findByText('write a poem', undefined, { timeout: 10_000 })
-    const echoNode = await screen.findByText(ECHO, undefined, { timeout: 10_000 })
+    // The detail column's progress tail echoes the same assistant text; the
+    // conversation's copy is the flow's rowText node.
+    const echoNodes = await screen.findAllByText(ECHO, undefined, { timeout: 10_000 })
+    const echoNode = echoNodes.find(node => hasClass(node, 'rowText')) ?? echoNodes[0]!
     const conversation = echoNode.closest('div')!.parentElement!.parentElement as HTMLElement
     // The status row leaves when the run ends (the nav's group label also reads
     // "In progress", so this assertion is scoped to the conversation column).

@@ -1,0 +1,25 @@
+before-retry
+conversation
+placeholder=This task has no conversation — see its progress and outputs in the details column
+detail
+header=invoice-checker
+status=Failed
+retry=true
+section=Progress
+  empty=No progress yet
+section=Subtasks
+  row=invoice-checker=Something went wrong
+section=Deliverables
+  empty=No deliverables
+section=Approval history
+  empty=No approval history
+after-retry
+group=Awaiting your confirmation count=0
+group=In progress count=2
+group=Completed count=4
+title=In progress
+row=invoice-checker|agent=-|status=In progress|activity=Last activity 4 d ago
+row=Fixture 历史会话|agent=-|status=In progress|activity=Last activity 4 d ago
+detail
+header=Task details
+retry=false

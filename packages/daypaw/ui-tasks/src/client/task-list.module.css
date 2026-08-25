@@ -45,6 +45,16 @@
   font-size: 12px;
 }
 
+.status {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.statusFailed {
+  color: var(--dsw-alias-state-error-primary);
+}
+
 .empty {
   flex: 1;
   min-height: 0;

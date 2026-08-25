@@ -7,6 +7,7 @@
  * props instead.
  */
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from './runs-api.ts'
 
 /** Owner share of a workspace banner entry. */
 export interface InboxBannerOwnerProps {
@@ -29,19 +30,31 @@ export interface InboxNewTaskDialogOwnerProps {
 }
 
 /**
- * One projected task-list row. ui-inbox owns the single projection from the
- * sessions list (nav counts and this list share it); occupants receive rows
- * through owner props and never touch the store.
+ * One projected task-list row. ui-inbox owns the single projection (nav
+ * counts and this list share it); occupants receive rows through owner props
+ * and never touch the store.
  */
 export interface TaskRow {
-  /** The task's session identity (opening a task opens its session). */
-  sessionId: SessionId
-  /** Human-facing label (the sessions list's displayTitle projection). */
+  /**
+   * The task's session identity (opening a session-backed task opens its
+   * session). OPTIONAL: a workflow-run row has no session — the engine gives
+   * workflow runs none, while an agent run's session identity IS its runId,
+   * so run rows of `defKind: 'agent'` always carry it. Run-less session rows
+   * carry it by construction.
+   */
+  sessionId?: SessionId
+  /** Human-facing label (the session's displayTitle, else the run's defName). */
   title: string
   /** Agent preset the task runs, when the session header carries one. */
   agentPreset?: string
   /** Last activity timestamp (epoch ms). */
   updatedAt: number
+  /** Engine run identity, when the row comes from a durable run. */
+  run?: {
+    readonly runId: string
+    readonly status: WireRunStatus
+    readonly defKind: WireRunDefKind
+  }
 }
 
 /** Owner share of the task-list occupant. */
@@ -52,6 +65,39 @@ export interface InboxTasksOwnerProps {
   now: number
   /** Open one row's conversation in the middle column. */
   openTask: (sessionId: SessionId) => void
+  /** Select one session-less workflow-run row (its detail lives in the right column). */
+  openRun: (runId: string) => void
+}
+
+/**
+ * What the detail body occupant draws, keyed off the workbench selection
+ * (never the session seat — the 'details' slot is strict-session scope and
+ * may carry a stale session while a workflow run is selected).
+ */
+export type TaskDetailView =
+  /** Nothing to show: a group/secondary-page selection, or detail data still absent. */
+  | { readonly kind: 'none' }
+  /** A run-less session task: the occupant draws session-bound detail. */
+  | { readonly kind: 'session'; readonly sessionId: SessionId }
+  /** A durable run (workflow or agent): the occupant draws ledger-bound detail. */
+  | {
+    readonly kind: 'run'
+    /** The run's own row. */
+    readonly run: WireRun
+    /** Parent/child lineage; undefined while the detail fetch is incomplete. */
+    readonly lineage: WireRunLineage | undefined
+    /** Journal timeline; undefined while the detail fetch is incomplete. */
+    readonly timeline: readonly WireJournalEntry[] | undefined
+    /** The parsed `output_json`; undefined when the run carries none. */
+    readonly output: unknown
+    /** Retry affordance, present only when the run failed. */
+    readonly retry: (() => void) | undefined
+  }
+
+/** Owner share of the detail body occupant. */
+export interface InboxDetailBodyOwnerProps {
+  /** The selection-keyed detail view. */
+  detail: TaskDetailView
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -94,5 +140,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * falls back to the owner's placeholder.
      */
     'inbox.agents.page': { kind: 'single'; scope: 'session-maybe' }
+    /**
+     * The selected task's detail body: the single occupant draws the right
+     * column's content below the owner's header. The seat is session scope
+     * (the parent 'details' slot is), but the owner props key off the
+     * workbench selection, never the session seat — a workflow-run selection
+     * has no session and the seat may carry a stale one. An absent occupant
+     * falls back to the owner's empty copy.
+     */
+    'inbox.detail.body': { kind: 'single'; scope: 'session'; owner: InboxDetailBodyOwnerProps }
   }
 }

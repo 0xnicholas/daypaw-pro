@@ -587,6 +587,14 @@ function buildAlphaLog(): SessionEvent[] {
   push({ type: 'step/end', data: { turn: 73, step: 0 } })
   push({ type: 'turn/end', data: { turn: 73, reason: { kind: 'completed' } } })
 
+  // Approval-history sample for the daypaw detail pane (fx-alpha doubles as
+  // the ledger's running agent run): one allowed-once pair carrying a reason,
+  // one rejected pair without one, folded by the approvalHistory projection.
+  push({ type: 'approval/asked', data: { id: 'fx-approval-hist-1', toolName: 'bash', callId: 'fx-call-approval-1', reason: '写入工作区外路径' } })
+  push({ type: 'approval/decided', data: { id: 'fx-approval-hist-1', outcome: 'allowed-once' } })
+  push({ type: 'approval/asked', data: { id: 'fx-approval-hist-2', toolName: 'write' } })
+  push({ type: 'approval/decided', data: { id: 'fx-approval-hist-2', outcome: 'rejected' } })
+
   const todoArgs = JSON.stringify({ todos: fixtureTodos })
   toolTurn(74, 'todo_write', todoArgs, 'Updated todo list: 1 pending, 2 in progress, 1 completed.')
   // The real tool appends the snapshot mid-execution — between tool/call and
@@ -1045,6 +1053,38 @@ function contextPressureOf(
   }
 }
 
+/** One entry of the approvalHistory projection value (the daypaw host's approval-history unit element). */
+interface FxApprovalHistoryEntry {
+  id: string
+  toolName: string
+  reason?: string
+  outcome?: 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
+}
+
+/**
+ * Fixture parallel of the daypaw approvalHistory projection unit:
+ * `approval/asked` appends one entry, `approval/decided` pairs by id and sets
+ * the outcome. Baseline and live frames both derive from this fold.
+ */
+function approvalHistoryOf(log: readonly SessionEvent[]): FxApprovalHistoryEntry[] {
+  const entries: FxApprovalHistoryEntry[] = []
+  for (const event of log) {
+    const item = event as { type: string; data: Record<string, unknown> }
+    if (item.type === 'approval/asked') {
+      entries.push({
+        id: item.data['id'] as string,
+        toolName: item.data['toolName'] as string,
+        ...item.data['reason'] === undefined ? {} : { reason: item.data['reason'] as string },
+      })
+    } else if (item.type === 'approval/decided') {
+      const entry = entries.find(e => e.id === item.data['id'])
+      /* v8 ignore next -- the undefined arm needs an orphan decided; fixture logs pair each decided with its asked. */
+      if (entry !== undefined) entry.outcome = item.data['outcome'] as NonNullable<FxApprovalHistoryEntry['outcome']>
+    }
+  }
+  return entries
+}
+
 function projectionValuesOf(log: readonly SessionEvent[]): Record<string, unknown> {
   const values: Record<string, unknown> = {}
   const titleEvent = log.findLast(item => (item as { type: string }).type === 'session/title')
@@ -1079,6 +1119,8 @@ function projectionValuesOf(log: readonly SessionEvent[]): Record<string, unknow
     maxImagePixels: 40_000_000,
     mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
   }
+  // Always present (daypaw approval-history unit composed): asked/decided pairs.
+  values['approvalHistory'] = approvalHistoryOf(log)
   return values
 }
 
@@ -1166,6 +1208,16 @@ function projectionFramesOf(id: SessionId, log: readonly SessionEvent[], event: 
       sessionId: id,
       key: 'plan',
       value: planViewOf(log),
+      seq: event.seq,
+    }]
+  }
+  // Approval-history fold: both folded event kinds advance the paired list.
+  if (type === 'approval/asked' || type === 'approval/decided') {
+    return [{
+      type: 'session/projection',
+      sessionId: id,
+      key: 'approvalHistory',
+      value: approvalHistoryOf(log),
       seq: event.seq,
     }]
   }
@@ -1480,6 +1532,235 @@ class FxInbox<F> implements StreamConn<F> {
       signal.removeEventListener('abort', onAbort)
     }
   }
+}
+
+/**
+ * Fixture-local mirror of the daypaw ledger's run row (`@daypaw/store` RunRow,
+ * snake_case as it crosses the gateway). Declared here because this browser
+ * package does not depend on the node-side store.
+ */
+interface FxRunRow {
+  run_id: string
+  def_kind: 'workflow' | 'agent'
+  def_name: string
+  def_version: string
+  input_json: string
+  status: 'running' | 'waiting' | 'done' | 'failed' | 'cancelled'
+  waiting_gate: string | null
+  parent_run_id: string | null
+  parent_step_key: string | null
+  attempt: number
+  retried_from_run_id: string | null
+  output_json: string | null
+  error_json: string | null
+  cancel_cause: string | null
+  claimed_by: string | null
+  claimed_at: number | null
+  created_at: number
+  updated_at: number
+  finished_at: number | null
+}
+
+/** Fixture-local mirror of the ledger's journal row (`@daypaw/store` JournalRow). */
+interface FxJournalRow {
+  run_id: string
+  step_key: string
+  name: string
+  occurrence: number
+  kind: 'step' | 'segment'
+  status: 'started' | 'completed' | 'failed'
+  value_json: string | null
+  error_json: string | null
+  attempt: number
+  session_id: string | null
+  session_seq: number | null
+  started_at: number
+  finished_at: number | null
+}
+
+/** Fixed epoch (ms) anchoring every seeded ledger timestamp: goldens never see wall time. */
+const FX_RUN_EPOCH = Date.UTC(2026, 7, 20, 9, 0, 0)
+const FX_HOUR = 3_600_000
+
+/**
+ * The daypaw fork's run ledger view, served at the `durable/*` Remote
+ * endpoints. Module-level and mutable so `durable/rerun` appends stay visible
+ * to the next listRuns poll. The running agent run's id aliases the fx-alpha
+ * session so the board can join it to the sessions list; the failed top-level
+ * run carries one failed child so its detail pane shows a subtask.
+ */
+const fixtureRuns: FxRunRow[] = [
+  {
+    run_id: 'fx-alpha',
+    def_kind: 'agent',
+    def_name: 'weekly-report',
+    def_version: '1.2.0',
+    input_json: '{"objective":"Collect the week\'s updates from each team and draft the report."}',
+    status: 'running',
+    waiting_gate: null,
+    parent_run_id: null,
+    parent_step_key: null,
+    attempt: 1,
+    retried_from_run_id: null,
+    output_json: null,
+    error_json: null,
+    cancel_cause: null,
+    claimed_by: null,
+    claimed_at: null,
+    created_at: FX_RUN_EPOCH + 3 * FX_HOUR,
+    updated_at: FX_RUN_EPOCH + 3 * FX_HOUR,
+    finished_at: null,
+  },
+  {
+    run_id: 'fx-run-invoice-audit:sub:1',
+    def_kind: 'agent',
+    def_name: 'invoice-checker',
+    def_version: '0.3.1',
+    input_json: '{"invoice":"INV-2044","scope":"line-items"}',
+    status: 'failed',
+    waiting_gate: null,
+    parent_run_id: 'fx-run-invoice-audit',
+    parent_step_key: 'audit-line-items',
+    attempt: 1,
+    retried_from_run_id: null,
+    output_json: null,
+    error_json: '{"message":"line item 7 does not match the purchase order"}',
+    cancel_cause: null,
+    claimed_by: null,
+    claimed_at: null,
+    created_at: FX_RUN_EPOCH + 2 * FX_HOUR + 60_000,
+    updated_at: FX_RUN_EPOCH + 2 * FX_HOUR + 360_000,
+    finished_at: FX_RUN_EPOCH + 2 * FX_HOUR + 360_000,
+  },
+  {
+    run_id: 'fx-run-invoice-audit',
+    def_kind: 'agent',
+    def_name: 'invoice-checker',
+    def_version: '0.3.1',
+    input_json: '{"invoice":"INV-2044"}',
+    status: 'failed',
+    waiting_gate: null,
+    parent_run_id: null,
+    parent_step_key: null,
+    attempt: 1,
+    retried_from_run_id: null,
+    output_json: null,
+    error_json: '{"message":"audit-line-items failed: line item 7 does not match the purchase order"}',
+    cancel_cause: null,
+    claimed_by: null,
+    claimed_at: null,
+    created_at: FX_RUN_EPOCH + 2 * FX_HOUR,
+    updated_at: FX_RUN_EPOCH + 2 * FX_HOUR + 420_000,
+    finished_at: FX_RUN_EPOCH + 2 * FX_HOUR + 420_000,
+  },
+  {
+    run_id: 'fx-run-release-digest',
+    def_kind: 'workflow',
+    def_name: 'release-digest',
+    def_version: '0.4.0',
+    input_json: '{"range":"v0.9.0..v0.10.0"}',
+    status: 'done',
+    waiting_gate: null,
+    parent_run_id: null,
+    parent_step_key: null,
+    attempt: 1,
+    retried_from_run_id: null,
+    output_json: '{"summary":"Shipped the durable tasks board and two follow-up fixes.","count":3}',
+    error_json: null,
+    cancel_cause: null,
+    claimed_by: null,
+    claimed_at: null,
+    created_at: FX_RUN_EPOCH + FX_HOUR,
+    updated_at: FX_RUN_EPOCH + FX_HOUR + 540_000,
+    finished_at: FX_RUN_EPOCH + FX_HOUR + 540_000,
+  },
+]
+
+/** Journal steps of the done workflow run, in start order (the UI step timeline reads `name`). */
+const fixtureJournal: FxJournalRow[] = [
+  {
+    run_id: 'fx-run-release-digest',
+    step_key: 'collect-updates',
+    name: 'Collect team updates',
+    occurrence: 0,
+    kind: 'step',
+    status: 'completed',
+    value_json: '{"teams":4}',
+    error_json: null,
+    attempt: 1,
+    session_id: null,
+    session_seq: null,
+    started_at: FX_RUN_EPOCH + FX_HOUR + 10_000,
+    finished_at: FX_RUN_EPOCH + FX_HOUR + 70_000,
+  },
+  {
+    run_id: 'fx-run-release-digest',
+    step_key: 'draft-report',
+    name: 'Draft the report',
+    occurrence: 0,
+    kind: 'step',
+    status: 'completed',
+    value_json: '{"sections":3}',
+    error_json: null,
+    attempt: 1,
+    session_id: null,
+    session_seq: null,
+    started_at: FX_RUN_EPOCH + FX_HOUR + 80_000,
+    finished_at: FX_RUN_EPOCH + FX_HOUR + 300_000,
+  },
+  {
+    run_id: 'fx-run-release-digest',
+    step_key: 'publish-summary',
+    name: 'Publish the summary',
+    occurrence: 0,
+    kind: 'step',
+    status: 'completed',
+    value_json: '{"count":3}',
+    error_json: null,
+    attempt: 1,
+    session_id: null,
+    session_seq: null,
+    started_at: FX_RUN_EPOCH + FX_HOUR + 310_000,
+    finished_at: FX_RUN_EPOCH + FX_HOUR + 540_000,
+  },
+]
+
+/** Rerun serial: fresh deterministic ids and timestamps newer than every seeded row. */
+let nextFixtureRerun = 1
+
+/**
+ * Append the rerun row `durable/rerun` promises: a fresh running row chaining
+ * the source's definition, input, and attempt (engine rerun parallel).
+ * @param source - the run row being retried.
+ * @returns the appended row.
+ */
+function appendFixtureRerun(source: FxRunRow): FxRunRow {
+  const serial = nextFixtureRerun
+  nextFixtureRerun++
+  const createdAt = FX_RUN_EPOCH + 4 * FX_HOUR + serial * 60_000
+  const rerun: FxRunRow = {
+    run_id: `fx-rerun-${serial}`,
+    def_kind: source.def_kind,
+    def_name: source.def_name,
+    def_version: source.def_version,
+    input_json: source.input_json,
+    status: 'running',
+    waiting_gate: null,
+    parent_run_id: null,
+    parent_step_key: null,
+    attempt: source.attempt + 1,
+    retried_from_run_id: source.run_id,
+    output_json: null,
+    error_json: null,
+    cancel_cause: null,
+    claimed_by: null,
+    claimed_at: null,
+    created_at: createdAt,
+    updated_at: createdAt,
+    finished_at: null,
+  }
+  fixtureRuns.push(rerun)
+  return rerun
 }
 
 /**
@@ -1976,6 +2257,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const log = logOf(sid(id))
       const messageSeqs = log.filter(event => event.type === 'user/message').map(event => event.seq)
       append(sid(id), { type: 'session/title', data: { title, messageSeqs, source: { kind: 'provider', provider: 'fixture' } } })
+    },
+    /** Append one approval asked/decided pair through the normal live path (advances the approvalHistory projection). */
+    appendApproval(id: string, approvalId: string, toolName: string, outcome: NonNullable<FxApprovalHistoryEntry['outcome']>): void {
+      append(sid(id), { type: 'approval/asked', data: { id: approvalId, toolName } })
+      append(sid(id), { type: 'approval/decided', data: { id: approvalId, outcome } })
     },
     /** Start an externally paced reasoning stream for the opt-in browser stress lane. */
     startReasoningChunkStorm(
@@ -3016,6 +3302,8 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           line?: string
           ref?: { id: string; revision: number }
           request?: { objective?: string; maxGoalRounds?: number }
+          status?: FxRunRow['status']
+          runId?: string
         }
       }).args
       const sessionId = args.agentId
@@ -3033,6 +3321,37 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         case 'goals/clear': return Promise.resolve(goalRemotes.clear(sessionId, args.ref as FxGoalRef))
         // daypaw fork endpoint: the engine's definition registry read view.
         case 'durable/listDefinitions': return Promise.resolve({ ok: true, value: fixtureDefinitions })
+        // daypaw fork endpoints: the engine's run ledger query surface (rows
+        // keep the ledger's snake_case shape; the browser polls unfiltered).
+        case 'durable/listRuns': {
+          const rows = fixtureRuns.filter(row => args.status === undefined || row.status === args.status)
+          return Promise.resolve({ ok: true, value: [...rows].sort((a, b) => b.created_at - a.created_at) })
+        }
+        case 'durable/runLineage': {
+          const run = fixtureRuns.find(row => row.run_id === args.runId)
+          return Promise.resolve({
+            ok: true,
+            value: {
+              run,
+              parent: run?.parent_run_id == null ? undefined : fixtureRuns.find(row => row.run_id === run.parent_run_id),
+              children: fixtureRuns.filter(row => row.parent_run_id === args.runId),
+            },
+          })
+        }
+        case 'durable/journalTimeline': {
+          return Promise.resolve({ ok: true, value: fixtureJournal.filter(row => row.run_id === args.runId) })
+        }
+        case 'durable/rerun': {
+          const source = fixtureRuns.find(row => row.run_id === args.runId)
+          if (source === undefined) {
+            return Promise.resolve({
+              // RpcError's closed code union has no run code; internal carries the naming message.
+              ok: false,
+              error: { code: 'internal', message: `no run ${String(args.runId)}`, details: {} },
+            })
+          }
+          return Promise.resolve({ ok: true, value: appendFixtureRerun(source).run_id })
+        }
         default:
           return Promise.reject(new Error(`fixture connection RPC endpoint ${JSON.stringify(endpoint)} is unavailable`))
       }

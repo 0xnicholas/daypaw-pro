@@ -1,7 +1,8 @@
 /**
  * `daypaw-tasks` namespace dictionaries: the new-task dialog, the group task
- * list, and the business-language conversation view copy. Product vocabulary
- * rule: no run/session/journal wording on this surface — a task is a task.
+ * list (including the run status text), the business-language conversation
+ * view, and the task detail body copy. Product vocabulary rule: no
+ * run/session/journal wording on this surface — a task is a task.
  */
 
 /** Simplified Chinese dictionary (the key-set source of truth; product copy). */
@@ -22,6 +23,27 @@ export const zh = {
   'list.time.days': '{n} 天前',
   'list.time.months': '{n} 个月前',
   'list.time.years': '{n} 年前',
+  'list.status.running': '进行中',
+  'list.status.waiting': '等待确认',
+  'list.status.done': '已完成',
+  'list.status.failed': '出错了',
+  'list.status.cancelled': '已取消',
+  'detail.progress.heading': '进度',
+  'detail.progress.empty': '暂无进度',
+  'detail.step.started': '进行中',
+  'detail.step.completed': '已完成',
+  'detail.step.failed': '出错了',
+  'detail.subtasks.heading': '子任务',
+  'detail.subtasks.empty': '暂无子任务',
+  'detail.deliverables.heading': '产出物',
+  'detail.deliverables.empty': '暂无产出物',
+  'detail.approvals.heading': '审批历史',
+  'detail.approvals.empty': '暂无审批记录',
+  'detail.approval.allowed-once': '同意',
+  'detail.approval.rejected': '拒绝',
+  'detail.approval.cancelled': '已取消',
+  'detail.approval.unavailable': '未回应',
+  'detail.approval.pending': '等待确认',
   'conversation.running': '进行中',
   'conversation.error': '出错了',
   'conversation.empty': '暂无对话内容',
@@ -49,6 +71,27 @@ export const en = {
   'list.time.days': '{n} d ago',
   'list.time.months': '{n} mo ago',
   'list.time.years': '{n} y ago',
+  'list.status.running': 'In progress',
+  'list.status.waiting': 'Awaiting confirmation',
+  'list.status.done': 'Done',
+  'list.status.failed': 'Something went wrong',
+  'list.status.cancelled': 'Cancelled',
+  'detail.progress.heading': 'Progress',
+  'detail.progress.empty': 'No progress yet',
+  'detail.step.started': 'In progress',
+  'detail.step.completed': 'Done',
+  'detail.step.failed': 'Something went wrong',
+  'detail.subtasks.heading': 'Subtasks',
+  'detail.subtasks.empty': 'No subtasks',
+  'detail.deliverables.heading': 'Deliverables',
+  'detail.deliverables.empty': 'No deliverables',
+  'detail.approvals.heading': 'Approval history',
+  'detail.approvals.empty': 'No approval history',
+  'detail.approval.allowed-once': 'Approved',
+  'detail.approval.rejected': 'Rejected',
+  'detail.approval.cancelled': 'Cancelled',
+  'detail.approval.unavailable': 'No response',
+  'detail.approval.pending': 'Awaiting confirmation',
   'conversation.running': 'In progress',
   'conversation.error': 'Something went wrong',
   'conversation.empty': 'No messages yet',

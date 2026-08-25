@@ -8,7 +8,8 @@
  * 'inbox.workspace.conversation' occupant, the Agents catalog rendered by the
  * 'inbox.agents.page' occupant, or the 设置 page rendered from the
  * 'inbox.settings.page' occupant (placeholder fallbacks while no occupant is
- * registered).
+ * registered). A session-less workflow-run selection renders the run
+ * placeholder (its progress lives in the detail column).
  */
 import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -20,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from './contract.ts'
 import type { InboxGroup, InboxSelection } from './selection.ts'
 import { projectInboxBoard } from './task-projection.ts'
+import type { RunsBoardState } from './runs-store.ts'
 import type { InboxKey } from './locales.ts'
 import css from './WorkspaceSwitch.module.css'
 
@@ -28,6 +30,8 @@ export interface WorkspaceSwitchInjected {
   hooks: {
     /** Shared workbench selection, bound by the renderer as useSelection. */
     selection: SnapshotStore<InboxSelection>
+    /** The run-board poll snapshot, bound by the renderer as useBoard. */
+    board: SnapshotStore<RunsBoardState>
   }
   /** Select an inbox group, a task, or a secondary page. */
   select: (next: InboxSelection) => void
@@ -62,9 +66,10 @@ const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
  * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the workspace element tree.
  */
-export function WorkspaceSwitch({ useSelection, useSessions, select, renderSlot, t }: WorkspaceSwitchProps) {
+export function WorkspaceSwitch({ useSelection, useBoard, useSessions, select, renderSlot, t }: WorkspaceSwitchProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
+  const runs = useBoard(s => s.runs)
   const openTask = (sessionId: SessionId): void => { select({ kind: 'task', sessionId }) }
 
   if (selection.kind === 'agents') {
@@ -106,14 +111,24 @@ export function WorkspaceSwitch({ useSelection, useSessions, select, renderSlot,
       </div>
     )
   }
+  if (selection.kind === 'run') {
+    // A session-less workflow run: no conversation occupant, ever — the
+    // detail column carries its progress and outputs.
+    return (
+      <div className={css.root}>
+        <div className={css.empty}>{t('workspace.run.placeholder')}</div>
+      </div>
+    )
+  }
   return (
     <div className={css.root}>
       <header className={css.header}><h1 className={css.title}>{t(GROUP_TITLE[selection.group])}</h1></header>
       {renderSlot('inbox.workspace.banner', { openSettings: () => { select({ kind: 'settings' }) } })}
       {renderSlot('inbox.workspace.tasks', {
-        rows: projectInboxBoard(list).rows[selection.group],
+        rows: projectInboxBoard(list, runs).rows[selection.group],
         now: Date.now(),
         openTask,
+        openRun: (runId: string): void => { select({ kind: 'run', runId }) },
       }, {
         fallback: <div className={css.empty}>{t(GROUP_EMPTY[selection.group])}</div>,
       })}

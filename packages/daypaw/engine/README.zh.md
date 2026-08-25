@@ -17,8 +17,9 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 - `listDefinitions()` —— 定义注册表的唯一读面（spec 05 §5）：按登记顺序枚举全部已注册定义，条目为 `{ kind, name, version, display }`，绝不含 body。`display` 是定义为 host 目录视图声明的可选展示元数据（`title` + `description`），未声明时该 key 缺席（永不以 undefined 值出现，应答保持 JSON 安全），不携带任何执行语义。每次调用返回全新拷贝，调用方无法经结果改到注册表；`register` 仍是唯一写面。该方法同时是浏览器目录页的 wire 面：服务携带 `TypertRemoteService` 绑定、方法带 `@Remote` 标记，API gateway 据此认领 `durable/listDefinitions` 端点（GoalService 先例），无需改动 apiproxy。
 - `resolveGate(runId, gate, settlement, source)` —— gate 结算的唯一缝（first-wins）：SDK 直调 / Manager UI /（留口）webhook 同路。本进程持有 waiter 时先按值契约校验再落账，不合格即 throw 不记录；第二写入者 no-op 返回 `false`。本进程等待中的驱动立即续跑；别进程写入由 driver 侧 `pollMs` 轮询兜底，进程已死则由 boot 扫描续跑。
 - `steer(runId, input)` —— 向未完 run 追加一个追问段（issue #53）：runId 未知、run 已终态、或本进程已注册而未以 `steerable: true` 声明的定义均 loud throw。落账先于投递：segment 行先落账，本进程 parked body 随即唤醒；别进程由 parked 等待的 `pollMs` 轮询或下一次 boot 扫描观察到。返回从 1 起的段序号。方法携带 `@Remote` 标记，浏览器经 `durable/steer` 端点触达（`listDefinitions` 先例）。
+- `rerun(runId)` —— 重试一个终态顶层 run（issue #57）：runId 未知、run 未终态、子 run（对子 run 重试会把 attempt 链从父 run 的 step journal 上扯脱——应重试顶层 run）、或定义未在本进程注册，均 loud throw。否则经与 `run()` 启动分支共享的 `insertAndDrive()` 抽取插入一行新记录——定义身份与输入相同、`attempt = 源.attempt + 1`、`retried_from_run_id = 源.run_id`——并立即驱动，返回新 run id。方法携带 `@Remote` 标记（`durable/rerun`）。
 
-查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。
+查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。三者均携带 `@Remote` 标记（`listDefinitions` 先例），浏览器板块经 gateway 以 `durable/listRuns` / `durable/runLineage` / `durable/journalTimeline` 触达，无需改动 apiproxy。其 wire 类型经本包 `types.ts` 从 [`@daypaw/store/types`](../store/README.md)（及 `seams.ts` / `core.ts`）转出，因为 Typert 分析器扫描的是声明所属包的 exports 子路径；`RunLineage` 成员为 `| null` 而非 `undefined`——JSON 丢弃 undefined 值的键，wire 值必须与声明类型一致。
 
 配置（schemastery）：`path`（ledger 文件或 `:memory:`）、`pollMs`（attach 轮询间隔，默认 1s）。
 

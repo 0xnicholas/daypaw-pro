@@ -51,9 +51,9 @@ export class SqliteJournalStore implements JournalStore {
     this.selectRunStmt = db.prepare('SELECT * FROM runs WHERE run_id = ?')
     this.insertRunStmt = db.prepare(`INSERT INTO runs (
       run_id, def_kind, def_name, def_version, input_json, status,
-      parent_run_id, parent_step_key, attempt, claimed_by, claimed_at,
+      parent_run_id, parent_step_key, attempt, retried_from_run_id, claimed_by, claimed_at,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'running', ?, ?, 1, ?, ?, ?, ?)`)
+    ) VALUES (?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, ?, ?, ?, ?)`)
     this.claimRunStmt = db.prepare(`UPDATE runs
       SET claimed_by = ?, claimed_at = ?, updated_at = ?
       WHERE run_id = ? AND status IN ${UNFINISHED} AND (claimed_by IS NULL OR claimed_by <> ?)`)
@@ -112,6 +112,7 @@ export class SqliteJournalStore implements JournalStore {
     this.insertRunStmt.run(
       row.runId, row.defKind, row.defName, row.defVersion, row.inputJson,
       row.parentRunId ?? null, row.parentStepKey ?? null,
+      row.attempt ?? 1, row.retriedFromRunId ?? null,
       row.claimedBy, row.claimedAt, row.createdAt, row.createdAt,
     )
   }

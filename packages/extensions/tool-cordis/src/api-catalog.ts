@@ -560,19 +560,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [],
       },
       {
-        signature: 'async listRuns(filter?: RunListFilter): Promise<RunRow[]>',
+        signature: '@Remote(\'listRuns\') async listRuns(filter?: RunListFilter): Promise<RunRow[]>',
         description: 'List run rows from the ledger, newest first (spec 05 §5).',
         parameters: [{ name: 'filter', description: 'optional status restriction.' }],
         returns: 'matching run rows.',
       },
       {
-        signature: 'async runLineage(runId: string): Promise<RunLineage>',
+        signature: '@Remote(\'runLineage\') async runLineage(runId: string): Promise<RunLineage>',
         description: 'Read one run\'s parent/child lineage in one call: its own row, its parent, and its direct children.',
         parameters: [{ name: 'runId', description: 'run identity.' }],
         returns: 'the lineage; every field is empty when the runId is unknown.',
       },
       {
-        signature: 'async journalTimeline(runId: string): Promise<JournalRow[]>',
+        signature: '@Remote(\'journalTimeline\') async journalTimeline(runId: string): Promise<JournalRow[]>',
         description: 'Enumerate one run\'s journal steps in start order (spec 05 §5).',
         parameters: [{ name: 'runId', description: 'run identity.' }],
         returns: 'the run\'s journal steps in start order.',
@@ -594,6 +594,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Append a steer segment to an unfinished steerable run (issue #53): durable before delivery — a body parked in this process wakes immediately, elsewhere the parked poll or the next boot scan observes the segment row. Served to the browser as the Remote endpoint `durable/steer` (the `listDefinitions` precedent). See DurableEngineCore.steer.',
         parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'input', description: 'JSON-serializable follow-up input; validated by the SDK face.' }],
         returns: 'the assigned segment sequence (1-based).',
+      },
+      {
+        signature: '@Remote(\'rerun\') async rerun(runId: string): Promise<string>',
+        description: 'Rerun a terminal top-level run (issue #57): a fresh row with the same definition identity and input, chained to its source by attempt number and `retried_from_run_id`, driven immediately. Served to the browser as the Remote endpoint `durable/rerun` (the `listDefinitions` precedent). See DurableEngineCore.rerun.',
+        parameters: [{ name: 'runId', description: 'source run identity.' }],
+        returns: 'the new run\'s id.',
       },
     ],
   },
@@ -3778,7 +3784,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RunLineage',
-    declaration: 'export interface RunLineage {\n    readonly run: RunRow | undefined;\n    readonly parent: RunRow | undefined;\n    readonly children: readonly RunRow[];\n}',
+    declaration: 'export interface RunLineage {\n    readonly run: RunRow | null;\n    readonly parent: RunRow | null;\n    readonly children: readonly RunRow[];\n}',
   },
   {
     name: 'RunListFilter',

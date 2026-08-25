@@ -11,10 +11,11 @@ import { createSnapshotStore, type SessionId, type SnapshotStore } from '@deepse
 /** The three inbox groups. */
 export type InboxGroup = 'pending' | 'running' | 'done'
 
-/** What the workbench shows: an inbox group, one task's conversation, or a secondary-nav page. */
+/** What the workbench shows: an inbox group, one task's conversation, a session-less workflow run, or a secondary-nav page. */
 export type InboxSelection =
   | { kind: 'group'; group: InboxGroup }
   | { kind: 'task'; sessionId: SessionId }
+  | { kind: 'run'; runId: string }
   | { kind: 'agents' }
   | { kind: 'settings' }
 

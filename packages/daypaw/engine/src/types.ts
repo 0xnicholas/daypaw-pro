@@ -37,3 +37,11 @@ export interface DefinitionView {
  * `Json` and is validated against the definition's contract by the SDK face.
  */
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
+
+// The query-surface Remote boundary (spec 05 §5): `listRuns`'s filter and the
+// row/read types all three query endpoints plus `rerun` share. Re-exported
+// here because the Typert generator requires Remote boundary types on this
+// public non-root subpath; the declarations stay owned by the store and core.
+export type { RunDefKind, JournalKindDb, JournalRow, JournalStatusDb, RunRow, RunStatusDb } from '@daypaw/store/types'
+export type { RunListFilter } from './seams.ts'
+export type { RunLineage } from './core.ts'

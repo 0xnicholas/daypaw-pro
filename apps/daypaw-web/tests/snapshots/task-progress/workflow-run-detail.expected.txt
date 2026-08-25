@@ -1,0 +1,17 @@
+conversation
+placeholder=This task has no conversation — see its progress and outputs in the details column
+detail
+header=release-digest
+status=Completed
+retry=false
+section=Progress
+  row=Collect team updates=Done
+  row=Draft the report=Done
+  row=Publish the summary=Done
+section=Subtasks
+  empty=No subtasks
+section=Deliverables
+  row=summary=Shipped the durable tasks board and two follow-up fixes.
+  row=count=3
+section=Approval history
+  empty=No approval history

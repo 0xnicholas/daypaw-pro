@@ -770,11 +770,23 @@
         "react-dom"
       ]
     },
+    // Fork host plugin (approvalHistory session projection): the generic
+    // packages/*/* shape, stated explicitly like the upstream host packages.
+    "packages/daypaw/approval-history": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    },
     // Fork carrier of packages/bundle/web-app: a closure manifest whose
     // dependencies the cordis.patch.yml rows name, not the code. The frontend
     // package stays referenced: resolveDistIndex() require.resolves its dist.
     "packages/daypaw/web-app": {
       "ignoreDependencies": [
+        "@daypaw/approval-history",
         "@daypaw/ui-agents",
         "@daypaw/ui-inbox",
         "@daypaw/ui-settings",

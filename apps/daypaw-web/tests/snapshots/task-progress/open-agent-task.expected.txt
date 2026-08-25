@@ -1,0 +1,70 @@
+conversation
+status=In progress
+user=问题 51：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 51：这是 fixture 生成的历史回复正文。
+user=问题 52：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 52：这是 fixture 生成的历史回复正文。
+assistant=工具结果已消化（turn 52）。
+user=问题 53：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 53：这是 fixture 生成的历史回复正文。
+user=问题 54：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 54：这是 fixture 生成的历史回复正文。
+user=问题 55：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 55：这是 fixture 生成的历史回复正文。
+user=问题 56：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 56：这是 fixture 生成的历史回复正文。
+user=问题 57：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 57：这是 fixture 生成的历史回复正文。
+assistant=工具结果已消化（turn 57）。
+user=问题 58：fixture 历史消息，用于翻页与渲染验收。
+assistant=回答 58：这是 fixture 生成的历史回复正文。
+user=用户字面量：# 不渲染 `code` [link](https://example.com)
+assistant=# Markdown fixture
+
+Assistant output renders **strong text**, *emphasis*, and `inline code`.
+
+- first item
+  - nested item
+
+| Area | State |
+| --- | --- |
+| history | rendered |
+| streaming | stable |
+
+[DeepSeek](https://www.deepseek.com)
+
+```ts
+const markdown = true
+```
+user=问题 60：fx-bash 样本。
+user=问题 61：fx-write 样本。
+user=问题 62：edit 样本。
+user=问题 63：write 样本。
+user=问题 64：edit 样本。
+user=问题 65：run_code 样本。
+user=问题 66：bash 样本。
+user=问题 67：grep 样本。
+user=问题 68：glob 样本。
+user=问题 69：read 样本。
+user=问题 70：web_search 样本。
+user=问题 71：web_fetch 样本。
+user=问题 72：请完整列出全部一百条条目。
+assistant=条目 1：第一条。条目 2：第二条。条目 3：这一条写到一半被
+user=历史用户图片
+assistant=结构化模型图片：
+user=问题 74：todo_write 样本。
+detail
+header=Task details
+retry=false
+section=Progress
+  row=历史用户图片
+  row=结构化模型图片：
+  row=问题 74：todo_write 样本。
+  row=In progress
+section=Subtasks
+  empty=No subtasks
+section=Deliverables
+  empty=No deliverables
+section=Approval history
+  row=写入工作区外路径=Approved
+  row=write=Rejected

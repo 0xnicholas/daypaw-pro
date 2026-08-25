@@ -19,13 +19,14 @@ const NOW = 400 * 86_400_000
 
 function mountList(rows: TaskListProps['rows']) {
   const openTask = vi.fn()
+  const openRun = vi.fn()
   render(
     <TaskList
-      rows={rows} now={NOW} openTask={openTask}
+      rows={rows} now={NOW} openTask={openTask} openRun={openRun}
       useSessions={neverHook} useWorkspaces={neverHook} t={t}
     />,
   )
-  return { openTask }
+  return { openTask, openRun }
 }
 
 const row = (title: string, updatedAt: number, agentPreset?: string): TaskListProps['rows'][number] => ({
@@ -33,6 +34,18 @@ const row = (title: string, updatedAt: number, agentPreset?: string): TaskListPr
   title,
   updatedAt,
   ...(agentPreset === undefined ? {} : { agentPreset }),
+})
+
+/** A durable-run row fixture; `sessionless` drops the session identity (a workflow run). */
+const runRow = (
+  title: string,
+  status: 'running' | 'waiting' | 'done' | 'failed' | 'cancelled',
+  sessionless = false,
+): TaskListProps['rows'][number] => ({
+  ...(sessionless ? {} : { sessionId: `run-${title}` as SessionId }),
+  title,
+  updatedAt: NOW,
+  run: { runId: `run-${title}`, status, defKind: sessionless ? 'workflow' : 'agent' },
 })
 
 describe('TaskList', () => {
@@ -74,5 +87,37 @@ describe('TaskList', () => {
   it('renders the list empty state for an empty group', () => {
     mountList([])
     expect(screen.getByText('暂无任务')).toBeTruthy()
+  })
+
+  it('renders the strict status text on run rows', () => {
+    mountList([
+      runRow('running-task', 'running'),
+      runRow('waiting-task', 'waiting'),
+      runRow('done-task', 'done'),
+      runRow('failed-task', 'failed'),
+      runRow('cancelled-task', 'cancelled'),
+    ])
+    expect(screen.getByText('进行中')).toBeTruthy()
+    expect(screen.getByText('等待确认')).toBeTruthy()
+    expect(screen.getByText('已完成')).toBeTruthy()
+    expect(screen.getByText('出错了')).toBeTruthy()
+    expect(screen.getByText('已取消')).toBeTruthy()
+  })
+
+  it('opens a session-backed run row through openTask', () => {
+    const { openTask } = mountList([runRow('agent-task', 'running')])
+    fireEvent.click(screen.getByRole('button', { name: /agent-task/ }))
+    expect(openTask).toHaveBeenCalledWith('run-agent-task')
+  })
+
+  it('opens a session-less workflow row through openRun (keyed by runId)', () => {
+    const { openTask, openRun } = mountList([
+      runRow('workflow-task', 'running', true),
+      runRow('other-task', 'done', true),
+    ])
+    expect(screen.getByText('workflow-task')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /workflow-task/ }))
+    expect(openTask).not.toHaveBeenCalled()
+    expect(openRun).toHaveBeenCalledWith('run-workflow-task')
   })
 })

@@ -105,7 +105,7 @@ async idle(): Promise<void>
  * @param filter - optional status restriction.
  * @returns matching run rows.
  */
-async listRuns(filter?: RunListFilter): Promise<RunRow[]>
+@Remote('listRuns') async listRuns(filter?: RunListFilter): Promise<RunRow[]>
 
 /**
  * Read one run's parent/child lineage in one call: its own row, its
@@ -113,14 +113,14 @@ async listRuns(filter?: RunListFilter): Promise<RunRow[]>
  * @param runId - run identity.
  * @returns the lineage; every field is empty when the runId is unknown.
  */
-async runLineage(runId: string): Promise<RunLineage>
+@Remote('runLineage') async runLineage(runId: string): Promise<RunLineage>
 
 /**
  * Enumerate one run's journal steps in start order (spec 05 §5).
  * @param runId - run identity.
  * @returns the run's journal steps in start order.
  */
-async journalTimeline(runId: string): Promise<JournalRow[]>
+@Remote('journalTimeline') async journalTimeline(runId: string): Promise<JournalRow[]>
 
 /**
  * Enumerate the registered definitions in registration order (spec 05 §5):
@@ -154,6 +154,17 @@ async resolveGate(runId: string, gate: string, settlement: GateSettlement, sourc
  * @returns the assigned segment sequence (1-based).
  */
 @Remote('steer') async steer(runId: string, input: Json): Promise<number>
+
+/**
+ * Rerun a terminal top-level run (issue #57): a fresh row with the same
+ * definition identity and input, chained to its source by attempt number
+ * and `retried_from_run_id`, driven immediately. Served to the browser as
+ * the Remote endpoint `durable/rerun` (the `listDefinitions` precedent).
+ * See {@link DurableEngineCore.rerun}.
+ * @param runId - source run identity.
+ * @returns the new run's id.
+ */
+@Remote('rerun') async rerun(runId: string): Promise<string>
 ```
 
 Source: [`packages/daypaw/engine/src/index.ts:69`](../../packages/daypaw/engine/src/index.ts)

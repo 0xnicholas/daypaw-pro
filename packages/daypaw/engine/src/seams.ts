@@ -25,6 +25,10 @@ export interface RunInsert {
   readonly inputJson: string
   readonly parentRunId: string | undefined
   readonly parentStepKey: string | undefined
+  /** Attempt number on the rerun chain (issue #57); omitted records 1 (a fresh run). */
+  readonly attempt?: number
+  /** Source run of this attempt; omitted records `retried_from_run_id` NULL. */
+  readonly retriedFromRunId?: string
   readonly claimedBy: string
   readonly claimedAt: number
   readonly createdAt: number

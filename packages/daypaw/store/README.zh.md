@@ -8,7 +8,7 @@ daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——sch
 
 单一独立 SQLite 库文件（WAL、`busy_timeout`、`foreign_keys ON`），属主独占创建，打开即迁移：
 
-- `runs` — 每个 durable run 一行：定义身份、输入、状态、认领、父子链、类型化输出/失败。
+- `runs` — 每个 durable run 一行：定义身份、输入、状态、认领、父子链、attempt 链（`attempt` / `retried_from_run_id`，由引擎的 `rerun` 写入）、类型化输出/失败。
 - `journal` — 每个幂等 step 一行（`(run_id, step_key)` 主键即去重闸）或每个 steer 段边界一行（`kind = 'segment'`，写入即完成态）：名字、occurrence、状态、已记录结果或失败。
 - `promises` — 每个 durable gate 一行（`(run_id, gate)` 主键）：五态结局、payload、JSON Schema 渲染投影、期限、resolve 来源。
 
@@ -17,6 +17,7 @@ daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——sch
 - `openLedgerDatabase(path)` — 打开（属主独占创建）并迁移 ledger 文件，或 `:memory:`。
 - `migrateDatabase(db, migrations?)` — 应用待迁移段；每段的 SQL 与其 `PRAGMA user_version` 戳在同一事务内提交。
 - `MIGRATIONS`、`DAYPAW_STORE_SCHEMA_VERSION`、`RUNS_TABLE` / `JOURNAL_TABLE` / `PROMISES_TABLE`、`RunRow` / `JournalRow` / `PromiseRow` —— 契约常量与行类型。
+- `./types` 子路径 —— 零运行时的 wire 行类型转出（`RunRow` / `JournalRow` / `RunStatusDb` / `RunDefKind` / `JournalKindDb` / `JournalStatusDb`）：引擎的 Remote 端点返回这些行，而 Typert 分析器扫描的是声明所属包的 exports 子路径，因此 remote 客户端仅从该出口导入类型。
 
 迁移为编号、单调、手写 SQL（以可评审的 TS 模板字符串承载，使编译后的 `lib/` 自包含）。盖有比本构建更新的版本戳的库在打开时拒绝；向前兼容靠迁移，向后不作承诺。
 

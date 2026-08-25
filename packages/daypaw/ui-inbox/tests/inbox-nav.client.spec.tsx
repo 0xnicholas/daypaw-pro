@@ -7,6 +7,8 @@ import { createSnapshotStore, type SessionListState, type SnapshotStore } from '
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { InboxNav, type InboxNavProps } from '../src/client/InboxNav.tsx'
 import { InboxSelectionController } from '../src/client/selection.ts'
+import type { RunsBoardState } from '../src/client/runs-store.ts'
+import type { WireRun } from '../src/client/runs-api.ts'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -46,7 +48,13 @@ function sessionsStore(rows: readonly SummarySpec[]): SnapshotStore<SessionListS
   })
 }
 
-function mountNav({ collapsed = false, rows = [] }: { collapsed?: boolean; rows?: readonly SummarySpec[] } = {}) {
+interface MountNavOptions {
+  collapsed?: boolean
+  rows?: readonly SummarySpec[]
+  runs?: readonly WireRun[]
+}
+
+function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions = {}) {
   const openSession = vi.fn()
   const controller = new InboxSelectionController(openSession)
   const toggleSidebar = vi.fn()
@@ -57,11 +65,26 @@ function mountNav({ collapsed = false, rows = [] }: { collapsed?: boolean; rows?
       collapsed={collapsed} width={collapsed ? 56 : 300}
       useSessions={bindSnapshotSelector(sessionsStore(rows))} useWorkspaces={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
+      useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
       select={(next) => { controller.select(next) }}
       toggleSidebar={toggleSidebar} renderSlot={renderSlot} t={t}
     />,
   )
   return { controller, openSession, toggleSidebar, view }
+}
+
+/** A board run row fixture. */
+function boardRun(overrides: Partial<WireRun> = {}): WireRun {
+  return {
+    runId: 'r1',
+    defKind: 'workflow',
+    defName: 'close-the-books',
+    status: 'running',
+    parentRunId: null,
+    outputJson: null,
+    updatedAt: 100,
+    ...overrides,
+  }
 }
 
 describe('InboxNav', () => {
@@ -129,6 +152,7 @@ describe('InboxNav', () => {
         collapsed={false} width={300}
         useSessions={bindSnapshotSelector(sessionsStore([]))} useWorkspaces={neverHook}
         useSelection={bindSnapshotSelector(controller.store)}
+        useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs: [] }))}
         select={(next) => { controller.select(next) }}
         toggleSidebar={() => {}} renderSlot={renderSlot} t={t}
       />,
@@ -145,6 +169,22 @@ describe('InboxNav', () => {
     act(() => { (owners.at(-1) as { close: () => void }).close() })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 's1' })
+  })
+
+  it('counts engine runs alongside sessions: a running workflow run counts 进行中, a settled one 已完成, an agent run dedupes its session twin', () => {
+    mountNav({
+      rows: [{ id: 'r2', running: true }],
+      runs: [
+        boardRun({ runId: 'r1', defKind: 'workflow', status: 'running' }),
+        boardRun({ runId: 'r2', defKind: 'agent', status: 'running' }),
+        boardRun({ runId: 'r3', defKind: 'workflow', status: 'failed' }),
+        boardRun({ runId: 'r4', defKind: 'workflow', status: 'running', parentRunId: 'r1' }),
+      ],
+    })
+    // r2's session twin never double-counts; the child run r4 never lists.
+    expect(screen.getByRole('button', { name: '进行中2' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '已完成1' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '等待你确认0' })).toBeTruthy()
   })
 
   it('renders the collapsed rail: toggle and new-task icon buttons only', () => {

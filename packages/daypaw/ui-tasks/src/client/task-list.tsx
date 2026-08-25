@@ -1,18 +1,21 @@
 /**
  * Group task list (the 'inbox.workspace.tasks' occupant): the owner's
- * projected rows as plain task entries — title, the agent running it, and the
- * 最近动态 last-activity line (a crash-revival pause keeps reading as an
- * active, recently-moving task) — each opening its conversation on click. An
- * empty group renders the list's own empty state (the owner's per-group copy
- * is the no-occupant fallback).
+ * projected rows as plain task entries — title, the agent running it, the
+ * strict status text when the row comes from a durable run (failed reads in
+ * the error color), and the 最近动态 last-activity line (a crash-revival pause
+ * keeps reading as an active, recently-moving task) — each opening its
+ * conversation on click. An empty group renders the list's own empty state
+ * (the owner's per-group copy is the no-occupant fallback).
  */
+import clsx from 'clsx'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the tasks seat) in so
 // PropsRuntime<'inbox.workspace.tasks'> resolves.
 import type {} from '@daypaw/ui-inbox/client'
+import { runStatusKey } from './run-status.ts'
 import css from './task-list.module.css'
 
-/** Full component props: owner share (projected rows + now + openTask) + locale seat. */
+/** Full component props: owner share (projected rows + now + openTask/openRun) + locale seat. */
 export type TaskListProps =
   PropsRuntime<'inbox.workspace.tasks'>
   & PropsLocale<'daypaw-tasks'>
@@ -58,23 +61,45 @@ function activityLabel(updatedAt: number, now: number, t: TaskListProps['t']): s
 }
 
 /**
+ * The row's React key: its session identity, else its run identity. The
+ * owner's projection builds every row from a session, a run, or both (never
+ * neither), so one of the two always resolves.
+ * @param row - one projected task row.
+ * @returns the row's stable key.
+ */
+function rowKey(row: TaskListProps['rows'][number]): string {
+  if (row.sessionId !== undefined) return row.sessionId
+  return (row.run as NonNullable<TaskListProps['rows'][number]['run']>).runId
+}
+
+/**
  * Render one inbox group's task list.
  * @param props - composed slot props (owner share + locale seat).
  * @returns the list element tree.
  */
-export function TaskList({ rows, now, openTask, t }: TaskListProps) {
+export function TaskList({ rows, now, openTask, openRun, t }: TaskListProps) {
   if (rows.length === 0) return <div className={css.empty}>{t('list.empty')}</div>
   return (
     <ul className={css.list}>
       {rows.map(row => (
-        <li key={row.sessionId}>
+        <li key={rowKey(row)}>
           <button
             type="button"
             className={css.row}
-            onClick={() => { openTask(row.sessionId) }}
+            onClick={() => {
+              // A workflow-run row has no session: its click selects the run
+              // (right-column detail) instead of opening a conversation.
+              if (row.sessionId !== undefined) openTask(row.sessionId)
+              else if (row.run !== undefined) openRun(row.run.runId)
+            }}
           >
             <span className={css.title}>{row.title}</span>
             {row.agentPreset !== undefined && <span className={css.agent}>{row.agentPreset}</span>}
+            {row.run !== undefined && (
+              <span className={clsx(css.status, row.run.status === 'failed' && css.statusFailed)}>
+                {t(runStatusKey(row.run.status))}
+              </span>
+            )}
             <span className={css.activity}>{activityLabel(row.updatedAt, now, t)}</span>
           </button>
         </li>

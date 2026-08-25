@@ -3070,6 +3070,7 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
 
+- `@daypaw/approval-history` — requires `sessionProjections` ([`packages/daypaw/approval-history/src/index.ts`](../packages/daypaw/approval-history/src/index.ts))
 - `@daypaw/ui-agents` ([`packages/daypaw/ui-agents/src/index.ts`](../packages/daypaw/ui-agents/src/index.ts))
 - `@daypaw/ui-inbox` ([`packages/daypaw/ui-inbox/src/index.ts`](../packages/daypaw/ui-inbox/src/index.ts))
 - `@daypaw/ui-settings` ([`packages/daypaw/ui-settings/src/index.ts`](../packages/daypaw/ui-settings/src/index.ts))

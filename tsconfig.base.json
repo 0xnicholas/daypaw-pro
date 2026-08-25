@@ -205,6 +205,9 @@
       // The /client browser entry (same shape as dsh-client-*/client above):
       // fork UI plugins pull each other's SlotMap/Context merges type-only.
       "@daypaw/*/client": ["./packages/daypaw/*/src/client"],
+      // The /types pure-type outlet (same shape as dsh-plan-mode/types above):
+      // browser consumers pull the SessionProjectionMap merge type-only.
+      "@daypaw/*/types": ["./packages/daypaw/*/src/types.ts"],
       // The web-app bundle's startup row is its own subpath (same shape as
       // dsh-web-app/startup above); the generic wildcard cannot map it.
       "@daypaw/web-app/startup": ["./packages/daypaw/web-app/src/startup.ts"],

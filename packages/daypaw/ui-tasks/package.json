@@ -27,6 +27,7 @@
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
         "@daypaw/ui-inbox",
+        "@daypaw/approval-history",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-api-remotes"
       ],
@@ -42,6 +43,7 @@
     "clsx": "^2.0.0"
   },
   "peerDependencies": {
+    "@daypaw/approval-history": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",
     "@deepseek-ai/dsh-client-connection": "workspace:^",
@@ -55,6 +57,7 @@
     "react": "^18.2.0"
   },
   "devDependencies": {
+    "@daypaw/approval-history": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",
     "@deepseek-ai/dsh-client-connection": "workspace:^",

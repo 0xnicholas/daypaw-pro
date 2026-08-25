@@ -36,6 +36,9 @@
       "path": "../ui-inbox"
     },
     {
+      "path": "../approval-history"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

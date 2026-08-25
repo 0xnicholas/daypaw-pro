@@ -1077,7 +1077,40 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.agents.page\', () => ctx.slots.register(\n      { name: \'inbox.agents.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:96',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:142',
+  },
+  {
+    key: 'inbox.detail.body',
+    kind: 'single',
+    scope: 'session',
+    summary: 'The selected task\'s detail body: the single occupant draws the right column\'s content below the owner\'s header.',
+    doc: 'The selected task\'s detail body: the single occupant draws the right\ncolumn\'s content below the owner\'s header. The seat is session scope\n(the parent \'details\' slot is), but the owner props key off the\nworkbench selection, never the session seat — a workflow-run selection\nhas no session and the seat may carry a stale one. An absent occupant\nfalls back to the owner\'s empty copy.',
+    registerOptions: [],
+    ownerProps: [
+      '/** Owner share of the detail body occupant. */\nexport interface InboxDetailBodyOwnerProps {\n  /** The selection-keyed detail view. */\n  detail: TaskDetailView\n}',
+    ],
+    ownerPropsReferences: [
+      'TaskDetailView',
+    ],
+    standardProps: [
+      'useSessions: SnapshotSelectorHook<SessionListState>',
+      'useWorkspaces: SnapshotSelectorHook<import(\'./workspaces/service.ts\').WorkspaceListState>',
+      'useSession: SnapshotSelectorHook<ConversationSnapshot>',
+      'sessionId: SessionId',
+      'useProjection: UseProjection',
+      'useInput: SnapshotSelectorHook<InputState>',
+      'inputActions: InputActions',
+    ],
+    keyDomain: '',
+    hookContext: '',
+    slotInject: '',
+    declaredBy: 'an entry in \'details\' (@daypaw/ui-inbox), so it exists while that entry is mounted',
+    occupants: [
+      '@daypaw/ui-tasks DetailBody',
+    ],
+    replaceRisk: 'shadows-shipped-ui',
+    example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.detail.body\', () => ctx.slots.register(\n      { name: \'inbox.detail.body\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:151',
   },
   {
     key: 'inbox.new-task.dialog',
@@ -1105,7 +1138,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.new-task.dialog\', () => ctx.slots.register(\n      { name: \'inbox.new-task.dialog\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:77',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:123',
   },
   {
     key: 'inbox.settings.page',
@@ -1136,7 +1169,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.settings.page\', () => ctx.slots.register(\n      { name: \'inbox.settings.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:71',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:117',
   },
   {
     key: 'inbox.workspace.banner',
@@ -1186,7 +1219,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.banner\', () => ctx.slots.register(\n      { name: \'inbox.workspace.banner\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:65',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:111',
   },
   {
     key: 'inbox.workspace.conversation',
@@ -1215,7 +1248,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.conversation\', () => ctx.slots.register(\n      { name: \'inbox.workspace.conversation\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:90',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:136',
   },
   {
     key: 'inbox.workspace.tasks',
@@ -1225,7 +1258,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'One inbox group\'s task list: the single occupant renders the owner\'s\nprojected rows. An absent occupant falls back to the owner\'s empty\nstate.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the task-list occupant. */\nexport interface InboxTasksOwnerProps {\n  /** The group\'s projected rows. */\n  rows: readonly TaskRow[]\n  /** Current epoch ms for the rows\' 最近动态 relative-time labels. */\n  now: number\n  /** Open one row\'s conversation in the middle column. */\n  openTask: (sessionId: SessionId) => void\n}',
+      '/** Owner share of the task-list occupant. */\nexport interface InboxTasksOwnerProps {\n  /** The group\'s projected rows. */\n  rows: readonly TaskRow[]\n  /** Current epoch ms for the rows\' 最近动态 relative-time labels. */\n  now: number\n  /** Open one row\'s conversation in the middle column. */\n  openTask: (sessionId: SessionId) => void\n  /** Select one session-less workflow-run row (its detail lives in the right column). */\n  openRun: (runId: string) => void\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -1244,7 +1277,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.tasks\', () => ctx.slots.register(\n      { name: \'inbox.workspace.tasks\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:83',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:129',
   },
   {
     key: 'root',

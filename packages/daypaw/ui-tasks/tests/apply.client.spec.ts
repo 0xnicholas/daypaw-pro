@@ -11,6 +11,7 @@ import { apply as applyNodeHalf } from '../src/index.ts'
 import { NewTaskDialog, type NewTaskDialogInjected } from '../src/client/new-task-dialog.tsx'
 import { TaskList } from '../src/client/task-list.tsx'
 import { ConversationView } from '../src/client/conversation-view.tsx'
+import { DetailBody } from '../src/client/detail-body.tsx'
 import { FakeTaskApi } from './fake-task-api.client.ts'
 
 // The locale service reads its initial locale from the browser; these specs
@@ -38,6 +39,7 @@ async function bench() {
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
+        'details': { kind: 'single', scope: 'session' },
       },
     } as never,
     () => null,
@@ -57,6 +59,11 @@ async function bench() {
     } as never,
     () => null,
   )
+  // The TaskDetail occupant's declaration, as ui-inbox's 'details' registration makes it.
+  slots.register(
+    { name: 'details', children: { 'inbox.detail.body': { kind: 'single', scope: 'session' } } } as never,
+    () => null,
+  )
   return { ctx, slots, locale, api, sessions }
 }
 
@@ -69,7 +76,7 @@ describe('ui-tasks apply', () => {
     applyNodeHalf()
   })
 
-  it('occupies the three ui-inbox seats once their owners declare them', async () => {
+  it('occupies the four ui-inbox seats once their owners declare them', async () => {
     const b = await bench()
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const dialog = b.slots.entriesOfSlot('inbox.new-task.dialog')[0]!
@@ -77,6 +84,7 @@ describe('ui-tasks apply', () => {
     expect(dialog.locale).toBe('daypaw-tasks')
     expect(b.slots.entriesOfSlot('inbox.workspace.tasks')[0]!.component).toBe(TaskList)
     expect(b.slots.entriesOfSlot('inbox.workspace.conversation')[0]!.component).toBe(ConversationView)
+    expect(b.slots.entriesOfSlot('inbox.detail.body')[0]!.component).toBe(DetailBody)
     // The dictionaries answer in the browser's zh locale.
     expect(b.locale.bind('daypaw-tasks')('list.empty')).toBe('暂无任务')
   })
@@ -98,6 +106,7 @@ describe('ui-tasks apply', () => {
     expect(b.slots.entries('inbox.new-task.dialog')).toHaveLength(0)
     expect(b.slots.entries('inbox.workspace.tasks')).toHaveLength(0)
     expect(b.slots.entries('inbox.workspace.conversation')).toHaveLength(0)
+    expect(b.slots.entries('inbox.detail.body')).toHaveLength(0)
     // The (ns, locale) seats are free again — the dictionary disposers ran.
     expect(() => b.locale.register('daypaw-tasks', 'zh', {})).not.toThrow()
     expect(() => b.locale.register('daypaw-tasks', 'en', {})).not.toThrow()

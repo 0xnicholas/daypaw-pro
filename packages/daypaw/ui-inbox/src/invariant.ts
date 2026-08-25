@@ -17,9 +17,10 @@ export const inject = ['invariants']
 
 /**
  * No runtime invariant: a pure-presentation plugin whose only state is the
- * apply-closure selection store asserted directly by this package's
+ * apply-closure selection and run stores asserted directly by this package's
  * apply/component specs — it emits no cordis events and owns no durable or
- * cross-plugin mutable state; the slot registry's own package carries the
+ * cross-plugin mutable state (the engine ledger it polls stays the fact
+ * source); the slot registry's own package carries the
  * registration-lifecycle relation.
  */
 const install: InvariantInstaller = () => {}

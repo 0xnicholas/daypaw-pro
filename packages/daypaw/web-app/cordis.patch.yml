@@ -89,6 +89,12 @@
     - id: session-stats
       name: '@deepseek-ai/dsh-session-stats'
 
+    # Ordered approval audit entries for the task detail pane's 审批历史
+    # section (the approvalHistory projection key), folded from the
+    # approval/asked + approval/decided log pair.
+    - id: approval-history
+      name: '@daypaw/approval-history'
+
     # Resolve bind host, SSH launch, and display once at boot, then mount the
     # matching dual-face directory picker. Mount -native or -browse directly in
     # an overlay to pin the interaction.

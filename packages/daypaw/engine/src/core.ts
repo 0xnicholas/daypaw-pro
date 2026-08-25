@@ -207,12 +207,12 @@ export interface EngineDefinition {
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
 }
 
-/** Parent/child lineage of one run (spec 05 §5). */
+/** Parent/child lineage of one run (spec 05 §5). Wire-safe: absent members are `null`, never `undefined` (JSON drops undefined). */
 export interface RunLineage {
-  /** The run's own row; `undefined` when the runId is unknown. */
-  readonly run: RunRow | undefined
-  /** The parent run row; `undefined` for a top-level run or an absent parent row. */
-  readonly parent: RunRow | undefined
+  /** The run's own row; `null` when the runId is unknown. */
+  readonly run: RunRow | null
+  /** The parent run row; `null` for a top-level run or an absent parent row. */
+  readonly parent: RunRow | null
   /** Direct children, oldest first. */
   readonly children: readonly RunRow[]
 }
@@ -366,20 +366,12 @@ export class DurableEngineCore {
     const runId = opts?.runId ?? randomUUID()
     const existing = this.store.selectRun(runId)
     if (existing === undefined) {
-      const now = Date.now()
-      this.store.insertRun({
+      return this.insertAndDrive(def, input, {
         runId,
-        defKind: def.kind,
-        defName: def.name,
-        defVersion: def.version,
         inputJson: JSON.stringify(input),
         parentRunId: opts?.parent?.runId,
         parentStepKey: opts?.parent?.stepKey,
-        claimedBy: this.options.instanceId,
-        claimedAt: now,
-        createdAt: now,
-      })
-      return this.drive(runId, def, input, opts?.signal).handle
+      }, opts?.signal).handle
     }
     this.assertSameDefinition(existing, def)
     const driving = this.drivers.get(runId)
@@ -445,6 +437,42 @@ export class DurableEngineCore {
     const waiter = this.steerWaiters.get(runId)
     if (waiter !== undefined && seq > waiter.known) waiter.deliver()
     return seq
+  }
+
+  /**
+   * Rerun a terminal top-level run (issue #57): inserts a fresh row with the
+   * same definition identity and input, chained to its source by
+   * `attempt = source.attempt + 1` and `retried_from_run_id = source.run_id`,
+   * then drives it. Child runs reject — a child rerun would detach the
+   * attempt chain from the parent's step journal; retry the top-level run
+   * instead.
+   * @param runId - source run identity.
+   * @returns the new run's handle, already driving.
+   */
+  rerun(runId: string): EngineRunHandle {
+    this.assertNotDisposed()
+    const row = this.store.selectRun(runId)
+    if (row === undefined) throw new Error(`durable engine: rerun targets unknown run ${runId}`)
+    if (!isTerminal(row.status)) {
+      throw new Error(`durable engine: rerun targets unfinished run ${runId} (${row.status})`)
+    }
+    if (row.parent_run_id !== null) {
+      throw new Error(`durable engine: rerun targets child run ${runId} (rerun applies to top-level runs only)`)
+    }
+    const def = this.definitions.get(definitionKey(row.def_kind, row.def_name, row.def_version))
+    if (def === undefined) {
+      throw new Error(
+        `durable engine: run ${runId} belongs to ${row.def_kind}/${row.def_name}/${row.def_version}, which is not registered`,
+      )
+    }
+    return this.insertAndDrive(def, JSON.parse(row.input_json), {
+      runId: randomUUID(),
+      inputJson: row.input_json,
+      parentRunId: undefined,
+      parentStepKey: undefined,
+      attempt: row.attempt + 1,
+      retriedFromRunId: row.run_id,
+    }, undefined).handle
   }
 
   /**
@@ -515,8 +543,8 @@ export class DurableEngineCore {
    */
   runLineage(runId: string): RunLineage {
     const run = this.store.selectRun(runId)
-    if (run === undefined) return { run: undefined, parent: undefined, children: [] }
-    const parent = run.parent_run_id === null ? undefined : this.store.selectRun(run.parent_run_id)
+    if (run === undefined) return { run: null, parent: null, children: [] }
+    const parent = run.parent_run_id === null ? null : this.store.selectRun(run.parent_run_id) ?? null
     return { run, parent, children: this.store.selectChildRuns(runId) }
   }
 
@@ -583,6 +611,41 @@ export class DurableEngineCore {
         `durable engine: run ${row.run_id} belongs to ${row.def_kind}/${row.def_name}/${row.def_version}, not ${def.kind}/${def.name}/${def.version}`,
       )
     }
+  }
+
+  /**
+   * Insert a fresh run row claimed by this instance and drive it. Shared by
+   * run()'s start branch and rerun()'s attempt-chain insert.
+   * @param def - registered definition to execute.
+   * @param input - decoded run input handed to the body.
+   * @param insert - run-row fields beyond the definition identity and claim.
+   * @param callerSignal - caller cancellation, forwarded into the driver.
+   * @returns the new run's driver entry.
+   */
+  private insertAndDrive(
+    def: EngineDefinition,
+    input: unknown,
+    insert: {
+      readonly runId: string
+      readonly inputJson: string
+      readonly parentRunId: string | undefined
+      readonly parentStepKey: string | undefined
+      readonly attempt?: number
+      readonly retriedFromRunId?: string
+    },
+    callerSignal: AbortSignal | undefined,
+  ): DriverEntry {
+    const now = Date.now()
+    this.store.insertRun({
+      ...insert,
+      defKind: def.kind,
+      defName: def.name,
+      defVersion: def.version,
+      claimedBy: this.options.instanceId,
+      claimedAt: now,
+      createdAt: now,
+    })
+    return this.drive(insert.runId, def, input, callerSignal)
   }
 
   private drive(runId: string, def: EngineDefinition, input: unknown, callerSignal: AbortSignal | undefined): DriverEntry {
