@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { lstat, mkdir, mkdtemp, readFile, readlink, rm, writeFile } from 'node:fs/promises'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import * as fs from 'node:fs'
+import { lstat, mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -9,6 +10,15 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { composeEntries, loadProfile } from '@deepseek-ai/dsh-app-boot'
 import DurableEngine from '@daypaw/engine'
 import { DAYPAW_PROFILE_NAME, seedDaypawProfile } from '../src/index.ts'
+
+// The concurrent-first-run race (symlinkSync EEXIST) cannot be staged with a
+// real filesystem deterministically; the mock spreads the real module so only
+// the planted call is intercepted.
+const hoisted = vi.hoisted(() => ({ realFs: undefined as unknown as typeof import('node:fs') }))
+vi.mock('node:fs', async (importOriginal) => {
+  hoisted.realFs = await importOriginal<typeof import('node:fs')>()
+  return { ...hoisted.realFs, symlinkSync: vi.fn(hoisted.realFs.symlinkSync) }
+})
 
 const CLI_MANIFEST = fileURLToPath(new URL('../package.json', import.meta.url))
 /** The repo's dsh app manifest: the resolution anchor the seeded profile's bundles resolve from. */
@@ -78,6 +88,75 @@ describe('seedDaypawProfile', () => {
     await writeFile(join(link, 'placeholder'), '')
 
     expect(() => { seedDaypawProfile(home) }).toThrow(/exists and is not a symlink/)
+  })
+
+  it('re-points a stale engine link at the bundled engine', async () => {
+    const dir = await seed()
+    const link = join(dir, 'node_modules', '@daypaw', 'engine')
+    await rm(link)
+    await symlink(dir, link, 'junction')
+
+    seedDaypawProfile(home)
+
+    expect(await readlink(link)).toBe(expectedEngineDir())
+  })
+
+  it('leaves a healthy engine link untouched on re-seed', async () => {
+    const dir = await seed()
+    const link = join(dir, 'node_modules', '@daypaw', 'engine')
+    vi.mocked(fs.symlinkSync).mockClear()
+
+    seedDaypawProfile(home)
+
+    expect(vi.mocked(fs.symlinkSync)).not.toHaveBeenCalled()
+    expect(await readlink(link)).toBe(expectedEngineDir())
+  })
+
+  it('rethrows a non-EEXIST link failure', async () => {
+    const dir = await seed()
+    await rm(join(dir, 'node_modules', '@daypaw', 'engine'))
+    vi.mocked(fs.symlinkSync).mockImplementationOnce(() => {
+      throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' })
+    })
+
+    expect(() => { seedDaypawProfile(home) }).toThrow(/EACCES/)
+  })
+
+  it('accepts losing the link race to an identical concurrent link', async () => {
+    const dir = await seed()
+    const link = join(dir, 'node_modules', '@daypaw', 'engine')
+    await rm(link)
+    vi.mocked(fs.symlinkSync).mockImplementationOnce((target, path, type) => {
+      hoisted.realFs.symlinkSync(target, path, type)
+      throw Object.assign(new Error('EEXIST: file already exists'), { code: 'EEXIST' })
+    })
+
+    expect(() => { seedDaypawProfile(home) }).not.toThrow()
+    expect(await readlink(link)).toBe(expectedEngineDir())
+  })
+
+  it('rethrows the race loss when the winning path is not a symlink', async () => {
+    const dir = await seed()
+    await rm(join(dir, 'node_modules', '@daypaw', 'engine'))
+    vi.mocked(fs.symlinkSync).mockImplementationOnce((_target, path) => {
+      hoisted.realFs.mkdirSync(path, { recursive: true })
+      throw Object.assign(new Error('EEXIST: file already exists'), { code: 'EEXIST' })
+    })
+
+    expect(() => { seedDaypawProfile(home) }).toThrow(/EEXIST/)
+  })
+
+  it('rethrows the race loss when the winning link points elsewhere', async () => {
+    const dir = await seed()
+    const link = join(dir, 'node_modules', '@daypaw', 'engine')
+    await rm(link)
+    vi.mocked(fs.symlinkSync).mockImplementationOnce((_target, path, type) => {
+      hoisted.realFs.symlinkSync(dir, path, type)
+      throw Object.assign(new Error('EEXIST: file already exists'), { code: 'EEXIST' })
+    })
+
+    expect(() => { seedDaypawProfile(home) }).toThrow(/EEXIST/)
+    expect(await readlink(link)).toBe(dir)
   })
 })
 
