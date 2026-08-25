@@ -512,6 +512,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   EngineRunOptions: 'durable run options are owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   GateResolutionSource: 'gate resolution origin is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   GateSettlement: 'gate settlement input is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  DefinitionDisplay: 'definition display metadata is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  DefinitionView: 'definition registry view entry is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunListFilter: 'run list filter is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunLineage: 'run lineage result is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunRow: 'ledger run row contract is owned by packages/daypaw/store/README.md (fork docs, outside the upstream subsystems catalog)',

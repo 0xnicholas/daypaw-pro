@@ -19,8 +19,40 @@ interface EngineDefinition {
   readonly name: string
   /** Definition version; with name, the registry identity. */
   readonly version: string
+  /**
+   * Display metadata for host catalog views (spec 05 §5): a business-facing
+   * name and description. Metadata only — never execution semantics.
+   */
+  readonly display?: DefinitionDisplay
   /** Opaque body thunk; the engine calls it with a step ctx and the run input. */
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
+}
+```
+
+```ts type-equiv
+/** Display metadata a definition declares for host catalog views (spec 05 §5). */
+interface DefinitionDisplay {
+  /** Business-facing name. */
+  readonly title: string
+  /** Business-facing description. */
+  readonly description: string
+}
+```
+
+```ts type-equiv
+/**
+ * Read-only registry entry returned by {@link DurableEngineCore.listDefinitions}:
+ * identity and display metadata, never the body.
+ */
+interface DefinitionView {
+  /** Definition family. */
+  readonly kind: RunDefKind
+  /** Definition name; with version, the registry identity. */
+  readonly name: string
+  /** Definition version; with name, the registry identity. */
+  readonly version: string
+  /** Declared display metadata; undefined when the definition declares none. */
+  readonly display: DefinitionDisplay | undefined
 }
 ```
 
@@ -82,6 +114,14 @@ async runLineage(runId: string): Promise<RunLineage>
  * @returns the run's journal steps in start order.
  */
 async journalTimeline(runId: string): Promise<JournalRow[]>
+
+/**
+ * Enumerate the registered definitions in registration order (spec 05 §5):
+ * identity and display metadata, never the body — the definition registry's
+ * one read face, so hosts never reach into the core's private Map.
+ * @returns the registry entries in registration order.
+ */
+async listDefinitions(): Promise<DefinitionView[]>
 
 /**
  * Settle a gate (first-wins): the one resolve seam for SDK direct calls,

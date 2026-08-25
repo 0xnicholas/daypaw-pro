@@ -15,13 +15,13 @@ import type { JournalRow, RunRow } from '@daypaw/store'
 import { openLedgerDatabase } from '@daypaw/store'
 import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
-import type { EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
+import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
 import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 
 export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
 export type {
-  EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
+  DefinitionDisplay, DefinitionView, EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
   EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope,
   GateResolution, GateResolutionSource, GateSchema, GateSettlement, RunLineage, WaitForOptions,
 } from './core.ts'
@@ -140,6 +140,16 @@ export default class DurableEngine extends Service {
    */
   async journalTimeline(runId: string): Promise<JournalRow[]> {
     return (await this.coreOrFail()).journalTimeline(runId)
+  }
+
+  /**
+   * Enumerate the registered definitions in registration order (spec 05 §5):
+   * identity and display metadata, never the body — the definition registry's
+   * one read face, so hosts never reach into the core's private Map.
+   * @returns the registry entries in registration order.
+   */
+  async listDefinitions(): Promise<DefinitionView[]> {
+    return (await this.coreOrFail()).listDefinitions()
   }
 
   /**

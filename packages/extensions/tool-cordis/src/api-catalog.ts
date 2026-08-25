@@ -578,6 +578,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the run\'s journal steps in start order.',
       },
       {
+        signature: 'async listDefinitions(): Promise<DefinitionView[]>',
+        description: 'Enumerate the registered definitions in registration order (spec 05 §5): identity and display metadata, never the body — the definition registry\'s one read face, so hosts never reach into the core\'s private Map.',
+        parameters: [],
+        returns: 'the registry entries in registration order.',
+      },
+      {
         signature: 'async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>',
         description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate.',
         parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row.' }],
@@ -2969,6 +2975,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
   },
   {
+    name: 'DefinitionDisplay',
+    declaration: 'export interface DefinitionDisplay {\n    readonly title: string;\n    readonly description: string;\n}',
+  },
+  {
+    name: 'DefinitionView',
+    declaration: 'export interface DefinitionView {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display: DefinitionDisplay | undefined;\n}',
+  },
+  {
     name: 'DiffCallView',
     declaration: 'export interface DiffCallView {\n    card: \'diff\';\n    title: string;\n    diffs: FileDiff[];\n    locations?: FileLocation[];\n}',
   },
@@ -3074,7 +3088,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineDefinition',
-    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
+    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
   },
   {
     name: 'EngineRunHandle',

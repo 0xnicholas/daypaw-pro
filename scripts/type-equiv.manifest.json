@@ -1929,6 +1929,16 @@
       "doc": "docs/subsystems/daypaw-engine.md",
       "symbol": "EngineDefinition",
       "source": "packages/daypaw/engine/src/core.ts"
+    },
+    {
+      "doc": "docs/subsystems/daypaw-engine.md",
+      "symbol": "DefinitionDisplay",
+      "source": "packages/daypaw/engine/src/core.ts"
+    },
+    {
+      "doc": "docs/subsystems/daypaw-engine.md",
+      "symbol": "DefinitionView",
+      "source": "packages/daypaw/engine/src/core.ts"
     }
   ]
 }

@@ -113,3 +113,53 @@ describe('engine query face (ctx.durable)', () => {
     expect(await engine.journalTimeline('unknown')).toEqual([])
   })
 })
+
+describe('definition registry view (ctx.durable)', () => {
+  it('enumerates registered definitions in registration order with display metadata', async () => {
+    const { ctx, engine } = await boot()
+    contexts.push(ctx)
+    expect(await engine.listDefinitions()).toEqual([])
+
+    const plain = workflowDef(async () => 'ok')
+    const displayed: EngineDefinition = {
+      kind: 'agent',
+      name: 'helper',
+      version: '2',
+      display: { title: 'Ops helper', description: 'Runs the ops checklist' },
+      body: async () => null,
+    }
+    await engine.register(plain)
+    await engine.register(displayed)
+    // Re-registering the same object is a no-op, not a second entry.
+    await engine.register(plain)
+
+    const entries = await engine.listDefinitions()
+    expect(entries).toEqual([
+      { kind: 'workflow', name: 'demo', version: '1', display: undefined },
+      { kind: 'agent', name: 'helper', version: '2', display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
+    ])
+  })
+
+  it('returns fresh copies: mutating a snapshot cannot reach the registry', async () => {
+    const { ctx, engine } = await boot()
+    contexts.push(ctx)
+    await engine.register(workflowDef(async () => 'ok'))
+    await engine.register({
+      kind: 'agent',
+      name: 'helper',
+      version: '2',
+      display: { title: 'Ops helper', description: 'Runs the ops checklist' },
+      body: async () => null,
+    })
+
+    const snapshot = await engine.listDefinitions()
+    ;(snapshot[0] as { name: string }).name = 'forged'
+    ;(snapshot[1] as { display: { title: string } }).display.title = 'forged'
+    snapshot.pop()
+
+    expect(await engine.listDefinitions()).toEqual([
+      { kind: 'workflow', name: 'demo', version: '1', display: undefined },
+      { kind: 'agent', name: 'helper', version: '2', display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
+    ])
+  })
+})
