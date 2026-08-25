@@ -88,5 +88,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * placeholder.
      */
     'inbox.workspace.conversation': { kind: 'single'; scope: 'session-maybe' }
+    /**
+     * The Agents catalog page: the single occupant draws the whole catalog
+     * surface (cards + detail) inside the middle column. An absent occupant
+     * falls back to the owner's placeholder.
+     */
+    'inbox.agents.page': { kind: 'single'; scope: 'session-maybe' }
   }
 }

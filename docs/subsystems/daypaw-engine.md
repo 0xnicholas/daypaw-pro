@@ -4,7 +4,7 @@ English | [中文](daypaw-engine.zh.md)
 
 The fork-owned durable execution service (`ctx.durable`, package [`@daypaw/engine`](../../packages/daypaw/engine)): run lifecycle, step-dedup re-drive, single-writer claims, and boot-scan revival over the [`@daypaw/store`](../../packages/daypaw/store) SQLite ledger. Semantics live in [spec ch.1](../spec/01-durable-execution.md); the walking-skeleton decisions are recorded in the [walking-skeleton Agent Note](../../.agents/notes/implemented/architecture/2026-08-19-daypaw-walking-skeleton.md); the package [README](../../packages/daypaw/engine/README.md) owns the callable API and configuration.
 
-Sources: [`packages/daypaw/engine/src/index.ts`](../../packages/daypaw/engine/src/index.ts) and [`packages/daypaw/engine/src/core.ts`](../../packages/daypaw/engine/src/core.ts).
+Sources: [`packages/daypaw/engine/src/index.ts`](../../packages/daypaw/engine/src/index.ts), [`packages/daypaw/engine/src/core.ts`](../../packages/daypaw/engine/src/core.ts), and [`packages/daypaw/engine/src/types.ts`](../../packages/daypaw/engine/src/types.ts).
 
 ## Service surface
 
@@ -41,8 +41,8 @@ interface DefinitionDisplay {
 
 ```ts type-equiv
 /**
- * Read-only registry entry returned by {@link DurableEngineCore.listDefinitions}:
- * identity and display metadata, never the body.
+ * Read-only registry entry returned by `listDefinitions`: identity and
+ * display metadata, never the body.
  */
 interface DefinitionView {
   /** Definition family. */
@@ -51,8 +51,8 @@ interface DefinitionView {
   readonly name: string
   /** Definition version; with name, the registry identity. */
   readonly version: string
-  /** Declared display metadata; undefined when the definition declares none. */
-  readonly display: DefinitionDisplay | undefined
+  /** Declared display metadata; the key is absent when the definition declares none (wire-safe: no undefined values). */
+  readonly display?: DefinitionDisplay
 }
 ```
 
@@ -70,7 +70,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.durable` — `DurableEngine`
 
-The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal stops driving without writing terminal run states — unfinished runs stay revivable by the next process.
+The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal stops driving without writing terminal run states — unfinished runs stay revivable by the next process. `listDefinitions` doubles as the browser catalog's wire face: the TypertRemoteService binding lets the API gateway claim `durable/listDefinitions` (spec 05 §5; the GoalService precedent) without any upstream apiproxy edit.
 
 ```ts cordis-catalog
 /**
@@ -118,10 +118,11 @@ async journalTimeline(runId: string): Promise<JournalRow[]>
 /**
  * Enumerate the registered definitions in registration order (spec 05 §5):
  * identity and display metadata, never the body — the definition registry's
- * one read face, so hosts never reach into the core's private Map.
+ * one read face, so hosts never reach into the core's private Map. Served
+ * to the browser as the Remote endpoint `durable/listDefinitions`.
  * @returns the registry entries in registration order.
  */
-async listDefinitions(): Promise<DefinitionView[]>
+@Remote('listDefinitions') async listDefinitions(): Promise<DefinitionView[]>
 
 /**
  * Settle a gate (first-wins): the one resolve seam for SDK direct calls,
@@ -135,5 +136,5 @@ async listDefinitions(): Promise<DefinitionView[]>
 async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:63`](../../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:67`](../../packages/daypaw/engine/src/index.ts)
 <!-- END GENERATED cordis-surface -->

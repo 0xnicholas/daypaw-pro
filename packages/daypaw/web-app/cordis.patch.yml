@@ -207,6 +207,12 @@
     - id: ui-tasks-daypaw
       name: '@daypaw/ui-tasks'
 
+    # daypaw agent catalog: cards + detail over the engine's definition
+    # registry read view (the durable/listDefinitions Remote endpoint),
+    # occupying the 'inbox.agents.page' child seat ui-inbox declares.
+    - id: ui-agents-daypaw
+      name: '@daypaw/ui-agents'
+
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'
 

@@ -14,7 +14,7 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 - `listRuns(filter?)` —— ledger 中的 run 行，新者在前，可选按单一 `status` 过滤。
 - `runLineage(runId)` —— 一次调用取回 run 自身行、父 run 与直接子 run（子按先来在前）；runId 未知时各字段皆空。
 - `journalTimeline(runId)` —— 该 run 的 journal step，按开始顺序。
-- `listDefinitions()` —— 定义注册表的唯一读面（spec 05 §5）：按登记顺序枚举全部已注册定义，条目为 `{ kind, name, version, display }`，绝不含 body。`display` 是定义为 host 目录视图声明的可选展示元数据（`title` + `description`），未声明时为 `undefined`，不携带任何执行语义。每次调用返回全新拷贝，调用方无法经结果改到注册表；`register` 仍是唯一写面。
+- `listDefinitions()` —— 定义注册表的唯一读面（spec 05 §5）：按登记顺序枚举全部已注册定义，条目为 `{ kind, name, version, display }`，绝不含 body。`display` 是定义为 host 目录视图声明的可选展示元数据（`title` + `description`），未声明时该 key 缺席（永不以 undefined 值出现，应答保持 JSON 安全），不携带任何执行语义。每次调用返回全新拷贝，调用方无法经结果改到注册表；`register` 仍是唯一写面。该方法同时是浏览器目录页的 wire 面：服务携带 `TypertRemoteService` 绑定、方法带 `@Remote` 标记，API gateway 据此认领 `durable/listDefinitions` 端点（GoalService 先例），无需改动 apiproxy。
 - `resolveGate(runId, gate, settlement, source)` —— gate 结算的唯一缝（first-wins）：SDK 直调 / Manager UI /（留口）webhook 同路。本进程持有 waiter 时先按值契约校验再落账，不合格即 throw 不记录；第二写入者 no-op 返回 `false`。本进程等待中的驱动立即续跑；别进程写入由 driver 侧 `pollMs` 轮询兜底，进程已死则由 boot 扫描续跑。
 
 查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。

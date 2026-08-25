@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@daypaw/web-frontend": "workspace:^",
+    "@daypaw/ui-agents": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@daypaw/ui-settings": "workspace:^",
     "@daypaw/ui-tasks": "workspace:^",

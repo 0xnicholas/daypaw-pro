@@ -541,7 +541,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'durable',
     summary: 'The `ctx.durable` service.',
-    description: 'The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal stops driving without writing terminal run states — unfinished runs stay revivable by the next process.',
+    description: 'The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal stops driving without writing terminal run states — unfinished runs stay revivable by the next process. `listDefinitions` doubles as the browser catalog\'s wire face: the TypertRemoteService binding lets the API gateway claim `durable/listDefinitions` (spec 05 §5; the GoalService precedent) without any upstream apiproxy edit.',
     methods: [
       {
         signature: 'async register(def: EngineDefinition): Promise<void>',
@@ -578,8 +578,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the run\'s journal steps in start order.',
       },
       {
-        signature: 'async listDefinitions(): Promise<DefinitionView[]>',
-        description: 'Enumerate the registered definitions in registration order (spec 05 §5): identity and display metadata, never the body — the definition registry\'s one read face, so hosts never reach into the core\'s private Map.',
+        signature: '@Remote(\'listDefinitions\') async listDefinitions(): Promise<DefinitionView[]>',
+        description: 'Enumerate the registered definitions in registration order (spec 05 §5): identity and display metadata, never the body — the definition registry\'s one read face, so hosts never reach into the core\'s private Map. Served to the browser as the Remote endpoint `durable/listDefinitions`.',
         parameters: [],
         returns: 'the registry entries in registration order.',
       },
@@ -2980,7 +2980,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DefinitionView',
-    declaration: 'export interface DefinitionView {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display: DefinitionDisplay | undefined;\n}',
+    declaration: 'export interface DefinitionView {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n}',
   },
   {
     name: 'DiffCallView',

@@ -84,12 +84,13 @@ export function apply(ctx: ClientContext): void {
       priority: SHADOW_PRIORITY,
       locale: NS,
       children: {
-        // Banner, settings, and conversation holes live one scope inside the
-        // session-maybe parent: their occupants get the
+        // Banner, settings, agents, and conversation holes live one scope
+        // inside the session-maybe parent: their occupants get the
         // current-session-or-undefined inject parameter. The task list is
         // root scope — its facts arrive through owner props, not the seat.
         'inbox.workspace.banner': { kind: 'list', scope: 'session-maybe' },
         'inbox.settings.page': { kind: 'single', scope: 'session-maybe' },
+        'inbox.agents.page': { kind: 'single', scope: 'session-maybe' },
         'inbox.workspace.tasks': { kind: 'single', scope: 'root' },
         'inbox.workspace.conversation': { kind: 'single', scope: 'session-maybe' },
       },

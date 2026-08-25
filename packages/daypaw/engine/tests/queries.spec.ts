@@ -138,6 +138,10 @@ describe('definition registry view (ctx.durable)', () => {
       { kind: 'workflow', name: 'demo', version: '1', display: undefined },
       { kind: 'agent', name: 'helper', version: '2', display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
     ])
+    // Wire-safe shape for the Remote endpoint: an undeclared display is an
+    // ABSENT key, never an undefined value (the gateway rejects non-JSON).
+    expect('display' in entries[0]!).toBe(false)
+    expect('display' in entries[1]!).toBe(true)
   })
 
   it('returns fresh copies: mutating a snapshot cannot reach the registry', async () => {

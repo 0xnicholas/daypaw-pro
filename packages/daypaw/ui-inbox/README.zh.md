@@ -7,7 +7,7 @@ daypaw 壳 IA 骨架（收件箱工作台），fork 的 client UI 插件，包�
 一个 `apply` 里三次注册，全部是纯 props、零 ctx 的组件：
 
 - `InboxNav` 占据 `'sidebar'`（root scope），在 [`@daypaw/web-app`](../web-app/cordis.patch.yml) 的 roster 里整行替换上游 ui-sidebar。展开态：wordmark、最显眼的主色「+ 新任务」大按钮（打开一个 Modal，正文委托给 `'inbox.new-task.dialog'` 子槽——由 [`@daypaw/ui-tasks`](../ui-tasks/README.md) 占据，槽位空时显示桩文案）、带实时计数的三个收件箱分组「等待你确认/进行中/已完成」（计数由 sessions 列表投影而来）、以及钉在底部的 Agents/设置 次要导航。折叠态：`'sidebar'` 占据者契约要求的紧凑控制轨（侧栏开关 + 新任务图标按钮）。
-- `WorkspaceSwitch` 以优先级 -1 占据 `'conversation'`（session-maybe scope），遮蔽 ui-conversation 优先级 0 的占位占据者，其声明的席位仍为休眠生态保留。它按选中项切换中栏容器：收件箱分组容器（任务列表由 `'inbox.workspace.tasks'` 占据者按属主投影的行渲染，无占据者时回落空态）、单个任务的对话（由 `'inbox.workspace.conversation'` 占据者渲染）、Agents 占位页或 设置 页。其余子槽：`'inbox.workspace.banner'`（list，session-maybe）渲染在每个分组容器顶部，承载首跑与工作区级通知；`'inbox.settings.page'`（single，session-maybe）承载设置面——由 [`@daypaw/ui-settings`](../ui-settings/README.md) 占据，槽位空时回落到属主的占位页。
+- `WorkspaceSwitch` 以优先级 -1 占据 `'conversation'`（session-maybe scope），遮蔽 ui-conversation 优先级 0 的占位占据者，其声明的席位仍为休眠生态保留。它按选中项切换中栏容器：收件箱分组容器（任务列表由 `'inbox.workspace.tasks'` 占据者按属主投影的行渲染，无占据者时回落空态）、单个任务的对话（由 `'inbox.workspace.conversation'` 占据者渲染）、Agents 目录页（由 `'inbox.agents.page'` 占据者 [`@daypaw/ui-agents`](../ui-agents/README.md) 渲染）或 设置 页。其余子槽：`'inbox.workspace.banner'`（list，session-maybe）渲染在每个分组容器顶部，承载首跑与工作区级通知；`'inbox.settings.page'`（single，session-maybe）承载设置面——由 [`@daypaw/ui-settings`](../ui-settings/README.md) 占据，槽位空时回落到属主的占位页。
 - `TaskDetail` 以同样的遮蔽优先级占据 `'details'`（session scope）：选中任务详情容器的空态占位（「选择任务查看详情」）。
 
 共享选中态（`{ kind: 'group', group } | { kind: 'task', sessionId } | { kind: 'agents' } | { kind: 'settings' }`，默认「进行中」分组）经一个 apply 闭包自有的 `InboxSelectionController` 跨越三个 slot scope：一个 store 句柄不能挂在两个 scope 下，因此裸 snapshot 源走每个 register 调用 inject 的 `hooks` 舱位，渲染器把它绑成各组件的 `useSelection` hook。选中任务还经 `ctx.sessions.open` 单向驱动 runtime 当前会话，session-maybe 的对话席位由此解析到选中的任务。任务行与分组计数共享同一投影（`projectInboxBoard`）。新任务对话框的开关态是组件局部 state。文案走插件自有 `inbox` locale 命名空间的类型化 `t` 位（zh 产品文案，外加机制要求的 en 词典）。样式只用 CSS Modules 消费 `--dsw-alias-*` 语义 token。
@@ -31,6 +31,5 @@ daypaw 壳 IA 骨架（收件箱工作台），fork 的 client UI 插件，包�
 ## Known Limitations and Deferred Work
 
 - **任务分组是 sessions 投影，不是任务引擎**——计数与行由 sessions 列表的 `blank`/`running` 位推导（pending 恒空）；引擎查询面归任务源票，审批数据接线归板块票。
-- **Agents 页是占位**——次要导航只把中栏切到静态占位容器。
 - **详情栏是占位**——`TaskDetail` 只渲染空态，选中任务数据接线归板块票。
 - **上游 conversation/details 占据者是遮蔽而非移除**——ui-conversation 的 roster 行保持挂载（其声明的席位服务休眠占位生态）；本包以优先级 -1 赢得两个单元格，移除上游行是后续板块决策。

@@ -1,0 +1,5 @@
+title=Weekly report assistant
+Weekly report assistant
+Collects the week's updates from each team and drafts the report.
+ID
+weekly-report@1.2.0

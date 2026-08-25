@@ -1,0 +1,123 @@
+/* Agents catalog page: a header over either the card grid (business name +
+   description) or one card's detail view (description + name@version
+   identity). All colors ride --dsw-alias-* semantic tokens. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.state {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.error {
+  composes: state;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-2);
+  /* The page scrolls (.root) while cards sit on the elevated l2 surface, so a
+     revealed scrollbar uses the l2 pair (ui-theme elevation contract). */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.cardTitle {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.cardDescription {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.detailTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.detailDescription {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.identity {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.identityValue {
+  font-family: monospace;
+  color: var(--dsw-alias-label-primary);
+}
+
+.back {
+  align-self: flex-start;
+}

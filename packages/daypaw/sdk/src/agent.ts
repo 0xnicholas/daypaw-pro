@@ -73,7 +73,7 @@ export interface DefineAgentOptions<I extends ZodType, O extends ZodType> {
    * Display metadata for host catalog views (spec 05 §5): the business-facing
    * name and description, validated non-blank at declaration. Metadata only —
    * the engine never reads it for execution. Undeclared: the registry read
-   * view reports `display: undefined` and the presenter falls back to the
+   * view omits the `display` key and the presenter falls back to the
    * technical `name`.
    */
   readonly display?: DefinitionDisplay

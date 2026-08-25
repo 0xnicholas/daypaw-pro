@@ -110,11 +110,22 @@ describe('WorkspaceSwitch', () => {
     expect((pending.owner as unknown as InboxTasksOwnerProps).rows).toEqual([])
   })
 
-  it('switches to the Agents placeholder page', () => {
-    const { controller } = mountWorkspace()
+  it('renders the agents page slot for the agents selection, falling back to the placeholder when empty', () => {
+    const { controller, calls } = mountWorkspace()
     act(() => { controller.select({ kind: 'agents' }) })
+    // Empty slot: the owner's placeholder copy stays.
     expect(screen.getByRole('heading', { name: 'Agents' })).toBeTruthy()
     expect(screen.getByText('Agent 目录即将上线')).toBeTruthy()
+    const page = calls.find(call => call.key === 'inbox.agents.page')!
+    expect(page.owner).toEqual({})
+  })
+
+  it('hands the agents page seat to its occupant when one is registered', () => {
+    const { controller } = mountWorkspace(call =>
+      call.key === 'inbox.agents.page' ? <div>agents-page</div> : (call.opts?.fallback ?? null) as React.ReactNode)
+    act(() => { controller.select({ kind: 'agents' }) })
+    expect(screen.getByText('agents-page')).toBeTruthy()
+    expect(screen.queryByText('Agent 目录即将上线')).toBeNull()
   })
 
   it('renders the banner strip atop every group container with an openSettings that selects settings', () => {

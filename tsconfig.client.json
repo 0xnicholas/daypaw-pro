@@ -28,6 +28,7 @@
     "packages/daypaw/ui-inbox/src/css-modules.d.ts",
     "packages/daypaw/ui-settings/src/css-modules.d.ts",
     "packages/daypaw/ui-tasks/src/css-modules.d.ts",
+    "packages/daypaw/ui-agents/src/css-modules.d.ts",
     "packages/client/tsdown.client.ts",
     "scripts/client-bundle-css.spec.ts",
     "scripts/client-bundle-purity.spec.ts"
@@ -100,6 +101,7 @@
     { "path": "./apps/daypaw-web" },
     { "path": "./packages/daypaw/ui-inbox" },
     { "path": "./packages/daypaw/ui-settings" },
-    { "path": "./packages/daypaw/ui-tasks" }
+    { "path": "./packages/daypaw/ui-tasks" },
+    { "path": "./packages/daypaw/ui-agents" }
   ]
 }

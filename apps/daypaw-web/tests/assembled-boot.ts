@@ -36,6 +36,7 @@ const PLUGINS: readonly (WebBootEntry & { bundlePath: string })[] = [
   { id: '@daypaw/ui-inbox', bundlePath: 'packages/daypaw/ui-inbox/lib/client.js', url: '/plugins/daypaw-ui-inbox.js', rev: 'fx', inject: ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-layout', '@deepseek-ai/dsh-client-locale'] },
   { id: '@daypaw/ui-settings', bundlePath: 'packages/daypaw/ui-settings/lib/client.js', url: '/plugins/daypaw-ui-settings.js', rev: 'fx', inject: ['@deepseek-ai/dsh-client-runtime', '@daypaw/ui-inbox', '@deepseek-ai/dsh-client-locale', '@deepseek-ai/dsh-api-remotes'] },
   { id: '@daypaw/ui-tasks', bundlePath: 'packages/daypaw/ui-tasks/lib/client.js', url: '/plugins/daypaw-ui-tasks.js', rev: 'fx', inject: ['@deepseek-ai/dsh-client-runtime', '@daypaw/ui-inbox', '@deepseek-ai/dsh-client-locale', '@deepseek-ai/dsh-api-remotes'] },
+  { id: '@daypaw/ui-agents', bundlePath: 'packages/daypaw/ui-agents/lib/client.js', url: '/plugins/daypaw-ui-agents.js', rev: 'fx', inject: ['@deepseek-ai/dsh-client-runtime', '@daypaw/ui-inbox', '@deepseek-ai/dsh-client-locale', '@deepseek-ai/dsh-client-connection'] },
 ]
 
 const bundles = new Map(PLUGINS.map(plugin => [

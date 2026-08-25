@@ -74,7 +74,7 @@ export async function compose(ctx: Context) {
 ```
 
 - `defineAgent(options)` —— 声明式 spec：身份、zod 契约、静态组合行（prompt 段、dsh 工具、模型路由）、声明期校验的必填 `maxTurns` 预算，以及面向宿主目录视图的可选 `display` 元数据（`title` + `description`，声明期校验非空）。
-- `bindAgent(def, ctx)` —— 把 spec 编译为不透明引擎 body（引擎对 `kind: 'agent'` 无感知）并登记供执行与 boot 复活；声明的 `display` 随定义落进注册表，`ctx.durable.listDefinitions()` 随身份读回。未声明时只读视图报 `display: undefined`，目录呈现回落到技术 `name`、无描述行——display 仅是元数据，不进入执行语义。宿主 Context 必须挂 `ctx.durable`、dsh agent 栈（`agents`、`sessions`）与 session persistence 后端；缺任一则 bind 期 loud throw。同一定义对象重复绑定是 no-op，返回首个 face——闭包锁定首个宿主 Context。
+- `bindAgent(def, ctx)` —— 把 spec 编译为不透明引擎 body（引擎对 `kind: 'agent'` 无感知）并登记供执行与 boot 复活；声明的 `display` 随定义落进注册表，`ctx.durable.listDefinitions()` 随身份读回。未声明时只读视图省略 `display` 键，目录呈现回落到技术 `name`、无描述行——display 仅是元数据，不进入执行语义。宿主 Context 必须挂 `ctx.durable`、dsh agent 栈（`agents`、`sessions`）与 session persistence 后端；缺任一则 bind 期 loud throw。同一定义对象重复绑定是 no-op，返回首个 face——闭包锁定首个宿主 Context。
 - 一次 agent run = 一个 dsh session，sessionId ≡ runId：首驱动 create，复活 resume 并以合成续跑消息唤醒。每个 dsh step 落一条引擎 journal step（`dsh-step:<turn>:<step>`），重驱动的 body 重放 session log 而不再调模型。
 - `ctx.agent(def, input)` —— 确定性派生子 runId（`<parentRunId>/<stepKey>/<kind>:<name>#<occurrence>`）上的等待式子 run，父子联接记 ledger；裸子 workflow 惯用式（`ctx.step` 内 `child.run()`）共享同一派生机制。
 

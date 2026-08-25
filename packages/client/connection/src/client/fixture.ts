@@ -1543,6 +1543,16 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     ['my-agent', { trust: 'user', content: "- id: tool-read\n  name: '@deepseek-ai/dsh-tool-read'\n" }],
   ])
   let fixtureDefaultPreset = 'standard'
+  /**
+   * The daypaw fork's engine definition registry view (spec 05 §5), served at
+   * the Remote endpoint `durable/listDefinitions`. One entry carries display
+   * metadata and one does not, so the catalog's technical-name fallback is
+   * exercisable. Static: the fixture has no definition registration surface.
+   */
+  const fixtureDefinitions = [
+    { kind: 'agent', name: 'weekly-report', version: '1.2.0', display: { title: 'Weekly report assistant', description: 'Collects the week\'s updates from each team and drafts the report.' } },
+    { kind: 'agent', name: 'invoice-checker', version: '0.3.1' },
+  ]
   const nextTurn = new Map<SessionId, number>([[sid('fx-alpha'), 75]])
   let nextSession = 1
   let nextRpc = 1
@@ -3021,6 +3031,8 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         case 'goals/resume': return Promise.resolve(goalRemotes.resume(sessionId, args.ref as FxGoalRef))
         case 'goals/complete': return Promise.resolve(goalRemotes.complete(sessionId, args.ref as FxGoalRef))
         case 'goals/clear': return Promise.resolve(goalRemotes.clear(sessionId, args.ref as FxGoalRef))
+        // daypaw fork endpoint: the engine's definition registry read view.
+        case 'durable/listDefinitions': return Promise.resolve({ ok: true, value: fixtureDefinitions })
         default:
           return Promise.reject(new Error(`fixture connection RPC endpoint ${JSON.stringify(endpoint)} is unavailable`))
       }

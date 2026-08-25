@@ -1,0 +1,3 @@
+title=Agents
+card=Weekly report assistantCollects the week's updates from each team and drafts the report.
+card=invoice-checker

@@ -5,9 +5,10 @@
  * 'inbox.workspace.banner' strip (rows projected from the sessions list,
  * rendered by the 'inbox.workspace.tasks' occupant with the owner's empty
  * state as fallback), one task's conversation rendered by the
- * 'inbox.workspace.conversation' occupant, the Agents placeholder page, or
- * the 设置 page rendered from the 'inbox.settings.page' occupant
- * (placeholder fallback while no occupant is registered).
+ * 'inbox.workspace.conversation' occupant, the Agents catalog rendered by the
+ * 'inbox.agents.page' occupant, or the 设置 page rendered from the
+ * 'inbox.settings.page' occupant (placeholder fallbacks while no occupant is
+ * registered).
  */
 import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -33,7 +34,7 @@ export interface WorkspaceSwitchInjected {
 }
 
 /** The child slots this occupant declares and renders. */
-type WorkspaceChildren = 'inbox.workspace.banner' | 'inbox.settings.page' | 'inbox.workspace.tasks' | 'inbox.workspace.conversation'
+type WorkspaceChildren = 'inbox.workspace.banner' | 'inbox.settings.page' | 'inbox.agents.page' | 'inbox.workspace.tasks' | 'inbox.workspace.conversation'
 
 /** Full component props: runtime share + child-slot render share + injected face + locale seat. */
 export type WorkspaceSwitchProps =
@@ -69,8 +70,14 @@ export function WorkspaceSwitch({ useSelection, useSessions, select, renderSlot,
   if (selection.kind === 'agents') {
     return (
       <div className={css.root}>
-        <header className={css.header}><h1 className={css.title}>{t('nav.agents')}</h1></header>
-        <div className={css.empty}>{t('workspace.agents.placeholder')}</div>
+        {renderSlot('inbox.agents.page', {}, {
+          fallback: (
+            <>
+              <header className={css.header}><h1 className={css.title}>{t('nav.agents')}</h1></header>
+              <div className={css.empty}>{t('workspace.agents.placeholder')}</div>
+            </>
+          ),
+        })}
       </div>
     )
   }

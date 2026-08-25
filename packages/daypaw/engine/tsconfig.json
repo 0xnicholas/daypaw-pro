@@ -11,6 +11,7 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../../vendor/schemastery" },
     { "path": "../../../packages/runtime-diagnostics/invariants" },
+    { "path": "../../../packages/typert/protocol" },
     { "path": "../store" }
   ]
 }

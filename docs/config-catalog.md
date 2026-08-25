@@ -27,7 +27,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:40`](../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:41`](../packages/daypaw/engine/src/index.ts)
 
 <a id="daypawweb-app"></a>
 
@@ -3070,6 +3070,7 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
 
+- `@daypaw/ui-agents` ([`packages/daypaw/ui-agents/src/index.ts`](../packages/daypaw/ui-agents/src/index.ts))
 - `@daypaw/ui-inbox` ([`packages/daypaw/ui-inbox/src/index.ts`](../packages/daypaw/ui-inbox/src/index.ts))
 - `@daypaw/ui-settings` ([`packages/daypaw/ui-settings/src/index.ts`](../packages/daypaw/ui-settings/src/index.ts))
 - `@daypaw/ui-tasks` ([`packages/daypaw/ui-tasks/src/index.ts`](../packages/daypaw/ui-tasks/src/index.ts))

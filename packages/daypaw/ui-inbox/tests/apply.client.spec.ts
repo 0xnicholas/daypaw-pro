@@ -60,13 +60,14 @@ describe('ui-inbox apply', () => {
     const navEntry = b.slots.entriesOfSlot('sidebar')[0]!
     expect(Object.keys(navEntry.children ?? {})).toEqual(['inbox.new-task.dialog'])
     expect(b.slots.snapshot('inbox.new-task.dialog')).toMatchObject([{ kind: 'single', scope: 'root' }])
-    // The workspace occupant declares the four child holes it renders.
+    // The workspace occupant declares the five child holes it renders.
     const workspaceEntry = b.slots.entriesOfSlot('conversation')[0]!
     expect(Object.keys(workspaceEntry.children ?? {})).toEqual([
-      'inbox.workspace.banner', 'inbox.settings.page', 'inbox.workspace.tasks', 'inbox.workspace.conversation',
+      'inbox.workspace.banner', 'inbox.settings.page', 'inbox.agents.page', 'inbox.workspace.tasks', 'inbox.workspace.conversation',
     ])
     expect(b.slots.snapshot('inbox.workspace.banner')).toMatchObject([{ kind: 'list', scope: 'session-maybe' }])
     expect(b.slots.snapshot('inbox.settings.page')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
+    expect(b.slots.snapshot('inbox.agents.page')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
     expect(b.slots.snapshot('inbox.workspace.tasks')).toMatchObject([{ kind: 'single', scope: 'root' }])
     expect(b.slots.snapshot('inbox.workspace.conversation')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
     // Copy rides the standard locale seat on our three occupants (the

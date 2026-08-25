@@ -340,8 +340,9 @@ describe('bindAgent over a real dsh composition', () => {
     const { ctx } = await loadComposition([])
     await bindAgent(reviewerDef(), ctx)
     const [entry] = await ctx.durable.listDefinitions()
-    // toStrictEqual pins the `display: undefined` key the fallback contract documents.
-    expect(entry).toStrictEqual({ kind: 'agent', name: 'reviewer', version: '1', display: undefined })
+    // The key is absent (not undefined-valued) so the wire answer stays JSON-safe.
+    expect(entry).toStrictEqual({ kind: 'agent', name: 'reviewer', version: '1' })
+    expect(entry && 'display' in entry).toBe(false)
     // The documented fallback: a catalog view renders the technical name.
     expect(entry?.display?.title ?? entry?.name).toBe('reviewer')
   })

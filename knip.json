@@ -775,6 +775,7 @@
     // package stays referenced: resolveDistIndex() require.resolves its dist.
     "packages/daypaw/web-app": {
       "ignoreDependencies": [
+        "@daypaw/ui-agents",
         "@daypaw/ui-inbox",
         "@daypaw/ui-settings",
         "@daypaw/ui-tasks",
@@ -810,6 +811,19 @@
     },
     // Fork client UI plugin (new-task dialog + task list + conversation): same shape.
     "packages/daypaw/ui-tasks": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
+    // Fork client UI plugin (agent catalog page): same shape.
+    "packages/daypaw/ui-agents": {
       "entry": [
         "tests/**/*.spec.ts",
         "tests/**/*.spec.tsx"

@@ -13,6 +13,9 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
 import type { JournalStore, RunListFilter } from './seams.ts'
+import type { DefinitionDisplay, DefinitionView } from './types.ts'
+
+export type { DefinitionDisplay, DefinitionView } from './types.ts'
 
 /** Run status reported by handles. */
 export type EngineRunStatus =
@@ -178,29 +181,6 @@ export interface EngineDefinition {
   readonly display?: DefinitionDisplay
   /** Opaque body thunk; the engine calls it with a step ctx and the run input. */
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
-}
-
-/** Display metadata a definition declares for host catalog views (spec 05 §5). */
-export interface DefinitionDisplay {
-  /** Business-facing name. */
-  readonly title: string
-  /** Business-facing description. */
-  readonly description: string
-}
-
-/**
- * Read-only registry entry returned by {@link DurableEngineCore.listDefinitions}:
- * identity and display metadata, never the body.
- */
-export interface DefinitionView {
-  /** Definition family. */
-  readonly kind: RunDefKind
-  /** Definition name; with version, the registry identity. */
-  readonly name: string
-  /** Definition version; with name, the registry identity. */
-  readonly version: string
-  /** Declared display metadata; undefined when the definition declares none. */
-  readonly display: DefinitionDisplay | undefined
 }
 
 /** Parent/child lineage of one run (spec 05 §5). */
@@ -488,7 +468,9 @@ export class DurableEngineCore {
    * Enumerate the registered definitions in registration order (spec 05 §5):
    * identity and display metadata, never the body. Each call returns fresh
    * copies, so a caller cannot reach the registry through the result. Like
-   * {@link EngineRunHandle.status}, reads stay available after disposal.
+   * {@link EngineRunHandle.status}, reads stay available after disposal. The
+   * `display` key is omitted (not undefined-valued) when undeclared: the
+   * gateway's Remote channel serves this method and rejects non-JSON values.
    * @returns the registry entries in registration order.
    */
   listDefinitions(): DefinitionView[] {
@@ -496,7 +478,7 @@ export class DurableEngineCore {
       kind: def.kind,
       name: def.name,
       version: def.version,
-      display: def.display === undefined ? undefined : { ...def.display },
+      ...def.display === undefined ? {} : { display: { ...def.display } },
     }))
   }
 
