@@ -55,6 +55,7 @@ const reviewer = defineAgent({
   tools: [],                                  // dsh ToolDefinitions, zero adapter
   model: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 4096 },
   maxTurns: 4,                                // turn budget across revivals; required
+  display: { title: 'Code reviewer', description: 'Reviews code and reports a score.' },
 })
 
 const reviewFlow = defineWorkflow({
@@ -72,8 +73,8 @@ export async function compose(ctx: Context) {
 }
 ```
 
-- `defineAgent(options)` — declarative spec: identity, zod contracts, static composition lines (prompt segments, dsh tools, model route), and a mandatory `maxTurns` budget validated at declaration.
-- `bindAgent(def, ctx)` — compile the spec into an opaque engine body (the engine stays blind to `kind: 'agent'`) and register it for execution and boot revival. The host context must mount `ctx.durable`, the dsh agent stack (`agents`, `sessions`), and a session persistence backend; any one missing fails loud at bind time. Re-binding the same definition object is a no-op returning the first face — the closure stays captured on the first host context.
+- `defineAgent(options)` — declarative spec: identity, zod contracts, static composition lines (prompt segments, dsh tools, model route), a mandatory `maxTurns` budget validated at declaration, and optional `display` metadata (`title` + `description`, validated non-blank at declaration) for host catalog views.
+- `bindAgent(def, ctx)` — compile the spec into an opaque engine body (the engine stays blind to `kind: 'agent'`) and register it for execution and boot revival; a declared `display` registers with the definition, so `ctx.durable.listDefinitions()` reads it back with the identity. Undeclared: the read view reports `display: undefined` and the catalog presentation falls back to the technical `name` with no description line — display is metadata only and never reaches execution semantics. The host context must mount `ctx.durable`, the dsh agent stack (`agents`, `sessions`), and a session persistence backend; any one missing fails loud at bind time. Re-binding the same definition object is a no-op returning the first face — the closure stays captured on the first host context.
 - One agent run = one dsh session with `sessionId ≡ runId`: first drive creates, revival resumes and wakes with a synthetic continuation message. Every dsh step journals as one engine step (`dsh-step:<turn>:<step>`), so a re-driven body replays the session log instead of re-calling the model.
 - `ctx.agent(def, input)` — awaited child run on a deterministic derived runId (`<parentRunId>/<stepKey>/<kind>:<name>#<occurrence>`), parent linkage recorded in the ledger; the bare sub-workflow idiom (`child.run()` inside `ctx.step`) shares the same derivation.
 

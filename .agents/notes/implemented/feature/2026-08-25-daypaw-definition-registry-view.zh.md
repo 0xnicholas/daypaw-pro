@@ -32,4 +32,4 @@ Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目�
 
 ## Deferred
 
-`defineAgent` 展示选项与未声明回落行为随 #52 落地；SDK facade 镜像待库层消费方出现。
+查询/读面的 SDK facade 镜像待库层消费方出现。配套的 `defineAgent` 侧已随 #52 落地：[defineAgent 展示字段](2026-08-25-daypaw-define-agent-display-fields.md)。

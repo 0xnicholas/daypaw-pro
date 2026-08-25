@@ -32,4 +32,4 @@ The catalog ticket enumerates definitions with their business name and descripti
 
 ## Deferred
 
-`defineAgent` display options and the undeclared-fallback behavior land with #52; SDK facade mirrors wait for a library consumer.
+SDK facade mirrors of the query/read faces wait for a library consumer. The `defineAgent` side of the pair landed with #52: [defineAgent display fields](2026-08-25-daypaw-define-agent-display-fields.md).

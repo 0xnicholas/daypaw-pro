@@ -18,6 +18,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { z } from 'zod'
 import DurableEngine from '@daypaw/engine'
+import type { DefinitionDisplay } from '@daypaw/engine'
 import { bind, bindAgent, defineAgent, defineWorkflow, RunCancelledError, RunFailedError } from '@daypaw/sdk'
 import type { AgentDefinition, BoundAgent, WorkflowCtx } from '@daypaw/sdk'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
@@ -162,6 +163,7 @@ describe('bindAgent over a real dsh composition', () => {
   it('flows types through defineAgent and bindAgent', () => {
     const def = reviewerDef()
     expectTypeOf(def.kind).toEqualTypeOf<'agent'>()
+    expectTypeOf(def.display).toEqualTypeOf<DefinitionDisplay | undefined>()
     type Bound = Awaited<ReturnType<typeof bindAgent<typeof def.input, typeof def.output>>>
     expectTypeOf<Bound>().toEqualTypeOf<BoundAgent<typeof def.input, typeof def.output>>()
   })
@@ -177,6 +179,23 @@ describe('bindAgent over a real dsh composition', () => {
       model: { provider: 'mock', model: 'mock' },
       maxTurns: 0,
     })).toThrow(/maxTurns must be a positive integer/)
+  })
+
+  it('rejects blank display metadata at declaration', () => {
+    const base = {
+      name: 'bad-display',
+      version: '1',
+      input: z.object({}),
+      output: z.object({}),
+      prompt: [],
+      tools: [],
+      model: { provider: 'mock', model: 'mock' },
+      maxTurns: 1,
+    }
+    expect(() => defineAgent({ ...base, display: { title: '', description: 'x' } }))
+      .toThrow(/display\.title and display\.description must be non-blank/)
+    expect(() => defineAgent({ ...base, display: { title: 'x', description: '  ' } }))
+      .toThrow(/display\.title and display\.description must be non-blank/)
   })
 
   it('drives create → submit → done, journaling every dsh step', { timeout }, async () => {
@@ -291,6 +310,40 @@ describe('bindAgent over a real dsh composition', () => {
     const bound = await bindAgent(reviewerDef(), ctx)
     const handle = await bound.run({ code: 'x' }, { runId: 'agent-twice-1' })
     await expect(handle.result).resolves.toEqual({ answer: 1 })
+  })
+
+  it('publishes declared display metadata through the registry read view', { timeout }, async () => {
+    const { ctx } = await loadComposition([])
+    const def = defineAgent({
+      name: 'reviewer',
+      version: '1',
+      input: z.object({ code: z.string() }),
+      output: z.object({ answer: z.number() }),
+      prompt: [],
+      tools: [],
+      model: { provider: 'mock', model: 'mock' },
+      maxTurns: 1,
+      display: { title: 'Code reviewer', description: 'Reviews code and reports a numeric score.' },
+    })
+    await bindAgent(def, ctx)
+    expect(await ctx.durable.listDefinitions()).toEqual([
+      {
+        kind: 'agent',
+        name: 'reviewer',
+        version: '1',
+        display: { title: 'Code reviewer', description: 'Reviews code and reports a numeric score.' },
+      },
+    ])
+  })
+
+  it('registers without display when undeclared; presenters fall back to the technical name', { timeout }, async () => {
+    const { ctx } = await loadComposition([])
+    await bindAgent(reviewerDef(), ctx)
+    const [entry] = await ctx.durable.listDefinitions()
+    // toStrictEqual pins the `display: undefined` key the fallback contract documents.
+    expect(entry).toStrictEqual({ kind: 'agent', name: 'reviewer', version: '1', display: undefined })
+    // The documented fallback: a catalog view renders the technical name.
+    expect(entry?.display?.title ?? entry?.name).toBe('reviewer')
   })
 
   it('cancels a mid-turn run through the driver signal', { timeout }, async () => {

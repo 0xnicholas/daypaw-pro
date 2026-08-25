@@ -19,7 +19,7 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import type { PromptSection } from '@deepseek-ai/dsh-system-prompt'
 import type { JsonSchemaNode, ToolDefinition } from '@deepseek-ai/dsh-tools'
-import type { EngineDefinition, EngineStepCtx } from '@daypaw/engine'
+import type { DefinitionDisplay, EngineDefinition, EngineStepCtx } from '@daypaw/engine'
 import type { RunHandle, RunOptions } from './run-handle.ts'
 import { startRun } from './run-handle.ts'
 
@@ -69,6 +69,14 @@ export interface DefineAgentOptions<I extends ZodType, O extends ZodType> {
    * fails instead of starting another. dsh has no turn cap of its own.
    */
   readonly maxTurns: number
+  /**
+   * Display metadata for host catalog views (spec 05 §5): the business-facing
+   * name and description, validated non-blank at declaration. Metadata only —
+   * the engine never reads it for execution. Undeclared: the registry read
+   * view reports `display: undefined` and the presenter falls back to the
+   * technical `name`.
+   */
+  readonly display?: DefinitionDisplay
 }
 
 /** A declared (not yet bound) agent definition. */
@@ -91,6 +99,8 @@ export interface AgentDefinition<I extends ZodType = ZodType, O extends ZodType 
   readonly model: ModelRoute
   /** Turn budget. */
   readonly maxTurns: number
+  /** Display metadata for host catalog views; undefined when undeclared. */
+  readonly display?: DefinitionDisplay
 }
 
 /**
@@ -103,6 +113,9 @@ export function defineAgent<I extends ZodType, O extends ZodType>(
 ): AgentDefinition<I, O> {
   if (!Number.isInteger(options.maxTurns) || options.maxTurns < 1) {
     throw new Error(`defineAgent(${options.name}): maxTurns must be a positive integer`)
+  }
+  if (options.display !== undefined && (!options.display.title.trim() || !options.display.description.trim())) {
+    throw new Error(`defineAgent(${options.name}): display.title and display.description must be non-blank`)
   }
   return { kind: 'agent', ...options }
 }
@@ -350,6 +363,7 @@ export async function bindAgent<I extends ZodType, O extends ZodType>(
     kind: 'agent',
     name: def.name,
     version: def.version,
+    ...(def.display === undefined ? {} : { display: def.display }),
     body: compileBody(def, ctx),
   }
   await engine.register(engineDef)

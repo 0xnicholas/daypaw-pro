@@ -86,13 +86,14 @@ export interface WaitForOptions<T> {
 
 ### 1.2 defineAgent 面（ADR 0010，已实现）
 
-编译与绑定（实现落定）：`defineAgent` 返回声明式定义（组合行静态：prompt 段 + dsh `ToolDefinition` 零适配 + `ModelRoute` + 必填 `maxTurns` 声明期校验；动态 `compose(input)` 留口未开）。`bindAgent(def, ctx)` 把 spec 编译为不透明 body 交引擎注册表（引擎对 `kind: 'agent'` 无感知），闭包捕获宿主 Context；`ctx.durable` / `agents` / `sessions` / `sessionPersistence` 缺任一则 bind 期 loud throw——persistence 缺失即配置错误（耐久是 defineAgent 的存在理由，不是可选项）。同一定义对象重复绑定 no-op，返回首个 face（WeakMap；闭包锁定首个宿主 Context）。
+编译与绑定（实现落定）：`defineAgent` 返回声明式定义（组合行静态：prompt 段 + dsh `ToolDefinition` 零适配 + `ModelRoute` + 必填 `maxTurns` 声明期校验；动态 `compose(input)` 留口未开）。`bindAgent(def, ctx)` 把 spec 编译为不透明 body 交引擎注册表（引擎对 `kind: 'agent'` 无感知），闭包捕获宿主 Context；`ctx.durable` / `agents` / `sessions` / `sessionPersistence` 缺任一则 bind 期 loud throw——persistence 缺失即配置错误（耐久是 defineAgent 的存在理由，不是可选项）。同一定义对象重复绑定 no-op，返回首个 face（WeakMap；闭包锁定首个宿主 Context）。展示元数据 `display`（业务名 + 描述，spec 05 §5）随 bind 落进引擎注册表，经 `listDefinitions` 只读视图读出：仅元数据，引擎执行语义不读它，声明期校验两字段非空白；未声明时视图报 `display: undefined`，呈现层回落到技术 `name`。
 
 ```ts
 // @daypaw/sdk —— defineAgent 面正典类型（ADR 0010 §4 落地；实现即权威）
 import type { Context } from '@deepseek-ai/cordis'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type { ZodType, z } from 'zod'
+import type { DefinitionDisplay } from '@daypaw/engine'
 import type { RunHandle, RunOptions } from '@daypaw/sdk'
 
 /** zod schema → inferred TS type. */
@@ -124,6 +125,8 @@ export interface DefineAgentOptions<I extends ZodType, O extends ZodType> {
   readonly model: ModelRoute
   /** 跨复活累计的 turn 预算（唤醒前检查，超限即失败）；必填正整数。 */
   readonly maxTurns: number
+  /** 目录展示元数据（业务名 + 描述，spec 05 §5）：仅元数据，不改执行语义；声明期校验非空白，未声明时呈现层回落技术 name。 */
+  readonly display?: DefinitionDisplay
 }
 
 export interface AgentDefinition<I extends ZodType = ZodType, O extends ZodType = ZodType>
