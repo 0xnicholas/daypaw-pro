@@ -28,6 +28,8 @@ Subpath exports keep their path: `@cordisjs/plugin-loader/repository` becomes `@
 - **The `cordis.yml` configuration family**, including `*.cordis.yml`, `*.cordis.snapshot.yml`, and `cordis.patch.yml`.
 - **Harness packages whose own names contain the word**, such as `@deepseek-ai/dsh-tool-cordis`.
 - **Upstream runtime identifiers**, such as Schemastery's `Symbol.for('schemastery')` and its `vendor:` metadata field.
+- **The `cordis/*` wire-event namespace.** `cordis/dynamic-package`, `cordis/request-run`, `cordis/inspect-query`, … are dynamic-Cordis events on the Context bus — emitted by the host runner, subscribed to by literal name — spelled indistinguishably from a subpath import, so the files naming them are exempted per file.
+- **The ui-cordis locale id `cordis`**: the namespace its dictionaries register under, the `PropsLocale` and `t('cordis')` keys bound to it, and the `@cordis` input-trigger name.
 - **Prose outside `docs/`.** `vendor/*/README.md`, package READMEs, and Agent Notes keep the names they were written with; a bare `cordis` there can also be the Python SDK's option name or an agent-preset id. Inside `docs/`, prose and every Markdown fence follow the rename.
 
 ## What your code has to change

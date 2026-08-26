@@ -28,6 +28,8 @@ Cordis 框架及其基础库以源码形式 vendored 在 [`vendor/`](../vendor/R
 - **`cordis.yml` 配置文件家族**，包括 `*.cordis.yml`、`*.cordis.snapshot.yml`、`cordis.patch.yml`。
 - **名字里带这个词的 harness 包**，例如 `@deepseek-ai/dsh-tool-cordis`。
 - **上游运行时标识符**，例如 Schemastery 的 `Symbol.for('schemastery')` 及其 `vendor:` 元数据字段。
+- **`cordis/*` 线上事件命名空间。** `cordis/dynamic-package`、`cordis/request-run`、`cordis/inspect-query`……是动态 Cordis 栈在 Context 总线上的事件——host runner 发出、订阅方按字面名字订阅——拼写与子路径导入无法区分，因此逐文件豁免。
+- **ui-cordis 的 locale id `cordis`**：其词典注册的命名空间、绑定到它的 `PropsLocale`/`t('cordis')` 键，以及 `@cordis` 输入触发器的名字。
 - **`docs/` 之外的散文。** `vendor/*/README.md`、各包 README 与 Agent Note 保留写作当时的名字；那里的裸 `cordis` 也可能是 Python SDK 的选项名或某个 agent-preset 的 id。`docs/` 之内，散文与所有 Markdown 围栏都跟着改。
 
 ## 你的代码要改什么

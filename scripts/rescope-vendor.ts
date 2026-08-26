@@ -67,9 +67,12 @@ interface ExactEdit {
 }
 
 /**
- * A file where an upstream name also appears as a vendor DIRECTORY name or an
- * upstream runtime identifier: the generic pass is disabled for the listed
- * names and {@link EXACT_EDITS} renames the real package-name occurrences.
+ * A file where a renamed name also appears as something other than a package
+ * reference: a vendor DIRECTORY name, an upstream runtime identifier, or this
+ * repository's own product identifier (wire-event names, locale/trigger ids)
+ * spelled identically to a renamed package. The generic pass is disabled for
+ * the listed names and {@link EXACT_EDITS} renames the real package-name
+ * occurrences those files carry.
  */
 interface GenericSkip {
   readonly file: string
@@ -104,6 +107,45 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   // GROUP_ORDER holds `packages/<group>/` directory names, not package names.
   { file: 'scripts/gen-module-graph.ts', upstream: ['cordis'] },
   { file: 'scripts/gen-doc-graphs.ts', upstream: ['cordis'] },
+  // `cordis/*` is the dynamic-Cordis stack's wire-event namespace: events the
+  // host runner emits on the Context bus (`cordis/dynamic-package`,
+  // `cordis/request-run`, `cordis/inspect-query`, …) and every consumer
+  // subscribes to by the literal name. The spelling is indistinguishable from
+  // a subpath import, so each file naming one is skipped wholesale; the
+  // catalog's `EVENT_SCOPE_PAGE` keys those same event scopes.
+  { file: 'packages/api/remotes/src/remote-events.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-client-runner/src/client/index.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-client-runner/src/client/runtime.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-client-runner/tests/orchestrator.client.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-client-runner/tests/plugin.client.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/src/index.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/src/inspect-registry.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/src/types.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/tests/helpers.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/tests/runner.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/tests/versioning.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/tool-cordis/src/api-catalog.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/tool-cordis/src/providers.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/ui-cordis/src/client/inventory.ts', upstream: ['cordis'] },
+  { file: 'scripts/gen-cordis-catalog.ts', upstream: ['cordis'] },
+  { file: 'docs/event-producer-consumer.md', upstream: ['cordis'] },
+  { file: 'docs/event-producer-consumer.zh.md', upstream: ['cordis'] },
+  { file: 'docs/subsystems/extensions.md', upstream: ['cordis'] },
+  { file: 'docs/subsystems/extensions.zh.md', upstream: ['cordis'] },
+  // The ui-cordis client index both subscribes to the `cordis/*` wire events
+  // and names its `@cordis` input trigger — an id a rename would orphan from
+  // the roster that reports it.
+  { file: 'packages/extensions/ui-cordis/src/client/index.ts', upstream: ['cordis'] },
+  // `cordis` is also a locale id: the ui-cordis namespace `ctx.locale.register`
+  // keys its dictionaries by, the `PropsLocale` faces that bind those rows to
+  // it, and the plugin inventory's `t('cordis')` detail label — dictionary
+  // keys, not package names.
+  { file: 'packages/extensions/ui-cordis/src/client/locales.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/ui-cordis/src/client/CordisActionRow.tsx', upstream: ['cordis'] },
+  { file: 'packages/extensions/ui-cordis/src/client/CordisDefineRow.tsx', upstream: ['cordis'] },
+  { file: 'packages/extensions/ui-cordis/src/client/CordisPanel.tsx', upstream: ['cordis'] },
+  { file: 'packages/extensions/ui-cordis/src/client/CordisRunRow.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-settings-plugin-inventory/src/client/PluginInventorySettingsTab.tsx', upstream: ['cordis'] },
 ]
 
 /** A string that must appear exactly `count` times once the rescope has run. */
@@ -335,6 +377,122 @@ const VENDORED_LIBRARY = /^@deepseek-ai\\/(cosmokit|schemastery)(\\/|$)/
     file: 'apps/cli/tests/web-agent-presets.e2e.ts',
     find: "import { Context } from 'cordis'",
     replace: "import { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  // The real package references in files whose other `cordis` strings are
+  // wire-event names or the ui-cordis locale id (the GENERIC_SKIPS entries
+  // above): without these, `--apply --reverse` would strand the scoped
+  // specifiers when the vendor manifests return to the upstream names.
+  {
+    id: 'cordis-client-runner-context-import',
+    file: 'packages/extensions/cordis-client-runner/src/client/index.ts',
+    find: "import type { Context } from 'cordis'",
+    replace: "import type { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-client-runner-events-merge',
+    file: 'packages/extensions/cordis-client-runner/src/client/index.ts',
+    find: "declare module 'cordis' {",
+    replace: "declare module '@deepseek-ai/cordis' {",
+    expect: 1,
+  },
+  {
+    id: 'cordis-client-runtime-context-import',
+    file: 'packages/extensions/cordis-client-runner/src/client/runtime.ts',
+    find: "import type { Context } from 'cordis'",
+    replace: "import type { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-client-runtime-loader-import',
+    file: 'packages/extensions/cordis-client-runner/src/client/runtime.ts',
+    find: "import type { Loader } from '@cordisjs/plugin-loader'",
+    replace: "import type { Loader } from '@deepseek-ai/cordis-plugin-loader'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-client-plugin-spec-import',
+    file: 'packages/extensions/cordis-client-runner/tests/plugin.client.spec.ts',
+    find: "import { Context } from 'cordis'",
+    replace: "import { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-host-runner-context-import',
+    file: 'packages/extensions/cordis-host-runner/src/index.ts',
+    find: "import { Context } from 'cordis'",
+    replace: "import { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-host-runner-fiber-import',
+    file: 'packages/extensions/cordis-host-runner/src/index.ts',
+    find: "import type { Fiber } from 'cordis'",
+    replace: "import type { Fiber } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-host-runner-schema-import',
+    file: 'packages/extensions/cordis-host-runner/src/index.ts',
+    find: "import z from 'schemastery'",
+    replace: "import z from '@deepseek-ai/schemastery'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-host-runner-events-merge',
+    file: 'packages/extensions/cordis-host-runner/src/index.ts',
+    find: "declare module 'cordis' {",
+    replace: "declare module '@deepseek-ai/cordis' {",
+    expect: 1,
+  },
+  {
+    id: 'cordis-inspect-service-import',
+    file: 'packages/extensions/cordis-host-runner/src/inspect-registry.ts',
+    find: "import { Service } from 'cordis'",
+    replace: "import { Service } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-inspect-context-import',
+    file: 'packages/extensions/cordis-host-runner/src/inspect-registry.ts',
+    find: "import type { Context } from 'cordis'",
+    replace: "import type { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-inspect-events-merge',
+    file: 'packages/extensions/cordis-host-runner/src/inspect-registry.ts',
+    find: "declare module 'cordis' {",
+    replace: "declare module '@deepseek-ai/cordis' {",
+    expect: 1,
+  },
+  {
+    id: 'cordis-types-events-merge',
+    file: 'packages/extensions/cordis-host-runner/src/types.ts',
+    find: "declare module 'cordis' {",
+    replace: "declare module '@deepseek-ai/cordis' {",
+    expect: 1,
+  },
+  {
+    id: 'cordis-host-helpers-context-import',
+    file: 'packages/extensions/cordis-host-runner/tests/helpers.ts',
+    find: "import { Context } from 'cordis'",
+    replace: "import { Context } from '@deepseek-ai/cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-host-helpers-timer-import',
+    file: 'packages/extensions/cordis-host-runner/tests/helpers.ts',
+    find: "import Timer from '@cordisjs/plugin-timer'",
+    replace: "import Timer from '@deepseek-ai/cordis-plugin-timer'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-tool-providers-context-import',
+    file: 'packages/extensions/tool-cordis/src/providers.ts',
+    find: "import type { Context } from 'cordis'",
+    replace: "import type { Context } from '@deepseek-ai/cordis'",
     expect: 1,
   },
   {
