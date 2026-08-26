@@ -49,6 +49,12 @@ export interface TaskRow {
   agentPreset?: string
   /** Last activity timestamp (epoch ms). */
   updatedAt: number
+  /**
+   * The task waits on a pending approval — the row sits in the 等待你确认
+   * group and its status text reads 等待确认 regardless of the underlying
+   * run/session status. OPTIONAL: absent when no approval pends.
+   */
+  awaitingApproval?: true
   /** Engine run identity, when the row comes from a durable run. */
   run?: {
     readonly runId: string

@@ -31,5 +31,5 @@ None; this package neither assembles nor sends a provider request.
 ## Known Limitations and Deferred Work
 
 - **The board polls; nothing pushes** — the browser refreshes the run ledger every 2 s (`RUNS_BOARD_POLL_MS` is a product constant: the WebBootEntry boot graph carries no per-plugin config channel). Spec §5's host-poll + mux-projection design waits for a cross-session projection channel — session projections are strictly per-session and cannot carry the cross-run board.
-- **等待你确认 stays a placeholder zero** — pending rows land with the approval board ticket (#58).
+- **等待你确认 keys on the session approval badge** — a row enters the group when its runtime session summary carries `pendingInteraction: 'approval'` (mux replay restores it on every open), so a question-shadowed approval stays off the count and a session-less workflow run can never badge (a run-scoped approval channel does not exist yet).
 - **Upstream conversation/details occupants are shadowed, not removed** — ui-conversation's roster row stays mounted (its declared seats serve the dormant placeholder ecosystem); this package wins both cells at priority -1, and removing the upstream row is a later board decision.

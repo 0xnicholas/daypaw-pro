@@ -110,7 +110,7 @@ describe('WorkspaceSwitch', () => {
     // openRun selects a session-less workflow run (no sessions.open drive).
     doneOwner.openRun('run-wf')
     expect(controller.store.getSnapshot()).toEqual({ kind: 'run', runId: 'run-wf' })
-    // The pending group stays the placeholder empty list until #58.
+    // No row carries an approval badge, so the pending group lists empty.
     act(() => { controller.select({ kind: 'group', group: 'pending' }) })
     const pending = calls.findLast(call => call.key === 'inbox.workspace.tasks')!
     expect((pending.owner as unknown as InboxTasksOwnerProps).rows).toEqual([])

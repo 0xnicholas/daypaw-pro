@@ -10,7 +10,7 @@ import { apply, inject } from '../src/client/index.ts'
 import { apply as applyNodeHalf } from '../src/index.ts'
 import { NewTaskDialog, type NewTaskDialogInjected } from '../src/client/new-task-dialog.tsx'
 import { TaskList } from '../src/client/task-list.tsx'
-import { ConversationView } from '../src/client/conversation-view.tsx'
+import { ConversationView, type ConversationViewInjected } from '../src/client/conversation-view.tsx'
 import { DetailBody } from '../src/client/detail-body.tsx'
 import { FakeTaskApi } from './fake-task-api.client.ts'
 
@@ -96,6 +96,22 @@ describe('ui-tasks apply', () => {
     expect(face.hooks.newTask).toBe(face.store.store)
     face.store.setText('写一首诗')
     expect(face.hooks.newTask.getSnapshot().text).toBe('写一首诗')
+  })
+
+  it('the conversation inject face sendNote queues the note through the session binding', async () => {
+    const b = await bench()
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const face = (b.slots.entriesOfSlot('inbox.workspace.conversation')[0]!.inject as unknown as () => ConversationViewInjected)()
+    const prompt = vi.fn(() => Promise.resolve({ ok: true as const, value: { accepted: true as const } }))
+    b.sessions.binding.mockReturnValue({ session: { prompt } })
+    await face.sendNote('s1' as never, '先别删')
+    expect(b.sessions.binding).toHaveBeenCalledWith('s1')
+    expect(prompt).toHaveBeenCalledWith([{ type: 'text', text: '先别删' }], 'queue')
+    // Fail loud: an unlisted session throws; a rejected prompt throws.
+    b.sessions.binding.mockReturnValue(undefined)
+    await expect(face.sendNote('ghost' as never, 'x')).rejects.toThrow('resolved no binding')
+    b.sessions.binding.mockReturnValue({ session: { prompt: () => Promise.resolve({ ok: false as const, error: { code: 'agent-busy', message: 'busy' } }) } })
+    await expect(face.sendNote('s1' as never, 'x')).rejects.toThrow('busy')
   })
 
   it('removes every entry and frees the dictionary seats on teardown', async () => {

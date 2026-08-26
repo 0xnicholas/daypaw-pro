@@ -95,11 +95,15 @@ export function TaskList({ rows, now, openTask, openRun, t }: TaskListProps) {
           >
             <span className={css.title}>{row.title}</span>
             {row.agentPreset !== undefined && <span className={css.agent}>{row.agentPreset}</span>}
-            {row.run !== undefined && (
-              <span className={clsx(css.status, row.run.status === 'failed' && css.statusFailed)}>
-                {t(runStatusKey(row.run.status))}
-              </span>
-            )}
+            {row.awaitingApproval === true
+              // The pending-group status reads 等待确认 whatever the run says;
+              // run-less session rows (no run status to show) carry it too.
+              ? <span className={css.status}>{t('list.status.waiting')}</span>
+              : row.run !== undefined && (
+                <span className={clsx(css.status, row.run.status === 'failed' && css.statusFailed)}>
+                  {t(runStatusKey(row.run.status))}
+                </span>
+              )}
             <span className={css.activity}>{activityLabel(row.updatedAt, now, t)}</span>
           </button>
         </li>

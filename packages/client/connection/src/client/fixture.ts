@@ -353,8 +353,9 @@ function fixtureUsage(turn: number, step: number): TokenUsage {
   }
 }
 
-/** fx-alpha history script: 75 turns (~150+ messages -> 4 pages at PAGE_MESSAGES=50),
- *  mixing reasoning blocks / tool call+result / context. */
+/** fx-alpha history script: 76 turns (~150+ messages -> 4 pages at PAGE_MESSAGES=50),
+ *  mixing reasoning blocks / tool call+result / context; the last turn stays open
+ *  behind the resident pending approval. */
 function buildAlphaLog(): SessionEvent[] {
   const events: Record<string, unknown>[] = []
   let time = Date.now() - 3_600_000
@@ -603,6 +604,16 @@ function buildAlphaLog(): SessionEvent[] {
   const callIndex = events.length - 4
   const callTime = events[callIndex]?.time as number
   events.splice(callIndex + 1, 0, { type: 'todo/write', time: callTime + 400, data: { todos: fixtureTodos } })
+  // Turn 75 stays OPEN: the resident pending approval (fx-approval-1, replayed
+  // on every mux open) blocks this call pre-execution, so the unresulted
+  // tool/call keeps the paired-command lookup (the window's runningCalls)
+  // exercised — the daypaw approval card's details expander reads it.
+  push({ type: 'turn/start', data: { turn: 75 } })
+  push({ type: 'step/start', data: { turn: 75, step: 0 } })
+  push({
+    type: 'tool/call',
+    data: { turn: 75, step: 0, callId: 'fx-call-approval-live', name: 'bash', arguments: '{"command":"rm -rf /tmp/build-cache"}' },
+  })
   events.forEach((e, i) => { e.seq = i })
   return events as unknown as SessionEvent[]
 }
@@ -1490,6 +1501,13 @@ export interface FixtureOptions {
   dropSessionCreateResponse?: boolean
   /** Order of the two successful create frames. */
   createFrameOrder?: 'session-first' | 'workspace-first'
+  /**
+   * Run the 5s fx-gamma running↔idle flip on the host stream (the
+   * host/session-status + empty-log-subscribe wire affordance). Off by
+   * default: ambient running flips race any lane that samples the sessions
+   * list into a golden, so only the fixture spec pins the flip itself.
+   */
+  flipGammaRunning?: boolean
 }
 
 /** Inbox pump shared by both stream generators (FrameQueue pattern: ONE abort listener hung
@@ -1834,7 +1852,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     { kind: 'agent', name: 'weekly-report', version: '1.2.0', display: { title: 'Weekly report assistant', description: 'Collects the week\'s updates from each team and drafts the report.' } },
     { kind: 'agent', name: 'invoice-checker', version: '0.3.1' },
   ]
-  const nextTurn = new Map<SessionId, number>([[sid('fx-alpha'), 75]])
+  const nextTurn = new Map<SessionId, number>([[sid('fx-alpha'), 76]])
   let nextSession = 1
   let nextRpc = 1
   let attachedSessions = options.empty ? 0 : 1
@@ -1886,7 +1904,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     return crumbs
   }
   const mint = (): ReturnType<typeof RpcId> => RpcId(`fx-rpc-${nextRpc++}`)
-  /** Resident pending approval (stable rpcId: every mux open replays the same id while unanswered, matching host replay semantics). */
+  /** Resident pending approval (stable rpcId: every mux open replays the same id while unanswered,
+   * matching host replay semantics). Its callId pairs the alpha log's open turn-75 call, so the
+   * pre-execution block reads through runningCalls. */
   const pendingApprovalRpcId = mint()
   const pendingApprovalId = 'fx-approval-1' as Extract<MuxFrame, { type: 'approval/requested' }>['approvalId']
   /** Cleared once answered through respond; replay stops and approval/resolved is broadcast. */
@@ -3148,15 +3168,20 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
             payload: {
               type: 'approval/requested', sessionId: sid('fx-alpha'),
               approvalId: pendingApprovalId,
-              toolName: 'dangerous_tool', reason: 'fixture 常驻审批（可答：批准/拒绝后消失）',
+              toolName: 'dangerous_tool', callId: CallId('fx-call-approval-live'),
+              reason: '清理临时目录 /tmp/build-cache',
             },
           })
         }
         if (questionPending) {
           conn.push({
             rpcId: pendingQuestionRpcId,
+            // fx-gamma, not fx-alpha: the daypaw board's 等待你确认 group keys
+            // on the approval badge, and a question badge would shadow it on
+            // the run-twinned session (the runtime's badge picks questions
+            // first); the upstream sidebar assertions keep working off either.
             payload: {
-              type: 'question/requested', sessionId: sid('fx-alpha'), questions: fixtureQuestions,
+              type: 'question/requested', sessionId: sid('fx-gamma'), questions: fixtureQuestions,
             },
           })
         }
@@ -3172,13 +3197,17 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         hostConns.add(conn)
         const breakNow = (): void => { conn.breakNow() }
         streamBreakers.add(breakNow)
-        // Periodic material (the RPC-panel acceptance's clear-then-new-frames step depends on it): flip fx-gamma every 5s.
-        // fx-gamma only: never touch fx-alpha's running semantics (the conversation replay drives that).
-        const timer = setInterval(() => {
-          const gamma = summaryOf(sid('fx-gamma'))
-          /* v8 ignore next -- the undefined arm needs fx-gamma deleted, but the fixture never removes sessions. */
-          if (gamma !== undefined) setRunning(gamma.sessionId, !gamma.running)
-        }, 5000)
+        // Opt-in periodic material (the wire affordance the fixture spec pins):
+        // flip fx-gamma every 5s. fx-gamma only: never touch fx-alpha's running
+        // semantics (the conversation replay drives that). Off by default — an
+        // ambient flip races every golden-sampling lane that reads the list.
+        const timer = options.flipGammaRunning === true
+          ? setInterval(() => {
+            const gamma = summaryOf(sid('fx-gamma'))
+            /* v8 ignore next -- the undefined arm needs fx-gamma deleted, but the fixture never removes sessions. */
+            if (gamma !== undefined) setRunning(gamma.sessionId, !gamma.running)
+          }, 5000)
+          : undefined
         try {
           yield* conn.drain(signal)
         } finally {
@@ -3277,7 +3306,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }
       questionPending = false
       emitMux({
-        type: 'question/resolved', sessionId: sid('fx-alpha'),
+        type: 'question/resolved', sessionId: sid('fx-gamma'),
         questionRpcId: pendingQuestionRpcId,
         outcome: message.result.ok ? 'answered' : 'cancelled',
       })

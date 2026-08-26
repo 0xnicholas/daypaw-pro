@@ -1,5 +1,4 @@
 group=Awaiting your confirmation count=1
 group=In progress count=0
 group=Completed count=4
-title=In progress
-empty=No tasks yet
+row=Fixture 历史会话|status=Awaiting confirmation|activity=Last activity 4 d ago

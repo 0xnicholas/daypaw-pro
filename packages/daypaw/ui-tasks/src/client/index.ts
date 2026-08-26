@@ -12,20 +12,22 @@
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls ui-inbox's SlotMap merge (the four target seats).
 import type {} from '@daypaw/ui-inbox/client'
 import { NewTaskDialog, type NewTaskDialogInjected } from './new-task-dialog.tsx'
 import { TaskList } from './task-list.tsx'
-import { ConversationView } from './conversation-view.tsx'
+import { ConversationView, type ConversationViewInjected } from './conversation-view.tsx'
 import { DetailBody } from './detail-body.tsx'
 import { NewTaskStore } from './new-task-store.ts'
 import { en, zh, type DaypawTasksKey } from './locales.ts'
 
 export type { NewTaskDialogInjected, NewTaskDialogProps } from './new-task-dialog.tsx'
 export type { TaskListProps } from './task-list.tsx'
-export type { ConversationViewProps } from './conversation-view.tsx'
+export type { ConversationViewInjected, ConversationViewProps } from './conversation-view.tsx'
+export type { ApprovalCardProps, PendingApprovalWait } from './approval-card.tsx'
 export type { DetailBodyProps } from './detail-body.tsx'
 export type { NewTaskState } from './new-task-store.ts'
 export type { BusinessRow } from './chat-projection.ts'
@@ -58,6 +60,15 @@ export function apply(ctx: ClientContext): void {
   const connection = ctx.get('connection') as ConnectionHandle
   const newTask = new NewTaskStore(connection.api, ctx.sessions)
 
+  // The reject note rides the ordinary prompt path (the NewTaskStore first
+  // prompt precedent): queue mode lets a running task consume it as steering.
+  const sendNote = async (sessionId: SessionId, text: string): Promise<void> => {
+    const binding = ctx.sessions.binding(sessionId)
+    if (binding === undefined) throw new Error(`ui-tasks: session "${sessionId}" resolved no binding`)
+    const prompted = await binding.session.prompt([{ type: 'text', text }], 'queue')
+    if (!prompted.ok) throw new Error(prompted.error.message)
+  }
+
   ctx.slots.inject('inbox.new-task.dialog', () => ctx.slots.register({
     name: 'inbox.new-task.dialog',
     locale: NS,
@@ -73,6 +84,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.workspace.conversation', () => ctx.slots.register({
     name: 'inbox.workspace.conversation',
     locale: NS,
+    inject: (): ConversationViewInjected => ({ sendNote }),
   }, ConversationView))
   ctx.slots.inject('inbox.detail.body', () => ctx.slots.register({
     name: 'inbox.detail.body',

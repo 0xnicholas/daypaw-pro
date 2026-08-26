@@ -1,0 +1,4 @@
+headline=Fixture 历史会话 needs your confirmation: 清理临时目录 /tmp/build-cache
+detail=rm -rf /tmp/build-cache
+actions=Reject,Approve
+toolname=absent

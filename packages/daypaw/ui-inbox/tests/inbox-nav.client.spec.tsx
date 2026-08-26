@@ -100,7 +100,7 @@ describe('InboxNav', () => {
     expect(screen.getByText('daypaw')).toBeTruthy()
     expect(screen.getByRole('button', { name: '新任务' })).toBeTruthy()
     // Live projection: one running, two settled; blank drafts never count;
-    // 等待你确认 stays the placeholder zero until the approval board ticket.
+    // no row carries an approval badge, so 等待你确认 stays zero here.
     expect(screen.getByRole('button', { name: '等待你确认0' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '进行中1' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '已完成2' })).toBeTruthy()

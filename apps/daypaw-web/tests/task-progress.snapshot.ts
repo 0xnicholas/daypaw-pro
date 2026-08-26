@@ -7,11 +7,13 @@
 // agent task's conversation + four-section detail (including the
 // approvalHistory projection rows), a session-less workflow run's step
 // timeline and output_json deliverables, and a failed run's 出错了 + 重试
-// rerun landing back on the board through the poll. The per-package suites
-// bench over src and cannot see the bundled wiring; this is the
-// assembled-output check that a dropped slot registration, a broken
-// listRuns/runLineage/journalTimeline/rerun wire projection, or leaked
-// run/session/journal wording fails.
+// rerun landing back on the board through the poll. The resident approval
+// pends on the fx-alpha twin, so the board boots with it in 等待你确认 and
+// this lane reaches its conversation through that group (the approval lane
+// owns the answer flow). The per-package suites bench over src and cannot see
+// the bundled wiring; this is the assembled-output check that a dropped slot
+// registration, a broken listRuns/runLineage/journalTimeline/rerun wire
+// projection, or leaked run/session/journal wording fails.
 //
 // Keyless and deterministic: the fixture is the fake server, so the ledger
 // rows, step names, outputs, and approval pairs are fixed in the fixture, not
@@ -148,14 +150,22 @@ describe('assembled task progress', () => {
   it('feeds the inbox board from the engine ledger and renders run details from the built bundles', async () => {
     mountAssembledApp()
 
-    // ---- board-groups: the default 进行中 group after the board's first fetch.
+    // ---- board-groups: the boot board after the sessions list and the first
+    // ledger fetch land. The resident approval pends on the fx-alpha twin, so
+    // 等待你确认 carries it and the default 进行中 group boots empty.
     await screen.findByRole('button', { name: 'New Task' }, { timeout: 10_000 })
-    await waitFor(() => { expect(listButtons()).toHaveLength(1) }, { timeout: 10_000 })
+    await waitFor(() => {
+      const pending = within(column('sidebarCol')).getByRole('button', { name: /^Awaiting your confirmation/ })
+      expect(pending.textContent).toMatch(/1/)
+    }, { timeout: 10_000 })
     const board = column('centerCol')
     expect(board.textContent ?? '').not.toMatch(FORBIDDEN)
     await snap('board-groups', boardShape())
 
-    // ---- open-agent-task: the fx-alpha run row joins to its session twin.
+    // ---- open-agent-task: the fx-alpha run row joins to its session twin,
+    // reached through the 等待你确认 group that carries it.
+    fireEvent.click(within(column('sidebarCol')).getByRole('button', { name: /^Awaiting your confirmation/ }))
+    await waitFor(() => { expect(listButtons()).toHaveLength(1) }, { timeout: 10_000 })
     fireEvent.click(listButtons()[0]!)
     await waitFor(() => {
       expect(pick(column('centerCol'), 'flow')[0]?.children.length).toBeGreaterThan(0)

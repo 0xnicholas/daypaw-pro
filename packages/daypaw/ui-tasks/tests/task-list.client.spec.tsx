@@ -104,6 +104,17 @@ describe('TaskList', () => {
     expect(screen.getByText('已取消')).toBeTruthy()
   })
 
+  it('renders 等待确认 on awaiting-approval rows, run-backed or run-less, over the run status', () => {
+    mountList([
+      { ...runRow('agent-task', 'running'), awaitingApproval: true },
+      { ...row('session-task', NOW), awaitingApproval: true },
+    ])
+    const waiting = screen.getAllByText('等待确认')
+    expect(waiting).toHaveLength(2)
+    // The run row's own status (进行中) does not compete with the waiting copy.
+    expect(screen.queryByText('进行中')).toBeNull()
+  })
+
   it('opens a session-backed run row through openTask', () => {
     const { openTask } = mountList([runRow('agent-task', 'running')])
     fireEvent.click(screen.getByRole('button', { name: /agent-task/ }))

@@ -119,7 +119,7 @@
   text-overflow: ellipsis;
 }
 
-/* Count slot: placeholder zeros until the board tickets wire the data. */
+/* Count slot: the live per-group row count. */
 .count {
   flex: none;
   min-width: 20px;

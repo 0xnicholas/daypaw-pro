@@ -31,5 +31,5 @@ daypaw 壳 IA 骨架（收件箱工作台），fork 的 client UI 插件，包�
 ## Known Limitations and Deferred Work
 
 - **板块靠轮询，无推送**——浏览器每 2 秒刷新一次 run ledger（`RUNS_BOARD_POLL_MS` 是产品常量：WebBootEntry 启动图不携带逐插件配置通道）。spec §5 的 host 轮询 + mux 投影设计等跨 session 投影通道——session 投影严格按会话隔离，承载不了跨 run 的板块。
-- **「等待你确认」保持占位零**——pending 行随审批板块票（#58）落地。
+- **「等待你确认」以 session 的 approval 徽章为键**——行的 runtime 会话摘要带 `pendingInteraction: 'approval'` 时进分组（每次 mux open 重放恢复），因此被 question 遮蔽的 approval 不进计数，无 session 的 workflow run 永远得不到徽章（run 作用域审批通道尚不存在）。
 - **上游 conversation/details 占据者是遮蔽而非移除**——ui-conversation 的 roster 行保持挂载（其声明的席位服务休眠占位生态）；本包以优先级 -1 赢得两个单元格，移除上游行是后续板块决策。

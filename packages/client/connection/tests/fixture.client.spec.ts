@@ -403,7 +403,7 @@ describe('createFixtureApi', () => {
     })
     expect(first[12]?.payload).toMatchObject({ type: 'approval/requested', toolName: 'dangerous_tool' })
     expect(second[12]?.rpcId).toBe(first[12]?.rpcId) // stable rpcId across replays (host replay semantics)
-    expect(first[13]?.payload).toMatchObject({ type: 'question/requested', sessionId: 'fx-alpha' })
+    expect(first[13]?.payload).toMatchObject({ type: 'question/requested', sessionId: 'fx-gamma' })
     expect(second[13]?.rpcId).toBe(first[13]?.rpcId)
   })
 
@@ -428,7 +428,7 @@ describe('createFixtureApi', () => {
   it('gamma interval flip emits host/session-status and a running log-less session subscribes at lastSeq -1', async () => {
     vi.useFakeTimers()
     try {
-      const api = createFixtureApi()
+      const api = createFixtureApi({ flipGammaRunning: true })
       const abort = new AbortController()
       const hostSeen: HostFrame[] = []
       const consuming = (async () => {

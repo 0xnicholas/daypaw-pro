@@ -1,6 +1,6 @@
 /** projectInboxBoard: the hybrid run+session projection — dedupe, session-less workflow rows, status grouping, merge order. */
 import { describe, expect, it } from 'vitest'
-import type { SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WireRun, WireRunStatus } from '../src/client/runs-api.ts'
 import { projectInboxBoard } from '../src/client/task-projection.ts'
@@ -25,6 +25,7 @@ interface SummarySpec {
   title?: string
   updatedAt?: number
   agentPreset?: string
+  pendingInteraction?: SessionSummary['pendingInteraction']
 }
 
 function listState(rows: readonly SummarySpec[]): SessionListState {
@@ -37,6 +38,7 @@ function listState(rows: readonly SummarySpec[]): SessionListState {
       blank: row.blank ?? false,
       updatedAt: row.updatedAt ?? 1,
       ...row.agentPreset === undefined ? {} : { agentPreset: row.agentPreset },
+      ...row.pendingInteraction === undefined ? {} : { pendingInteraction: row.pendingInteraction },
     }
   }
   return {
@@ -145,9 +147,42 @@ describe('projectInboxBoard', () => {
     expect(board.rows.done.map(row => row.run?.runId ?? 'session')).toEqual(['new-run', 'mid-run', 'session'])
   })
 
-  it('keeps the pending group the placeholder zero/empty (#58 owns it)', () => {
-    const board = projectInboxBoard(listState([{ id: 'a', running: true }]), [run({ status: 'waiting' })])
-    expect(board.counts.pending).toBe(0)
-    expect(board.rows.pending).toEqual([])
+  it('routes an approval-badged run row to 等待你确认 and flags it, whatever the run status', () => {
+    const board = projectInboxBoard(
+      listState([{ id: 'r1', title: 'Fix the flaky test', pendingInteraction: 'approval' }]),
+      [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests', updatedAt: 300 })],
+    )
+    expect(board.counts).toEqual({ pending: 1, running: 0, done: 0 })
+    expect(board.rows.pending).toEqual([{
+      sessionId: 'r1',
+      title: 'Fix the flaky test',
+      updatedAt: 300,
+      run: { runId: 'r1', status: 'running', defKind: 'agent' },
+      awaitingApproval: true,
+    }])
+  })
+
+  it('routes an approval-badged run-less session to 等待你确认', () => {
+    const board = projectInboxBoard(listState([{ id: 'a', running: true, pendingInteraction: 'approval' }]), [])
+    expect(board.counts).toEqual({ pending: 1, running: 0, done: 0 })
+    expect(board.rows.pending.map(row => [row.sessionId, row.awaitingApproval])).toEqual([['a', true]])
+  })
+
+  it('keeps question and plan-review badges in their status groups (the board is the 审批 surface)', () => {
+    const list = listState([
+      { id: 'q', running: true, pendingInteraction: 'question' },
+      { id: 'p', pendingInteraction: 'plan-review' },
+    ])
+    const board = projectInboxBoard(list, [])
+    expect(board.counts).toEqual({ pending: 0, running: 1, done: 1 })
+  })
+
+  it('returns the row to its status group once the answer clears the badge', () => {
+    const runs = [run({ runId: 'r1', defKind: 'agent' })]
+    const waiting = projectInboxBoard(listState([{ id: 'r1', pendingInteraction: 'approval' }]), runs)
+    expect(waiting.counts).toEqual({ pending: 1, running: 0, done: 0 })
+    const answered = projectInboxBoard(listState([{ id: 'r1' }]), runs)
+    expect(answered.counts).toEqual({ pending: 0, running: 1, done: 0 })
+    expect(answered.rows.running[0]?.awaitingApproval).toBeUndefined()
   })
 })

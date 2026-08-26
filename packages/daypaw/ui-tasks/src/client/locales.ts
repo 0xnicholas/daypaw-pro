@@ -48,6 +48,14 @@ export const zh = {
   'conversation.error': '出错了',
   'conversation.empty': '暂无对话内容',
   'conversation.followup.placeholder': '追问即将上线',
+  'approval.headline': '{task} 请你确认：{summary}',
+  'approval.generic': '执行一项敏感操作',
+  'approval.details': '查看原始内容',
+  'approval.allow': '同意',
+  'approval.reject': '拒绝',
+  'approval.note.placeholder': '给 Agent 捎句话（可选）…',
+  'approval.note.confirm': '确认拒绝',
+  'approval.failed': '操作失败，请重试',
 } satisfies Record<string, string>
 
 /** The daypaw-tasks namespace key union. */
@@ -96,4 +104,12 @@ export const en = {
   'conversation.error': 'Something went wrong',
   'conversation.empty': 'No messages yet',
   'conversation.followup.placeholder': 'Follow-ups are coming soon',
+  'approval.headline': '{task} needs your confirmation: {summary}',
+  'approval.generic': 'a sensitive action',
+  'approval.details': 'View raw content',
+  'approval.allow': 'Approve',
+  'approval.reject': 'Reject',
+  'approval.note.placeholder': 'Add a note for the agent (optional)…',
+  'approval.note.confirm': 'Confirm rejection',
+  'approval.failed': 'Something went wrong — please try again',
 } satisfies Record<DaypawTasksKey, string>
