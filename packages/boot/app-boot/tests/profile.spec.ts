@@ -242,8 +242,11 @@ describe('healProfilesModuleFallback', () => {
   it('throws when a fallback entry is a real directory', () => {
     const anchor = stageInstallation({})
     const home = tmp()
-    mkdirSync(join(home, 'profiles', 'node_modules', 'dsh-app'), { recursive: true })
-    expect(() => { healProfilesModuleFallback(anchor, home) }).toThrow('is not a symlink')
+    const realDir = join(home, 'profiles', 'node_modules', 'dsh-app')
+    mkdirSync(realDir, { recursive: true })
+    expect(() => { healProfilesModuleFallback(anchor, home) }).toThrow(
+      `dsh: ${realDir} exists and is not a symlink; remove it so dsh can manage the installation fallback`,
+    )
   })
 
   it('replaces a wrong symlink', () => {
@@ -256,12 +259,12 @@ describe('healProfilesModuleFallback', () => {
     expect(readlinkSync(join(fallback, 'dsh-app'))).toContain('app')
   })
 
-  it('tolerates losing the concurrent-heal race to an identical link and rejects a different one', () => {
-    // The EEXIST arm: a second process wrote the link between our lstat miss
-    // and symlinkSync. Simulated by pre-creating the correct link and calling
-    // the internal path through a stale-lstat shim is not possible from
-    // outside, so probe the observable contract: healing twice concurrently
-    // is a no-op, and a foreign REAL directory still fails loud.
+  it('a second heal of an already-correct fallback is a no-op', () => {
+    // The EEXIST arm (a second process wrote the link between our lstat miss
+    // and symlinkSync) needs a node:fs symlinkSync mock to stage
+    // deterministically; a consumer spec of the shared heal stages both arms.
+    // This probe covers what a real filesystem shows: healing again is a
+    // no-op, and the correct link survives.
     const anchor = stageInstallation({})
     const home = tmp()
     healProfilesModuleFallback(anchor, home)

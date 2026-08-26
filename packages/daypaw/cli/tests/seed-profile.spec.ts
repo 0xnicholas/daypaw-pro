@@ -87,7 +87,9 @@ describe('seedDaypawProfile', () => {
     await mkdir(link, { recursive: true })
     await writeFile(join(link, 'placeholder'), '')
 
-    expect(() => { seedDaypawProfile(home) }).toThrow(/exists and is not a symlink/)
+    expect(() => { seedDaypawProfile(home) }).toThrow(
+      `daypaw: ${link} exists and is not a symlink; remove it so daypaw can manage the profile's engine link`,
+    )
   })
 
   it('re-points a stale engine link at the bundled engine', async () => {

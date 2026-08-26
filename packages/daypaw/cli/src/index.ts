@@ -8,7 +8,7 @@
  *
  * The daypaw template does not live in the dsh launcher's `PROFILE_TEMPLATES`
  * (an upstream file): the template ships inside this package and this module
- * applies it, keeping the delivery line free of upstream runtime edits
+ * applies it, so seeding a new profile needs no upstream runtime edit
  * (ADR 0011). The engine row is seeded into the profile's own
  * `cordis.patch.yml` — the product composition rides the user layer by
  * design, so a customer can retune or remove it like any other override.
@@ -16,16 +16,17 @@
  * `@daypaw/engine` is not reachable from the launcher-healed module fallback
  * (that fallback mirrors the dsh app's dependency closure, which the daypaw
  * family is not part of), so the seed links the bundled engine package into
- * the profile's own `node_modules`; the link is re-healed on every launch.
+ * the profile's own `node_modules`; the link is re-healed on every launch
+ * through the launcher's own `ensureSymlink`.
  * @module @daypaw/cli
  */
 
 import {
-  existsSync, lstatSync, mkdirSync, readlinkSync, symlinkSync, unlinkSync, writeFileSync,
+  existsSync, mkdirSync, writeFileSync,
 } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import { initProfile, PROFILE_PATCH_FILENAME, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
+import { ensureSymlink, initProfile, PROFILE_PATCH_FILENAME, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 
 /** The profile the daypaw CLI seeds on first run. */
@@ -62,39 +63,16 @@ function bundledEngineDir(): string {
 
 /**
  * Ensure `profileDir/node_modules/@daypaw/engine` is a symlink to the bundled
- * engine, replacing a wrong or dangling link; a real directory throws. This
- * mirrors the launcher fallback's heal semantics, including the concurrent
- * first-run race: losing to a process that wrote the identical link is success.
+ * engine through the shared `ensureSymlink` heal: a wrong or dangling link is
+ * re-pointed, a real directory throws, and losing the concurrent first-run
+ * race to an identical link is success.
  * @param profileDir - the daypaw profile directory.
  */
 function ensureEngineLink(profileDir: string): void {
   const target = bundledEngineDir()
   const link = join(profileDir, 'node_modules', '@daypaw', 'engine')
   mkdirSync(dirname(link), { recursive: true })
-  let stat
-  try {
-    stat = lstatSync(link)
-  } catch {
-    // Missing link (first run) — created below. Any other lstat failure on a
-    // path we just created the parent of resurfaces on symlinkSync.
-    stat = undefined
-  }
-  if (stat !== undefined) {
-    if (!stat.isSymbolicLink()) {
-      throw new Error(`daypaw: ${link} exists and is not a symlink; remove it so daypaw can manage the profile's engine link`)
-    }
-    if (readlinkSync(link) === target) return
-    unlinkSync(link)
-  }
-  try {
-    // Junctions need no elevation on Windows and fit the directory target.
-    symlinkSync(target, link, 'junction')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST'
-      || !lstatSync(link).isSymbolicLink() || readlinkSync(link) !== target) {
-      throw error
-    }
-  }
+  ensureSymlink('daypaw', link, target, "the profile's engine link")
 }
 
 /**

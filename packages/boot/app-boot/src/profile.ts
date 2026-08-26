@@ -167,8 +167,18 @@ export function initProfile(dir: string, bundles: readonly string[]): void {
   if (!existsSync(workspacePath)) writeFileSync(workspacePath, PROFILE_PNPM_WORKSPACE)
 }
 
-/** Ensure `link` is a symlink to `target`, replacing a wrong or dangling link; a real directory throws. */
-function ensureSymlink(link: string, target: string): void {
+/**
+ * Ensure `link` is a symlink to `target`, replacing a wrong or dangling link;
+ * a real directory throws. Losing a concurrent create race to a process that
+ * wrote the identical link is success; anything else rethrows.
+ * @param binName - the bin name prefixing the thrown error and naming the link's manager.
+ * @param link - the symlink path to ensure.
+ * @param target - the path `link` must point at.
+ * @param manages - what the thrown error says `binName` manages through the link.
+ */
+export function ensureSymlink(
+  binName: string, link: string, target: string, manages: string,
+): void {
   let stat
   try {
     stat = lstatSync(link)
@@ -179,7 +189,7 @@ function ensureSymlink(link: string, target: string): void {
   }
   if (stat !== undefined) {
     if (!stat.isSymbolicLink()) {
-      throw new Error(`dsh: ${link} exists and is not a symlink; remove it so dsh can manage the installation fallback`)
+      throw new Error(`${binName}: ${link} exists and is not a symlink; remove it so ${binName} can manage ${manages}`)
     }
     if (readlinkSync(link) === target) return
     // unlink deletes the reparse point itself on Windows too; rmSync treats a
@@ -250,7 +260,7 @@ export function healProfilesModuleFallback(installAnchor: string, home: string =
   for (const [packageName, target] of links) {
     const link = join(modulesDir, packageName)
     mkdirSync(dirname(link), { recursive: true })
-    ensureSymlink(link, target)
+    ensureSymlink('dsh', link, target, 'the installation fallback')
   }
 }
 
