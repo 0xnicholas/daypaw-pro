@@ -490,10 +490,20 @@ function buildAlphaLog(): SessionEvent[] {
     push({ type: 'step/end', data: { turn, step: 0 } })
     push({ type: 'turn/end', data: { turn, reason: { kind: 'completed' } } })
   }
-  // Turn 74: todo_write sample — the TodoRow toolview in the flow plus the
+  // Turn 75: todo_write sample — the TodoRow toolview in the flow plus the
   // todo/write snapshot event feeding the TodoPanel plan strip. Two items are
   // in_progress: this fixture chooses the parallel policy, so both surfaces
-  // must render a parallel plan rather than the first active item alone.
+  // must render a parallel plan rather than the first active item alone. The
+  // sample rides the session's LAST turn, which stays open behind the resident
+  // pending approval (fx-approval-1, replayed on every mux open): the
+  // todo_write step completes, then the blocked bash call in step 1 leaves the
+  // turn unresulted — the unresulted tool/call keeps the paired-command
+  // lookup (the window's runningCalls) exercised for the daypaw approval
+  // card's details expander. The standing plan (fed by the todo/write
+  // snapshot) retires at the NEXT turn/start, so the todo sample must live in
+  // the open turn itself: a completed todo turn with the open turn appended
+  // after it would retire the plan and empty the dock's strip (the todo
+  // surfaces' own coverage with it).
   const fixtureTodos = [
     { content: '梳理需求', status: 'completed' },
     { content: '实现 fixture 样本', status: 'in_progress' },
@@ -597,22 +607,23 @@ function buildAlphaLog(): SessionEvent[] {
   push({ type: 'approval/decided', data: { id: 'fx-approval-hist-2', outcome: 'rejected' } })
 
   const todoArgs = JSON.stringify({ todos: fixtureTodos })
-  toolTurn(74, 'todo_write', todoArgs, 'Updated todo list: 1 pending, 2 in progress, 1 completed.')
-  // The real tool appends the snapshot mid-execution — between tool/call and
-  // tool/result — so the fixture reproduces that exact ordering (the last
-  // toolTurn events run ... tool/call, tool/result, step/end, turn/end).
-  const callIndex = events.length - 4
-  const callTime = events[callIndex]?.time as number
-  events.splice(callIndex + 1, 0, { type: 'todo/write', time: callTime + 400, data: { todos: fixtureTodos } })
-  // Turn 75 stays OPEN: the resident pending approval (fx-approval-1, replayed
-  // on every mux open) blocks this call pre-execution, so the unresulted
-  // tool/call keeps the paired-command lookup (the window's runningCalls)
-  // exercised — the daypaw approval card's details expander reads it.
   push({ type: 'turn/start', data: { turn: 75 } })
+  push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text('问题 75：todo_write 样本。')) })
   push({ type: 'step/start', data: { turn: 75, step: 0 } })
   push({
+    type: 'assistant/message', surfaceOp: 'append',
+    data: { turn: 75, step: 0, message: assistantMessage([{ type: 'tool-call', id: 'fx-call-75', name: 'todo_write', arguments: todoArgs } as ContentBlock]) },
+  })
+  push({ type: 'tool/call', data: { turn: 75, step: 0, callId: 'fx-call-75', name: 'todo_write', arguments: todoArgs } })
+  // The real tool appends the snapshot mid-execution — between tool/call and
+  // tool/result — so the fixture reproduces that exact ordering.
+  push({ type: 'todo/write', data: { todos: fixtureTodos } })
+  push({ type: 'tool/result', surfaceOp: 'append', data: { turn: 75, step: 0, message: toolResultMessage('fx-call-75', text('Updated todo list: 1 pending, 2 in progress, 1 completed.'), false) } })
+  push({ type: 'step/end', data: { turn: 75, step: 0 } })
+  push({ type: 'step/start', data: { turn: 75, step: 1 } })
+  push({
     type: 'tool/call',
-    data: { turn: 75, step: 0, callId: 'fx-call-approval-live', name: 'bash', arguments: '{"command":"rm -rf /tmp/build-cache"}' },
+    data: { turn: 75, step: 1, callId: 'fx-call-approval-live', name: 'bash', arguments: '{"command":"rm -rf /tmp/build-cache"}' },
   })
   events.forEach((e, i) => { e.seq = i })
   return events as unknown as SessionEvent[]

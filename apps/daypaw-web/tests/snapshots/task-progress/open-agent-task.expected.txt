@@ -52,14 +52,14 @@ user=问题 72：请完整列出全部一百条条目。
 assistant=条目 1：第一条。条目 2：第二条。条目 3：这一条写到一半被
 user=历史用户图片
 assistant=结构化模型图片：
-user=问题 74：todo_write 样本。
+user=问题 75：todo_write 样本。
 detail
 header=Task details
 retry=false
 section=Progress
   row=历史用户图片
   row=结构化模型图片：
-  row=问题 74：todo_write 样本。
+  row=问题 75：todo_write 样本。
   row=In progress
 section=Subtasks
   empty=No subtasks
