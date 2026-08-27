@@ -22,14 +22,22 @@ const make = (host = stubSettingsScope<ThemeSettings>()): {
 }
 
 describe('ThemeRuntime', () => {
-  it('defaults to the system preference resolved against prefers-color-scheme', () => {
+  it('defaults to the light preference (daypaw ruling #61: light is the product default)', () => {
     const { theme } = make()
+    const snapshot = theme.getTheme()
+    expect(snapshot.preference).toBe('light')
+    expect(snapshot.active.id).toBe('light')
+    expect(snapshot.active.colorScheme).toBe('light')
+    expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark'])
+  })
+
+  it('resolves the system preference against prefers-color-scheme', () => {
+    const { theme } = make()
+    theme.setTheme('system')
     const snapshot = theme.getTheme()
     expect(snapshot.preference).toBe('system')
     // jsdom matchMedia is absent; system resolves to light.
     expect(snapshot.active.id).toBe('light')
-    expect(snapshot.active.colorScheme).toBe('light')
-    expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark'])
   })
 
   it('setTheme switches, writes through the scope, republishes, and keeps DOM untouched', () => {
@@ -79,7 +87,7 @@ describe('ThemeRuntime', () => {
     theme.setTheme('sepia')
     expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('red')
     dispose()
-    expect(theme.getTheme().preference).toBe('system')
+    expect(theme.getTheme().preference).toBe('light')
     expect(theme.getTheme().themes.map(t => t.id)).toEqual(['light', 'dark'])
     // Custom ids are in-process extension themes; only the built-in product
     // preferences cross the Host settings schema.
@@ -222,21 +230,23 @@ describe('ThemeRuntime', () => {
     it('system resolves against the media query and follows OS flips', () => {
       const media = stubMedia(true)
       const { theme, events } = make()
+      theme.setTheme('system')
       expect(theme.getTheme().preference).toBe('system')
       expect(theme.getTheme().active.id).toBe('dark')
       media.flip()
       expect(theme.getTheme().active.id).toBe('light')
-      expect(events).toHaveLength(1)
+      // setTheme(system) + the OS flip = two publishes.
+      expect(events).toHaveLength(2)
     })
 
     it('OS flips do not republish while a concrete preference is set', () => {
       const media = stubMedia(false)
       const { theme, events } = make()
-      theme.setTheme('light')
+      theme.setTheme('dark')
       expect(events).toHaveLength(1)
       media.flip()
       expect(events).toHaveLength(1)
-      expect(theme.getTheme().active.id).toBe('light')
+      expect(theme.getTheme().active.id).toBe('dark')
     })
 
     it('context dispose releases the media listener', async () => {

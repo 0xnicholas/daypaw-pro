@@ -30,6 +30,9 @@
       "path": "../../client/ui-settings"
     },
     {
+      "path": "../../client/ui-theme"
+    },
+    {
       "path": "../../api/remotes/tsconfig.client.json"
     },
     {

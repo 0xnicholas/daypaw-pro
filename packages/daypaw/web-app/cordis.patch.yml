@@ -191,6 +191,13 @@
     - id: ui-layout
       name: '@deepseek-ai/dsh-client-ui-layout'
 
+    # daypaw brand theme (spec 05 §7): stacks the warm-orange accent /
+    # warm-neutral base token layer and the --dp-space-* density scale onto
+    # the reused ui-theme base; the light/dark preference keeps driving both
+    # palettes (the layer re-picks its leg per scheme).
+    - id: ui-brand-daypaw
+      name: '@daypaw/ui-brand'
+
     # daypaw shell IA skeleton (inbox workbench): replaces the upstream
     # ui-sidebar row wholesale — the fork nav occupies 'sidebar', and shadows
     # ui-conversation's 'conversation'/'details' placeholder occupants at

@@ -5,9 +5,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin: 12px 20px 0;
-  padding: 10px 14px;
+  gap: var(--dp-space-4);
+  margin: var(--dp-space-4) var(--dp-space-6) 0;
+  padding: var(--dp-space-4) var(--dp-space-5);
   border: 1px solid var(--dsw-alias-state-warn-secondary);
   border-radius: 8px;
   background: var(--dsw-alias-state-warn-tertiary);
@@ -22,7 +22,7 @@
 
 .cardButton {
   flex: none;
-  padding: 4px 12px;
+  padding: var(--dp-space-1) var(--dp-space-4);
   border: 1px solid var(--dsw-alias-state-warn-secondary);
   border-radius: 8px;
   background: transparent;

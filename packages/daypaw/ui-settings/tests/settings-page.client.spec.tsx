@@ -6,6 +6,7 @@ import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 import { SettingsPage, type SettingsPageProps } from '../src/client/settings-page.tsx'
 import { SettingsTabController } from '../src/client/tab-store.ts'
+import { createThemeRowStore } from '../src/client/theme-row.ts'
 import { CredentialsStore } from '../src/client/provider-keys.ts'
 import { AboutStore } from '../src/client/about-store.ts'
 import { zh } from '../src/client/locales.ts'
@@ -36,7 +37,9 @@ function mountPage(api: FakeHostApi) {
   const tabs = new SettingsTabController()
   const credentials = new CredentialsStore(api)
   const about = new AboutStore(api)
+  const themeRow = createThemeRowStore({ preference: 'light' })
   const setLocale = vi.fn()
+  const setTheme = vi.fn()
   const close = vi.fn()
   const sectionCalls: SectionCall[] = []
   const renderSlot: SettingsPageProps['renderSlot'] = ((_key: string, owner: object, opts?: { only?: string }) => {
@@ -55,14 +58,16 @@ function mountPage(api: FakeHostApi) {
       useCredentials={bindSnapshotSelector(credentials.store)}
       useAbout={bindSnapshotSelector(about.store)}
       useLocale={bindSnapshotSelector(localeSource)}
+      useTheme={bindSnapshotSelector(themeRow)}
       selectTab={(tab) => { tabs.select(tab) }}
       credentialsStore={credentials}
       aboutStore={about}
       setLocale={setLocale}
+      setTheme={setTheme}
       t={t}
     />,
   )
-  return { tabs, credentials, about, setLocale, close, sectionCalls, view }
+  return { tabs, credentials, about, themeRow, setLocale, setTheme, close, sectionCalls, view }
 }
 
 /** Program one provider whose credential answer the case controls. */
@@ -100,12 +105,18 @@ describe('SettingsPage rail', () => {
     expect(setLocale).toHaveBeenCalledWith('en')
   })
 
-  it('shows the theme and density rows as coming soon', () => {
+  it('shows the theme preference row with the light default and routes the switch', () => {
     const api = new FakeHostApi()
-    mountPage(api)
-    expect(screen.getByText('主题')).toBeTruthy()
-    expect(screen.getByText('密度')).toBeTruthy()
-    expect(screen.getAllByText('即将上线')).toHaveLength(2)
+    const { setTheme, themeRow } = mountPage(api)
+    const select = screen.getByRole('combobox', { name: '主题' }) as HTMLSelectElement
+    expect([...select.options].map(option => option.textContent)).toEqual(['浅色', '深色', '跟随系统'])
+    expect(select.value).toBe('light')
+    fireEvent.change(select, { target: { value: 'system' } })
+    expect(setTheme).toHaveBeenCalledWith('system')
+    // The row renders the mirrored preference, never the resolved theme.
+    act(() => { themeRow.set({ preference: 'dark' }) })
+    const reloaded = screen.getByRole('combobox', { name: '主题' }) as HTMLSelectElement
+    expect(reloaded.value).toBe('dark')
   })
 })
 

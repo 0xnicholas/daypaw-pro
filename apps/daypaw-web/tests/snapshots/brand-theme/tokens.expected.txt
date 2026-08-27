@@ -1,0 +1,32 @@
+light:
+scheme=light
+dark=false
+wordmark=present
+--dsw-alias-brand-primary=rgb(190, 86, 20)
+--dsw-alias-bg-base=rgb(253, 250, 246)
+--dsw-specific-sidebar-fill=rgb(250, 245, 239)
+--dsw-alias-label-primary=rgb(43, 34, 27)
+--dsw-alias-border-l2=rgba(97, 66, 35, 0.1)
+--dp-space-4=12px
+
+dark:
+scheme=dark
+dark=true
+wordmark=present
+--dsw-alias-brand-primary=rgb(240, 146, 74)
+--dsw-alias-bg-base=rgb(24, 20, 17)
+--dsw-specific-sidebar-fill=rgb(28, 23, 19)
+--dsw-alias-label-primary=rgb(247, 242, 236)
+--dsw-alias-border-l2=rgba(255, 236, 214, 0.12)
+--dp-space-4=12px
+
+system:
+scheme=light
+dark=false
+wordmark=present
+--dsw-alias-brand-primary=rgb(190, 86, 20)
+--dsw-alias-bg-base=rgb(253, 250, 246)
+--dsw-specific-sidebar-fill=rgb(250, 245, 239)
+--dsw-alias-label-primary=rgb(43, 34, 27)
+--dsw-alias-border-l2=rgba(97, 66, 35, 0.1)
+--dp-space-4=12px

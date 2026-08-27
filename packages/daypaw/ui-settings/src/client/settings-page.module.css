@@ -16,7 +16,7 @@
 
 .header {
   flex: none;
-  padding: 16px 20px;
+  padding: var(--dp-space-5) var(--dp-space-6);
   border-bottom: 1px solid var(--dsw-alias-border-l2);
 }
 
@@ -38,16 +38,16 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--dp-space-0);
   width: 140px;
-  padding: 12px 8px;
+  padding: var(--dp-space-4) var(--dp-space-3);
   border-right: 1px solid var(--dsw-alias-border-l2);
 }
 
 .tab {
   display: block;
   width: 100%;
-  padding: 6px 10px;
+  padding: var(--dp-space-2) var(--dp-space-4);
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -71,15 +71,15 @@
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: var(--dp-space-5) var(--dp-space-6);
 }
 
 /* One settings row: label left, value or actions right. */
 .row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  gap: var(--dp-space-4);
+  padding: var(--dp-space-3) 0;
 }
 
 .rowLabel {
@@ -94,14 +94,10 @@
   text-overflow: ellipsis;
 }
 
-.rowPlaceholder {
-  color: var(--dsw-alias-label-tertiary);
-}
-
 .rowState {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-2);
   color: var(--dsw-alias-label-secondary);
 }
 
@@ -117,17 +113,17 @@
 .rowActions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-3);
 }
 
 .rowEditor {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-3);
 }
 
 .intro {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-3);
   color: var(--dsw-alias-label-secondary);
 }
 
@@ -138,7 +134,7 @@
 }
 
 .button {
-  padding: 4px 12px;
+  padding: var(--dp-space-1) var(--dp-space-4);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-2);
@@ -154,7 +150,7 @@
 
 .input {
   width: 220px;
-  padding: 4px 8px;
+  padding: var(--dp-space-1) var(--dp-space-3);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
@@ -164,7 +160,7 @@
 }
 
 .select {
-  padding: 4px 8px;
+  padding: var(--dp-space-1) var(--dp-space-3);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);

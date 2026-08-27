@@ -57,8 +57,14 @@ describe('theme boot index transform', () => {
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(dark)
   })
 
-  it('defaults to system and falls back to light when matchMedia is unavailable', () => {
+  it('falls back to light for the system preference when matchMedia is unavailable', () => {
     vi.stubGlobal('matchMedia', undefined)
+    executeBootstrap('system')
+    expect(document.documentElement.style.colorScheme).toBe('light')
+    expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
+  })
+
+  it('defaults to the light preference', () => {
     executeBootstrap()
     expect(document.documentElement.style.colorScheme).toBe('light')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)

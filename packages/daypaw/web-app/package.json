@@ -45,6 +45,7 @@
     "@daypaw/web-frontend": "workspace:^",
     "@daypaw/approval-history": "workspace:^",
     "@daypaw/ui-agents": "workspace:^",
+    "@daypaw/ui-brand": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@daypaw/ui-settings": "workspace:^",
     "@daypaw/ui-tasks": "workspace:^",

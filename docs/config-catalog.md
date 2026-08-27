@@ -3072,6 +3072,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 
 - `@daypaw/approval-history` — requires `sessionProjections` ([`packages/daypaw/approval-history/src/index.ts`](../packages/daypaw/approval-history/src/index.ts))
 - `@daypaw/ui-agents` ([`packages/daypaw/ui-agents/src/index.ts`](../packages/daypaw/ui-agents/src/index.ts))
+- `@daypaw/ui-brand` ([`packages/daypaw/ui-brand/src/index.ts`](../packages/daypaw/ui-brand/src/index.ts))
 - `@daypaw/ui-inbox` ([`packages/daypaw/ui-inbox/src/index.ts`](../packages/daypaw/ui-inbox/src/index.ts))
 - `@daypaw/ui-settings` ([`packages/daypaw/ui-settings/src/index.ts`](../packages/daypaw/ui-settings/src/index.ts))
 - `@daypaw/ui-tasks` ([`packages/daypaw/ui-tasks/src/index.ts`](../packages/daypaw/ui-tasks/src/index.ts))

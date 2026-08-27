@@ -1,16 +1,17 @@
 /**
  * Settings single page (the 'inbox.settings.page' occupant): a left tab rail
- * over the four sections — 通用 (language row plus theme/density
- * placeholders), 凭据 (per-provider API-key rows with inline set/update/
- * remove), 模型 (the upstream ui-settings-models section, rendered through
- * the 'settings.section' slot this page declares), 关于 (host version/cwd/
- * model plus the copy-diagnostics button). The active tab lives in the
- * package's apply-closure store so the first-run banner can preset 凭据.
+ * over the four sections — 通用 (language row plus the theme preference row),
+ * 凭据 (per-provider API-key rows with inline set/update/remove), 模型 (the
+ * upstream ui-settings-models section, rendered through the 'settings.section'
+ * slot this page declares), 关于 (host version/cwd/model plus the
+ * copy-diagnostics button). The active tab lives in the package's
+ * apply-closure store so the first-run banner can preset 凭据.
  */
 import { useState } from 'react'
 import clsx from 'clsx'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { LocaleRuntime, LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
+import type { ThemePreference } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the 'inbox.settings.page' entry).
 import type {} from '@daypaw/ui-inbox/client'
@@ -20,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { diagnosticsText, type AboutState, type AboutStore } from './about-store.ts'
 import type { CredentialRow, CredentialsState, CredentialsStore } from './provider-keys.ts'
 import { useLazyTabLoad } from './lazy-refresh.ts'
+import type { ThemeRowState } from './theme-row.ts'
 import type { SettingsTab } from './tab-store.ts'
 import type { DaypawSettingsKey } from './locales.ts'
 import css from './settings-page.module.css'
@@ -35,6 +37,8 @@ export interface SettingsPageInjected {
     about: SnapshotStore<AboutState>
     /** Locale face (active locale + selectable list), bound as useLocale. */
     locale: LocaleRuntime
+    /** Theme preference mirror, bound as useTheme. */
+    theme: SnapshotStore<ThemeRowState>
   }
   /** Switch the active tab. */
   selectTab: (tab: SettingsTab) => void
@@ -44,6 +48,8 @@ export interface SettingsPageInjected {
   aboutStore: AboutStore
   /** Switch the active locale (the locale service's only write entry). */
   setLocale: (id: string) => void
+  /** Switch the theme preference (the theme service's only write entry). */
+  setTheme: (id: ThemePreference) => void
 }
 
 /** Full component props: runtime share + child render share + injected face + locale seat. */
@@ -72,13 +78,14 @@ type Translate = TranslateNS<'daypaw-settings'>
  * @returns the page element tree.
  */
 export function SettingsPage({
-  close, renderSlot, useTab, useCredentials, useAbout, useLocale,
-  selectTab, credentialsStore, aboutStore, setLocale, t,
+  close, renderSlot, useTab, useCredentials, useAbout, useLocale, useTheme,
+  selectTab, credentialsStore, aboutStore, setLocale, setTheme, t,
 }: SettingsPageProps) {
   const tab = useTab(s => s)
   const credentials = useCredentials(s => s)
   const about = useAbout(s => s)
   const locale = useLocale(s => s)
+  const theme = useTheme(s => s)
   return (
     <div className={css.root}>
       <header className={css.header}><h1 className={css.title}>{t('title')}</h1></header>
@@ -98,7 +105,7 @@ export function SettingsPage({
         </nav>
         <div className={css.content}>
           {tab === 'general'
-            ? <GeneralTab locale={locale} setLocale={setLocale} t={t} />
+            ? <GeneralTab locale={locale} setLocale={setLocale} theme={theme} setTheme={setTheme} t={t} />
             : tab === 'credentials'
               ? <CredentialsTab state={credentials} store={credentialsStore} t={t} />
               : tab === 'models'
@@ -110,10 +117,12 @@ export function SettingsPage({
   )
 }
 
-/** 通用: the language row plus the theme/density placeholder rows. */
-function GeneralTab({ locale, setLocale, t }: {
+/** 通用: the language row plus the theme preference row (light default, spec 05 §7). */
+function GeneralTab({ locale, setLocale, theme, setTheme, t }: {
   locale: LocaleSnapshot
   setLocale: (id: string) => void
+  theme: ThemeRowState
+  setTheme: (id: ThemePreference) => void
   t: Translate
 }) {
   return (
@@ -131,12 +140,19 @@ function GeneralTab({ locale, setLocale, t }: {
           ))}
         </select>
       </div>
-      {([t('general.theme'), t('general.density')]).map(label => (
-        <div key={label} className={css.row}>
-          <span className={css.rowLabel}>{label}</span>
-          <span className={css.rowPlaceholder}>{t('general.coming-soon')}</span>
-        </div>
-      ))}
+      <div className={css.row}>
+        <span className={css.rowLabel}>{t('general.theme')}</span>
+        <select
+          className={css.select}
+          aria-label={t('general.theme')}
+          value={theme.preference}
+          onChange={(event) => { setTheme(event.target.value as ThemePreference) }}
+        >
+          <option value="light">{t('general.theme.light')}</option>
+          <option value="dark">{t('general.theme.dark')}</option>
+          <option value="system">{t('general.theme.system')}</option>
+        </select>
+      </div>
     </section>
   )
 }

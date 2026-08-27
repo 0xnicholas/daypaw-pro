@@ -256,7 +256,7 @@ async function runUntil(
               await Promise.race([
                 options.probe(captured),
                 new Promise<void>((_, rejectProbe) => {
-                  setTimeout(() => rejectProbe(new Error('probe timed out')), RUN_UNTIL_PROBE_TIMEOUT_MS).unref()
+                  setTimeout(() => { rejectProbe(new Error('probe timed out')) }, RUN_UNTIL_PROBE_TIMEOUT_MS).unref()
                 }),
               ])
             }
@@ -265,7 +265,7 @@ async function runUntil(
             reject(error instanceof Error ? error : new Error(String(error)))
             return
           }
-          child.once('exit', () => resolvePromise(captured))
+          child.once('exit', () => { resolvePromise(captured) })
           child.kill('SIGTERM')
           setTimeout(() => child.kill('SIGKILL'), RUN_UNTIL_KILL_GRACE_MS).unref()
         })()

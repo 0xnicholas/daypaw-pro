@@ -3971,6 +3971,24 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1
 
+  packages/daypaw/ui-brand:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: workspace:^
+        version: link:../../client/runtime
+      '@deepseek-ai/dsh-client-test-runtime':
+        specifier: workspace:^
+        version: link:../../test-support/client-runtime
+      '@deepseek-ai/dsh-client-ui-theme':
+        specifier: workspace:^
+        version: link:../../client/ui-theme
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
   packages/daypaw/ui-inbox:
     dependencies:
       clsx:
@@ -4050,6 +4068,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:^
         version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-client-ui-theme':
+        specifier: workspace:^
+        version: link:../../client/ui-theme
       '@deepseek-ai/dsh-client-web-react':
         specifier: workspace:^
         version: link:../../client/web-react
@@ -4123,6 +4144,9 @@ importers:
       '@daypaw/ui-agents':
         specifier: workspace:^
         version: link:../ui-agents
+      '@daypaw/ui-brand':
+        specifier: workspace:^
+        version: link:../ui-brand
       '@daypaw/ui-inbox':
         specifier: workspace:^
         version: link:../ui-inbox

@@ -4,13 +4,13 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-4);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-2);
 }
 
 .label {
@@ -21,7 +21,7 @@
 
 .select {
   height: 32px;
-  padding: 0 8px;
+  padding: 0 var(--dp-space-3);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-2);
@@ -31,7 +31,7 @@
 
 .textarea {
   min-height: 96px;
-  padding: 8px;
+  padding: var(--dp-space-3);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-2);

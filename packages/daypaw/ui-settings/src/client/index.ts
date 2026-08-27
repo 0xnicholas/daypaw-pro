@@ -20,6 +20,9 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // Type-only: pulls ui-inbox's SlotMap merge (the two target seats).
 import type {} from '@daypaw/ui-inbox/client'
+// Type-only: pulls ui-theme's Context merge (ctx.theme) and the
+// `theme/change` event key into this program.
+import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 // Type-only: pulls the settings domain base's SlotMap merge (the
 // 'settings.section' child slot the page declares).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -28,6 +31,7 @@ import { ApiKeyCard, type ApiKeyCardInjected } from './api-key-card.tsx'
 import { SettingsTabController } from './tab-store.ts'
 import { CredentialsStore } from './provider-keys.ts'
 import { AboutStore } from './about-store.ts'
+import { createThemeRowStore, themeRowOf } from './theme-row.ts'
 import { refreshIfLoaded } from './lazy-refresh.ts'
 import { ApiKeyCardStore } from './card-store.ts'
 import { en, zh, type DaypawSettingsKey } from './locales.ts'
@@ -35,6 +39,7 @@ import { en, zh, type DaypawSettingsKey } from './locales.ts'
 export type { ApiKeyCardInjected, ApiKeyCardProps } from './api-key-card.tsx'
 export type { SettingsPageInjected, SettingsPageProps } from './settings-page.tsx'
 export type { SettingsTab } from './tab-store.ts'
+export type { ThemeRowState } from './theme-row.ts'
 export type { DaypawSettingsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -52,9 +57,10 @@ const NS = 'daypaw-settings'
  * ui-inbox's workspace registration, whose activation order relative to this
  * one is NOT constrained; registrations depend on each seat through
  * `slots.inject()`. `conversation` stays an optional ctx.get: the fork shell
- * has no composer yet, so the input block is lazy wiring.
+ * has no composer yet, so the input block is lazy wiring. `theme` backs the
+ * General tab's preference row (light/dark/system, spec 05 §7).
  */
-export const inject = ['slots', 'locale', 'connection', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'theme']
 
 /**
  * Register the dictionaries, the settings page occupant, and the first-run
@@ -70,6 +76,11 @@ export function apply(ctx: ClientContext): void {
   const credentials = new CredentialsStore(connection.api)
   const about = new AboutStore(connection.api)
   const card = new ApiKeyCardStore(connection.api)
+  // The theme row mirror: seeded at apply, then advanced by every service
+  // publish (preference switch, registry change, or an OS flip under
+  // `system`).
+  const themeRow = createThemeRowStore(ctx.theme.getTheme())
+  ctx.on('theme/change', (snapshot) => { themeRow.set(themeRowOf(snapshot)) })
 
   ctx.effect(() => {
     const refresh = (): void => {
@@ -93,11 +104,13 @@ export function apply(ctx: ClientContext): void {
       credentials: credentials.store,
       about: about.store,
       locale: ctx.locale,
+      theme: themeRow,
     },
     selectTab: (tab) => { tabs.select(tab) },
     credentialsStore: credentials,
     aboutStore: about,
     setLocale: (id) => { ctx.locale.setLocale(id) },
+    setTheme: (id) => { ctx.theme.setTheme(id) },
   })
   const cardInjected = (): ApiKeyCardInjected => ({
     hooks: { card: card.store },

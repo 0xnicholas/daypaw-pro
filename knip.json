@@ -789,6 +789,7 @@
       "ignoreDependencies": [
         "@daypaw/approval-history",
         "@daypaw/ui-agents",
+        "@daypaw/ui-brand",
         "@daypaw/ui-inbox",
         "@daypaw/ui-settings",
         "@daypaw/ui-tasks",
@@ -846,6 +847,17 @@
         "src/**/*.tsx",
         "tests/**/*.ts",
         "tests/**/*.tsx"
+      ]
+    },
+    // Fork client UI plugin (brand token layer): same shape, tests and src
+    // are .ts only (no components).
+    "packages/daypaw/ui-brand": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     },
     "packages/client/modules": {

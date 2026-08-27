@@ -5,8 +5,8 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+  gap: var(--dp-space-5);
+  padding: var(--dp-space-7);
   overflow-y: auto;
   height: 100%;
   box-sizing: border-box;
@@ -15,7 +15,7 @@
 .header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-1);
 }
 
 .title {
@@ -46,14 +46,14 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-4);
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-5);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 10px;
   background: var(--dsw-alias-bg-layer-2);
@@ -86,7 +86,7 @@
 .detail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-4);
   max-width: 560px;
 }
 
@@ -106,7 +106,7 @@
 
 .identity {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-3);
   align-items: baseline;
   color: var(--dsw-alias-label-secondary);
   font-size: 13px;

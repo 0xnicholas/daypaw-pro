@@ -102,6 +102,7 @@
     { "path": "./packages/daypaw/ui-inbox" },
     { "path": "./packages/daypaw/ui-settings" },
     { "path": "./packages/daypaw/ui-tasks" },
-    { "path": "./packages/daypaw/ui-agents" }
+    { "path": "./packages/daypaw/ui-agents" },
+    { "path": "./packages/daypaw/ui-brand" }
   ]
 }

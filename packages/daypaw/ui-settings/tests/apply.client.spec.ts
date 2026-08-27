@@ -3,7 +3,9 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { TestRemote, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
+import { stubSettingsScope, TestRemote, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
+import type { ThemeSettings } from '@deepseek-ai/dsh-client-ui-theme/client'
+import { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { apply, inject } from '../src/client/index.ts'
 import { apply as applyNodeHalf } from '../src/index.ts'
@@ -20,6 +22,10 @@ async function bench(withConversation: boolean) {
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
+  // The theme service the General tab's preference row rides (a real
+  // ThemeRuntime over a stub settings scope, the ui-theme bench shape).
+  const theme = new ThemeRuntime(ctx, stubSettingsScope<ThemeSettings>().scope)
+  ctx.provide('theme', theme)
   // The plugin injects `remote`; forwarded events reach it through the same
   // `$dispatch` handoff the connection sink makes.
   new TestRemote(ctx)
@@ -44,12 +50,12 @@ async function bench(withConversation: boolean) {
     } as never,
     () => null,
   )
-  return { ctx, slots, locale, api, conversation }
+  return { ctx, slots, locale, theme, api, conversation }
 }
 
 describe('ui-settings apply', () => {
   it('declares only the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'theme'])
   })
 
   it('the node half provides no host-side behavior', () => {
@@ -127,6 +133,11 @@ describe('ui-settings apply', () => {
     pageFace.setLocale('en')
     expect(b.locale.getSnapshot().active).toBe('en')
     expect(b.locale.bind('daypaw-settings')('title')).toBe('Settings')
+    // The theme row writes through the theme service and mirrors its publishes.
+    expect(pageFace.hooks.theme.getSnapshot()).toEqual({ preference: 'light' })
+    pageFace.setTheme('dark')
+    expect(b.theme.getTheme().preference).toBe('dark')
+    expect(pageFace.hooks.theme.getSnapshot()).toEqual({ preference: 'dark' })
   })
 
   it('removes every entry, collapses the declared child slot, and frees the dictionary seats on teardown', async () => {
