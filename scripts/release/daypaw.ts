@@ -13,7 +13,7 @@
  * `--production` purge — the build faces therefore run before any deploy.
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -57,7 +57,7 @@ interface StagedManifest {
 /** Validated CLI configuration; construction owns help and parse-error exits. */
 class ReleaseCli {
   private constructor(
-    /** Skip the two build faces; lib/ artifacts must already exist. */
+    /** Skip the build faces; lib/ and dist artifacts must already exist. */
     readonly skipBuild: boolean,
     /** Skip the post-pack install smokes. */
     readonly skipSmoke: boolean,
@@ -102,7 +102,7 @@ class ReleaseCli {
     return [
       'Usage: pnpm run release:daypaw [--flags]',
       '',
-      '  --skip-build   skip both build faces (lib/ artifacts must already exist).',
+      '  --skip-build   skip all build faces (lib/ and dist artifacts must already exist).',
       '  --skip-smoke   skip the clean-prefix CLI boot and SDK consumer typecheck smokes.',
       '  --publish      npm publish the packed tarballs (default: pack only).',
       '  --help         print this help.',
@@ -131,6 +131,31 @@ function formatCommand(command: string, args: string[]): string {
 }
 
 /**
+ * Spawn one release subprocess under the step's label and the pipeline's fixed
+ * environment, logging the command line first.
+ * @param label - diagnostics prefix.
+ * @param command - the binary to spawn.
+ * @param args - its arguments.
+ * @param options - working directory, extra environment, and stdio wiring.
+ * @returns the spawned child.
+ */
+function spawnLogged(
+  label: string,
+  command: string,
+  args: string[],
+  options: { cwd?: string | undefined; env?: Record<string, string | undefined> | undefined; stdio: StdioOptions },
+): ChildProcess {
+  console.log(`release-daypaw: ${label}: ${formatCommand(command, args)}`)
+  return spawn(command, args, {
+    cwd: options.cwd ?? root,
+    stdio: options.stdio,
+    // CI=true keeps every spawned tool non-interactive, and artifact builds
+    // must not mutate or validate a developer's Git hooks.
+    env: { ...process.env, ...options.env, CI: 'true' },
+  })
+}
+
+/**
  * Run one subprocess, returning captured stdout. Spawn and non-zero-exit
  * errors include the command; stdout inherits to the terminal unless
  * `capture` is set.
@@ -147,14 +172,12 @@ async function run(
   options: { cwd?: string; env?: Record<string, string | undefined>; capture?: boolean } = {},
 ): Promise<string> {
   const printable = formatCommand(command, args)
-  console.log(`release-daypaw: ${label}: ${printable}`)
+  const child = spawnLogged(label, command, args, {
+    cwd: options.cwd,
+    env: options.env,
+    stdio: options.capture ? ['inherit', 'pipe', 'pipe'] : 'inherit',
+  })
   return new Promise<string>((resolvePromise, reject) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd ?? root,
-      stdio: options.capture ? ['inherit', 'pipe', 'pipe'] : 'inherit',
-      // Artifact builds must not mutate or validate a developer's Git hooks.
-      env: { ...process.env, ...options.env, CI: 'true' },
-    })
     let captured = ''
     if (options.capture) {
       child.stdout?.on('data', (chunk: Buffer) => { captured += chunk.toString('utf8') })
@@ -171,6 +194,97 @@ async function run(
       const cause = code === null ? `signal ${signal ?? 'unknown'}` : `exit code ${code}`
       const detail = captured === '' ? '' : `\n${captured}`
       reject(new Error(`release-daypaw: ${label} failed (${cause}): ${printable}${detail}`))
+    })
+  })
+}
+
+/** How long {@link runUntil} waits for a matched probe before failing the step. */
+const RUN_UNTIL_PROBE_TIMEOUT_MS = 15_000
+
+/** How long {@link runUntil} lets a matched process exit on SIGTERM before escalating to SIGKILL. */
+const RUN_UNTIL_KILL_GRACE_MS = 10_000
+
+/**
+ * Run one long-lived subprocess until its combined output matches `pattern`,
+ * optionally probe it while it is still alive, then terminate it and resolve
+ * the captured output. An exit or timeout before the match fails the step.
+ * @param label - diagnostics prefix.
+ * @param command - the binary to spawn.
+ * @param args - its arguments.
+ * @param options - working directory, environment, the success pattern, the
+ *   wait budget, and an optional alive-probe (bounded by
+ *   {@link RUN_UNTIL_PROBE_TIMEOUT_MS}) run after the match.
+ * @returns the captured combined output at match time.
+ */
+async function runUntil(
+  label: string,
+  command: string,
+  args: string[],
+  options: {
+    cwd?: string
+    env?: Record<string, string | undefined>
+    pattern: RegExp
+    timeoutMs: number
+    probe?: (captured: string) => Promise<void>
+  },
+): Promise<string> {
+  const printable = formatCommand(command, args)
+  const child = spawnLogged(label, command, args, {
+    cwd: options.cwd,
+    env: options.env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  return new Promise<string>((resolvePromise, reject) => {
+    let captured = ''
+    let settled = false
+    const fail = (error: Error): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      child.kill('SIGKILL')
+      reject(error)
+    }
+    const onChunk = (stream: NodeJS.ReadableStream | null): void => {
+      stream?.on('data', (chunk: Buffer) => {
+        captured += chunk.toString('utf8')
+        if (settled || !options.pattern.test(captured)) return
+        settled = true
+        clearTimeout(timer)
+        void (async () => {
+          try {
+            if (options.probe !== undefined) {
+              await Promise.race([
+                options.probe(captured),
+                new Promise<void>((_, rejectProbe) => {
+                  setTimeout(() => rejectProbe(new Error('probe timed out')), RUN_UNTIL_PROBE_TIMEOUT_MS).unref()
+                }),
+              ])
+            }
+          } catch (error) {
+            child.kill('SIGKILL')
+            reject(error instanceof Error ? error : new Error(String(error)))
+            return
+          }
+          child.once('exit', () => resolvePromise(captured))
+          child.kill('SIGTERM')
+          setTimeout(() => child.kill('SIGKILL'), RUN_UNTIL_KILL_GRACE_MS).unref()
+        })()
+      })
+    }
+    onChunk(child.stdout)
+    onChunk(child.stderr)
+    const timer = setTimeout(() => {
+      fail(new Error(
+        `release-daypaw: ${label} timed out after ${String(options.timeoutMs)}ms without the expected output: ${printable}\n${captured}`,
+      ))
+    }, options.timeoutMs)
+    child.once('error', (error) => {
+      fail(new Error(`release-daypaw: ${label} failed to spawn: ${error.message} (${printable})`))
+    })
+    child.once('exit', (code, signal) => {
+      if (settled) return
+      const cause = code === null ? `signal ${signal ?? 'unknown'}` : `exit code ${code}`
+      fail(new Error(`release-daypaw: ${label} exited before the expected output (${cause}): ${printable}\n${captured}`))
     })
   })
 }
@@ -254,7 +368,7 @@ async function missingClosurePackages(staging: string, externalPeers: readonly s
 class DaypawRelease {
   constructor(private readonly cli: ReleaseCli) {}
 
-  /** Build both faces before any deploy: legacy deploy residue breaks later `pnpm run`. */
+  /** Build every face the tarball ships before any deploy: legacy deploy residue breaks later `pnpm run`. */
   async build(): Promise<void> {
     if (this.cli.skipBuild) {
       console.log('release-daypaw: skipping build faces (--skip-build)')
@@ -262,6 +376,10 @@ class DaypawRelease {
     }
     await run('build host face', pnpmBin(), ['run', 'build:lib:host'])
     await run('build client face', pnpmBin(), ['run', 'build:lib:client'])
+    // The shell frontend's dist is a build-time product the tarball serves
+    // verbatim (spec 05 §4): it must exist before the deploy copies the
+    // frontend package into the closure.
+    await run('build web frontend', pnpmBin(), ['--filter', '@daypaw/web-frontend', 'run', 'build'])
   }
 
   /**
@@ -454,11 +572,16 @@ class DaypawRelease {
     return tarball
   }
 
+  /** The URL line a healthy `daypaw` boot prints once the shell server binds. */
+  private static readonly URL_LINE = /daypaw web: http:\/\/127\.0\.0\.1:(\d+)/
+
   /**
-   * Smoke the CLI tarball: clean-prefix global install, then a `--profile
-   * daypaw` boot from a fresh DSH_HOME without an API key must reach the
-   * credential error — proof the seeded daypaw profile composes and the
-   * bundled plugin closure (including `@daypaw/engine`) loads end to end.
+   * Smoke the CLI tarball: clean-prefix global install, then a bare `daypaw`
+   * boot (the argv the adapter defaults to the daypaw profile) from a fresh
+   * DSH_HOME must come up as the product shell — print its URL line and serve
+   * the bundled frontend dist — proving the seeded profile composes, the
+   * whole bundled plugin closure loads end to end, and the dist ships in the
+   * tarball (installation builds nothing).
    * @param tarball - the packed CLI tarball.
    */
   private async smokeCli(tarball: string): Promise<void> {
@@ -466,8 +589,9 @@ class DaypawRelease {
     const prefix = join(scratch, 'prefix')
     await run('cli smoke install', npmBin(), ['install', '--global', '--prefix', prefix, tarball])
     const home = join(scratch, 'dsh-home')
-    // Boot from the scratch dir so the repo root .env cannot supply a key,
-    // and with DEEPSEEK_API_KEY explicitly absent from the environment.
+    // Boot from the scratch dir so the repo root .env cannot leak state, and
+    // with DEEPSEEK_API_KEY explicitly absent: the shell serves and a run
+    // only reaches the credential check when a task starts in the browser.
     const env: Record<string, string | undefined> = {
       ...process.env,
       DSH_HOME: home,
@@ -475,34 +599,39 @@ class DaypawRelease {
     }
     delete env.DEEPSEEK_API_KEY
     const bin = join(prefix, 'bin', 'daypaw')
-    const output = await run(
-      'cli smoke boot',
-      bin,
-      ['--profile', 'daypaw', 'release smoke'],
-      { cwd: scratch, env, capture: true },
-    ).catch((error: unknown) => {
-      // The boot must fail at the missing credential; any earlier failure
-      // (profile seeding, plugin resolution, profile boot) carries a
-      // different message.
-      if (error instanceof Error && /no API key|MISSING_CREDENTIAL/.test(error.message)) return error.message
-      throw error
+    // Port 0 lets the OS pick a free one; the URL line names the bound port.
+    await runUntil('cli smoke boot', bin, ['--port', '0'], {
+      cwd: scratch,
+      env,
+      pattern: DaypawRelease.URL_LINE,
+      timeoutMs: 120_000,
+      probe: async (captured) => {
+        const port = DaypawRelease.URL_LINE.exec(captured)?.[1]
+        if (port === undefined) throw new Error('boot output carried no parseable URL line')
+        const page = await fetch(`http://127.0.0.1:${port}/`)
+        if (!page.ok) throw new Error(`dist probe got HTTP ${String(page.status)}`)
+        const body = await page.text()
+        if (!body.includes('daypaw')) throw new Error('dist probe fetched a page that never mentions daypaw')
+      },
     })
-    if (!/no API key|MISSING_CREDENTIAL/.test(output)) {
-      throw new Error(`release-daypaw: cli smoke boot did not reach the credential check:\n${output}`)
-    }
     // First-run seeding materialized the daypaw profile from the shipped
-    // template: manifest, user patch layer carrying the engine row, and the
-    // profile-local link to the bundled engine. The ledger under the launch
-    // cwd proves the seeded engine row mounted with its template config
-    // before the run reached the credential check.
+    // template and healed the daypaw family into the flat installation
+    // fallback; the ledger under the launch cwd proves the seeded engine row
+    // mounted with its template config before the shell came up.
     const profileDir = join(home, 'profiles', 'daypaw')
     const seededPatch = await readFile(join(profileDir, 'cordis.patch.yml'), 'utf8')
-    if (!seededPatch.includes('daypaw-engine')
-      || !existsSync(join(profileDir, 'node_modules', '@daypaw', 'engine', 'package.json'))
-      || !existsSync(join(scratch, 'daypaw', 'ledger.db'))) {
-      throw new Error('release-daypaw: cli smoke found no seeded daypaw profile (engine row, engine link, or ledger missing).')
+    const fallback = join(home, 'profiles', 'node_modules', '@daypaw')
+    const missing = [
+      ...seededPatch.includes('daypaw-engine') ? [] : ['engine row'],
+      ...existsSync(join(fallback, 'engine', 'package.json')) ? [] : ['engine fallback link'],
+      ...existsSync(join(fallback, 'web-app', 'package.json')) ? [] : ['web-app fallback link'],
+      ...existsSync(join(fallback, 'web-frontend', 'dist', 'index.html')) ? [] : ['frontend dist'],
+      ...existsSync(join(scratch, 'daypaw', 'ledger.db')) ? [] : ['engine ledger'],
+    ]
+    if (missing.length > 0) {
+      throw new Error(`release-daypaw: cli smoke found the daypaw seed incomplete: ${missing.join(', ')} missing.`)
     }
-    console.log('release-daypaw: cli smoke seeded the daypaw profile, mounted the engine row, and reached the no-API-key line.')
+    console.log('release-daypaw: cli smoke booted the shell directly: URL line, served dist, seeded profile, engine ledger.')
   }
 
   /**

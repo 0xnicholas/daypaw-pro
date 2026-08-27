@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-22-daypaw-profile-template-seeding.md
-2026-08-22-daypaw-profile-template-seeding.md: 5e85be3090aa049d1ce3bbd28310b830a95b382f
-2026-08-22-daypaw-profile-template-seeding.zh.md: 470c9018dffa284b5f1c594efe155d2efd2d715a
+2026-08-22-daypaw-profile-template-seeding.md: 3fe35e774e66bb827969d32d50bf0e33cdf4fbe5
+2026-08-22-daypaw-profile-template-seeding.zh.md: ec0074617c3a9ccacffac33e05cee25ac4469678

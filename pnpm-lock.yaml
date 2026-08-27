@@ -3775,6 +3775,9 @@ importers:
       '@daypaw/engine':
         specifier: workspace:^
         version: link:../engine
+      '@daypaw/web-app':
+        specifier: workspace:^
+        version: link:../web-app
       '@deepseek-ai/cordis-plugin-group':
         specifier: workspace:^
         version: link:../../../vendor/group

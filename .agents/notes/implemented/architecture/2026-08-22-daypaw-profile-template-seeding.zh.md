@@ -10,10 +10,10 @@ ADR 0011 把 `daypaw` profile 的首跑自初始化列为首个公开发布前�
 
 ## Decision
 
-- **模板随 `@daypaw/cli` 包自带，由 bin 播种**（`src/index.ts`，构建为 `lib/index.js`）：`bin.mjs` 在导入 dsh bin 之前运行 `seedDaypawProfile()`，首跑物化 `$DSH_HOME/profiles/daypaw`——经 launcher 自有的 `initProfile` 写 manifest（bundles 为 `['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless']`），并先把 engine 配方以 `- insert:` 行写进 profile 的 `cordis.patch.yml`，使初始化器的永不覆盖规则保留该内容。`PROFILE_TEMPLATES` 的两个上游条目原样不动，模板决策因此仍在交付线的零 core-touch 性质（ADR 0011 §1）之内；engine 链接的 heal 后来成为唯一登记在册的例外，改为共享 launcher 的 `ensureSymlink` 导出（[共享 note](2026-08-26-ensure-symlink-shared-from-app-boot.md)）。
+- **模板随 `@daypaw/cli` 包自带，由 bin 播种**（`src/index.ts`，构建为 `lib/index.js`）：`bin.mjs` 在导入 dsh bin 之前运行 `seedDaypawProfile()`，首跑物化 `$DSH_HOME/profiles/daypaw`——经 launcher 自有的 `initProfile` 写 manifest（bundles 现为 `['@deepseek-ai/dsh-base', '@daypaw/web-app']`，即[直起壳 note](../feature/2026-08-26-daypaw-direct-shell-delivery.md) 的产品壳元组；旧版 CLI 的精确 headless 元组迁移到它），并先把 engine 配方以 `- insert:` 行写进 profile 的 `cordis.patch.yml`，使初始化器的永不覆盖规则保留该内容。`PROFILE_TEMPLATES` 的两个上游条目原样不动，模板决策因此仍在交付线的零 core-touch 性质（ADR 0011 §1）之内；engine 链接的 heal 后来成为唯一登记在册的例外，改为共享 launcher 的 `ensureSymlink` 导出（[共享 note](2026-08-26-ensure-symlink-shared-from-app-boot.md)）。
 - **engine 行刻意走用户 patch 层**：组合面就是客户可以就地调参或删除的一行；播种永不重写既有 profile——被删的行保持被删。
-- **engine 链接是 heal 而非安装**：每次启动把闭包内的 `@daypaw/engine` 软链进 profile 的 `node_modules`（错误或悬空的链接被重指；真实目录则 fail loud），经 launcher 自己导出的 `ensureSymlink` 完成。播种不跑 pnpm install，首跑保持离线可用。
-- **覆盖**：`packages/daypaw/cli/tests/seed-profile.spec.ts` 把播种出的模板走真实 Loader 组合（播种 → `loadProfile` → `composeEntries` → 组合出的 engine 行挂载并跑完一次 run）；release 冒烟从全新 `DSH_HOME` 用 `--profile daypaw` 启动打包 tarball 到缺凭据线，断言播种出的 profile 与启动 cwd 下的 ledger。打包流水线归[交付 note](../process/2026-08-22-daypaw-npm-self-contained-delivery.md)。
+- **engine 链接是 heal 而非安装**：每次启动从 CLI 包自身依赖闭包把 daypaw 家族平铺 heal 进安装 fallback（`$DSH_HOME/profiles/node_modules`）——最初是 profile-local 的 engine 链接，后来（随直起壳交付）改为以 CLI manifest 为锚调用 launcher 自有的 `healProfilesModuleFallback`，profile 内的 pnpm 操作剪不掉它。播种不跑 pnpm install，首跑保持离线可用。
+- **覆盖**：`packages/daypaw/cli/tests/seed-profile.spec.ts` 把播种出的模板走真实 Loader 组合（播种 → `loadProfile` → `composeEntries` → 组合出的 engine 行挂载并跑完一次 run）；release 冒烟从全新 `DSH_HOME` 裸启打包 tarball 到 URL 行并被服务到 dist 页面，断言播种出的 profile、fallback 链接与启动 cwd 下的 ledger（形状见[直起壳 note](../feature/2026-08-26-daypaw-direct-shell-delivery.md)）。打包流水线归[交付 note](../process/2026-08-22-daypaw-npm-self-contained-delivery.md)。
 
 ## Alternatives considered
 

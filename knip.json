@@ -749,7 +749,8 @@
         "tests/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@deepseek-ai/.+"
+        "@deepseek-ai/.+",
+        "@daypaw/web-app"
       ]
     },
     // Fork carrier of apps/web: same shape minus the e2e lanes this checkout
