@@ -122,11 +122,15 @@ export abstract class ReleaseFamily {
   members(root: string): ReleaseMember[] {
     const manifestPaths = globSync([...this.patterns], { cwd: root }).sort()
     if (manifestPaths.length === 0) throw new Error(`release family ${this.id} matched no manifests`)
+    // daypaw fork: @daypaw/* customer packages (ADR 0011) version and publish
+    // through the separate daypaw release family, never through the dsh one.
+    const forkOwned = ['packages/daypaw/', 'packages/examples/daypaw-skeleton/', 'apps/daypaw-web/']
 
     const members: ReleaseMember[] = []
     const seen = new Set<string>()
     for (const manifestPath of manifestPaths) {
       const normalized = manifestPath.replaceAll('\\', '/')
+      if (forkOwned.some(prefix => normalized.startsWith(prefix))) continue
       const manifest = readManifest(resolve(root, manifestPath))
       const name = requireString(manifest, 'name', normalized)
       const version = requireString(manifest, 'version', normalized)
