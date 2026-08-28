@@ -36,6 +36,9 @@
       "path": "../../shell/shell-env"
     },
     {
+      "path": "../sdk"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

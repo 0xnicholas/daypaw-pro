@@ -18,11 +18,13 @@
 
 import { createRequire } from 'node:module'
 import { networkInterfaces } from 'node:os'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { addHarnessSourceSection } from '@deepseek-ai/dsh-app-boot'
 import * as FrontendStatic from '@deepseek-ai/dsh-host-frontend-static'
+import { loadAgentFiles } from '@daypaw/sdk/agents-dir'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -53,12 +55,21 @@ export interface Config {
   surfaceContext: boolean
   /** Explicit `--trusted-host` authorities from this invocation. */
   trustedHosts: string[]
+  /**
+   * Workspace agents directory (ruling #65, ADR 0012): module files whose
+   * default-exported factories become the host's engine definitions — the
+   * roster the new-task dialog and agent catalog read. Resolved against the
+   * directory `daypaw` runs from, like the engine's ledger path; an absent
+   * directory is the legal empty roster.
+   */
+  agentsDir: string
 }
 
 export const Config: z<Config> = z.object({
   printUrl: z.boolean().default(true),
   surfaceContext: z.boolean().default(true),
   trustedHosts: z.array(String).default([]),
+  agentsDir: z.string().default('daypaw/agents'),
 })
 
 /** Bind-dependent Web values shared by the trust fence and URL display. */
@@ -147,6 +158,18 @@ export const internals: { resolveDistIndex: () => string } = { resolveDistIndex 
  */
 export function apply(ctx: Context, config: Config): void {
   const runtime = resolveLanTrust(ctx.webServer.host, config.trustedHosts)
+  // The workspace agents roster (ruling #65): load and register definitions
+  // once the durable engine service appears — a composition without the
+  // engine row deliberately serves no roster. The callback is a plugin
+  // fiber: a broken agents file rejects it, and in a Loader tree that fails
+  // the boot (misconfiguration fails at load) instead of serving a
+  // half-loaded roster.
+  ctx.inject(['durable'], async (agentCtx) => {
+    const loaded = await loadAgentFiles(agentCtx, resolve(config.agentsDir))
+    if (loaded.length > 0) {
+      console.log(`daypaw agents: ${String(loaded.length)} definition(s) from ${config.agentsDir}`)
+    }
+  })
   // Release dependent rows only after bind-dependent trust has been sampled once.
   ctx.provide(WEB_RUNTIME_SERVICE, runtime)
   ctx.plugin(FrontendStatic, { distIndex: internals.resolveDistIndex() })

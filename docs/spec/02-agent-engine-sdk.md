@@ -178,6 +178,12 @@ steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无
 
 程序化组合 + 定义注册表（ADR 0003 §3）：name+version 身份、session header 重建、与 preset 的双路并存。已定型（原型验证）：`tools` 直收 dsh `ToolDefinition`（零适配器，形状对上游源码核实）；接受两套 schema 并存（定义 IO = zod，tool 参数 = dsh spec），统一层 v1 不做；组合行 v1 静态字段（`compose(input)` 动态组合留口未开，EVO 变体算子均为静态维度）。版本语义细节（兼容规则、EVO 变体命名）：待写。
 
+**目录装载面（ADR 0012，已实现）**：壳宿主的注册源 = cwd `daypaw/agents/` 目录扫描——每个模块文件（`.mjs`/`.js`/`.ts`）default 导出**注入式工厂** `export default ({ defineAgent, defineWorkflow, z }) => 定义`（或定义数组），装载器（`@daypaw/sdk/agents-dir` 的 `loadAgentFiles(ctx, dir)`）把 SDK 命名空间作实参传入后经 `bind`/`bindAgent` 注册；文件零裸导入（交付态工作区解析不到 daypaw 家族，cwd 自装引入双拷贝风险），同目录相对导入可用。文件按名序装载，注册顺序跨平台稳定；缺目录 = 合法空名册；坏文件失败响亮指名文件（装载回调是 Cordis 插件 fiber，Loader 树中拒绝即 boot 失败）。组合住在 `@daypaw/web-app` 胶水（`agentsDir` 配置，默认 `daypaw/agents`）；不装 engine 行的组合不服务名册。
+
+**wire face（ADR 0012，已实现）**：`bind`/`bindAgent` 编译时从 zod input 契约结构检测 `inputKind`——`z.string()` 与 `z.object({ task: z.string() })` 为 `text`（弹窗自由文本直收），其余为 `json`（降级 JSON 文本框）——连同 `parseInput`（zod parse 的不透明 thunk）作为 `EngineDefinition.wire` 落进注册表；`durable/startRun` 边界在插入 run 前调用 `parseInput` 校验，`durable/listDefinitions` 视图投影 `inputKind`（null = 无 wire 面）。引擎不检视 thunk 内部（ADR 0010 引擎盲编译延伸到 wire 钩子）。
+
+**发起端点（ADR 0012，已实现）**：`durable/startRun`（`@Remote`）入参 `{ defName, defVersion?, input, runId? }`，start-or-attach 与 SDK `def.run()` 对齐（弹窗生成 runId，重试安全）；版本缺省解析该名字唯一注册版本，多版本/跨 kind 共存要求显式版本（拒绝时列名候选）；返回 `{ runId }`，结果不随端点返回——浏览器经 `listRuns`/`journalTimeline` 轮询观察，失败 run 不以宿主未处理拒绝浮出。
+
 ## 4. run 生命周期（workflow 面）
 
 幂等 start-or-attach、RunHandle、类型化结果、cancel、boot 扫描复活（ADR 0003 §4）；引擎侧语义见 spec 01 §5。SDK 调用 ↔ ledger 动作对表：

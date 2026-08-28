@@ -13,6 +13,7 @@ import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import type { WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { apply, Config, internals } from '../src/index.ts'
+import { DurableEngine } from '@daypaw/sdk'
 
 vi.mock('node:os', async importOriginal => ({
   ...await importOriginal<typeof import('node:os')>(),
@@ -92,7 +93,7 @@ describe('web-app runtime glue', () => {
     // fibers unactivated).
     const glue = ctx.plugin({
       name: 'web-app',
-      apply: (inner) => { apply(inner, new Config({ printUrl: true, surfaceContext: true, trustedHosts: ['lab.internal'] })) },
+      apply: (inner) => { apply(inner, new Config({ printUrl: true, surfaceContext: true, trustedHosts: ['lab.internal'], agentsDir: 'daypaw/agents' })) },
     })
     await glue
     await ctx.plugin(SystemPrompt, { persona: '' })
@@ -123,7 +124,7 @@ describe('web-app runtime glue', () => {
     const ctx = new Context()
     ctx.provide('webServer', fakeHttpServer().server)
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-    apply(ctx, new Config({ printUrl: false, surfaceContext: true, trustedHosts: [] }))
+    apply(ctx, new Config({ printUrl: false, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await ctx.plugin(SystemPrompt, { persona: '' })
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(log).not.toHaveBeenCalled()
@@ -144,7 +145,7 @@ describe('web-app runtime glue', () => {
         return () => {}
       },
     } as never)
-    apply(ctx, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [] }))
+    apply(ctx, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await ctx.plugin(SystemPrompt, { persona: '' })
     await new Promise(resolve => setTimeout(resolve, 0))
     const assembly = await ctx.systemPrompt.assemble()
@@ -159,7 +160,7 @@ describe('web-app runtime glue', () => {
     const ctx = new Context()
     ctx.provide('webServer', fakeHttpServer().server)
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-    apply(ctx, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [] }))
+    apply(ctx, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567')
     await ctx.fiber.dispose()
@@ -175,7 +176,7 @@ describe('web-app runtime glue', () => {
     const settlement = new Promise<void>((resolve) => { release = resolve })
     provideLoader(settled, () => settlement)
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-    apply(settled, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [] }))
+    apply(settled, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(log).not.toHaveBeenCalled()
     release!()
@@ -189,7 +190,7 @@ describe('web-app runtime glue', () => {
     const failed = new Context()
     failed.provide('webServer', fakeHttpServer().server)
     provideLoader(failed, async () => { throw new Error('boot failed') })
-    apply(failed, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [] }))
+    apply(failed, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(log).not.toHaveBeenCalled()
     await failed.fiber.dispose()
@@ -205,7 +206,7 @@ describe('web-app runtime glue', () => {
     let releaseTorn: () => void
     const tornSettlement = new Promise<void>((resolve) => { releaseTorn = resolve })
     provideLoader(torn, () => tornSettlement)
-    apply(torn, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [] }))
+    apply(torn, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await child.dispose() // the webServer service goes away
     releaseTorn!()
     await new Promise(resolve => setTimeout(resolve, 0))
@@ -221,7 +222,7 @@ describe('web-app runtime glue', () => {
     const { server } = fakeHttpServer()
     Object.defineProperty(server, 'port', { get: () => undefined })
     ctx.provide('webServer', server)
-    apply(ctx, new Config({ printUrl: false, surfaceContext: true, trustedHosts: [] }))
+    apply(ctx, new Config({ printUrl: false, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await ctx.plugin(SystemPrompt, { persona: '' })
     await new Promise(resolve => setTimeout(resolve, 0))
     await expect(ctx.systemPrompt.assemble()).rejects.toThrow('webServer service missing')
@@ -238,5 +239,91 @@ describe('web-app runtime glue', () => {
     } catch (error) {
       expect((error as Error).message).toContain('frontend dist not built')
     }
+  })
+})
+
+describe('web-app agents roster wiring', () => {
+  it('loads workspace agents once the durable engine appears', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'daypaw-web-agents-'))
+    dist = dir
+    writeFileSync(join(dir, 'flow.mjs'), [
+      'export default ({ defineWorkflow, z }) => defineWorkflow({',
+      "  name: 'wired-flow', version: '1',",
+      '  input: z.object({ code: z.string() }), output: z.object({ ok: z.boolean() }),',
+      '  body: async (ctx, input) => ({ ok: input.code.length > 0 }),',
+      '})',
+      '',
+    ].join('\n'))
+    const lines: string[] = []
+    const log = vi.spyOn(console, 'log').mockImplementation((line: string) => { lines.push(line) })
+    try {
+      const ctx = new Context()
+      ctx.provide('webServer', fakeHttpServer().server)
+      provideLoader(ctx)
+      await ctx.plugin(DurableEngine, { path: ':memory:', pollMs: 20 })
+      await ctx.plugin({
+        name: 'web-app',
+        apply: (inner) => {
+          apply(inner, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: dir }))
+        },
+      })
+      const deadline = Date.now() + 2_000
+      while ((await ctx.durable.listDefinitions()).length === 0) {
+        if (Date.now() > deadline) throw new Error('agents roster never loaded')
+        await new Promise(resolve => setTimeout(resolve, 5))
+      }
+      expect(await ctx.durable.listDefinitions()).toHaveLength(1)
+      expect(lines).toContain(`daypaw agents: 1 definition(s) from ${dir}`)
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('defaults agentsDir to daypaw/agents and logs nothing for the legal empty roster', async () => {
+    // A nonexistent default directory under a temp cwd stays empty and quiet.
+    const emptyRoot = mkdtempSync(join(tmpdir(), 'daypaw-web-empty-'))
+    dist = emptyRoot
+    const lines: string[] = []
+    const log = vi.spyOn(console, 'log').mockImplementation((line: string) => { lines.push(line) })
+    try {
+      const ctx = new Context()
+      ctx.provide('webServer', fakeHttpServer().server)
+      provideLoader(ctx)
+      await ctx.plugin(DurableEngine, { path: ':memory:', pollMs: 20 })
+      await ctx.plugin({
+        name: 'web-app',
+        apply: (inner) => { apply(inner, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: 'daypaw/agents' })) },
+      })
+      const config = new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: 'daypaw/agents' })
+      expect(config.agentsDir).toBe('daypaw/agents')
+      await new Promise(resolve => setTimeout(resolve, 20))
+      expect(lines).toEqual([])
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('fails the load fiber loud when an agents file is broken', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'daypaw-web-broken-'))
+    dist = dir
+    writeFileSync(join(dir, 'broken.mjs'), 'export default 7\n')
+    const ctx = new Context()
+    ctx.provide('webServer', fakeHttpServer().server)
+    provideLoader(ctx)
+    const errors: unknown[] = []
+    ctx.logger.error = ((error: unknown) => { errors.push(error) }) as typeof ctx.logger.error
+    await ctx.plugin(DurableEngine, { path: ':memory:', pollMs: 20 })
+    await ctx.plugin({
+      name: 'web-app',
+      apply: (inner) => {
+        apply(inner, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: dir }))
+      },
+    })
+    const deadline = Date.now() + 2_000
+    while (errors.length === 0) {
+      if (Date.now() > deadline) throw new Error('broken agents file never surfaced')
+      await new Promise(resolve => setTimeout(resolve, 5))
+    }
+    expect(String(errors[0])).toContain('broken.mjs default-exports no factory')
   })
 })

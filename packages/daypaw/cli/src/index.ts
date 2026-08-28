@@ -25,7 +25,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import {
   healProfilesModuleFallback,
   initProfile,
@@ -68,6 +68,53 @@ const DAYPAW_PROFILE_PATCH = `# The daypaw CLI seeded this file on first run; it
 
 /** This package's manifest: the heal anchor whose dependency closure is the delivered installation. */
 const CLI_MANIFEST = fileURLToPath(new URL('../package.json', import.meta.url))
+
+/**
+ * The starter agent the CLI seeds into the workspace on first run (ruling
+ * #65, ADR 0012): a steerable general-purpose assistant in the recommended
+ * starter input shape, so the shell's new-task dialog has a roster before
+ * the user authors anything.
+ */
+const STARTER_AGENT_FILE = 'daypaw/agents/starter-assistant.mjs'
+
+/** The starter agent's source; the injected-factory form every agents file takes. */
+const STARTER_AGENT_SOURCE = `// daypaw starter agent — seeded on first run, yours to edit (the CLI never
+// overwrites this file). Agents files import nothing: the loader injects the
+// SDK namespace into the default-exported factory.
+export default ({ defineAgent, z }) => defineAgent({
+  name: 'starter-assistant',
+  version: '1',
+  display: {
+    title: '通用助手',
+    description: '通用任务助手：接收一段任务描述，完成后调用 submit 提交结论；支持运行中追问。',
+  },
+  input: z.object({ task: z.string() }),
+  output: z.string(),
+  prompt: [{
+    name: 'starter-persona',
+    order: 10,
+    text: 'You are a general-purpose assistant. Work on the task the user gives you, then call the submit tool exactly once with the final result as a plain string. If the task cannot be completed, submit a short explanation of what blocked it.',
+  }],
+  tools: [],
+  model: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
+  maxTurns: 16,
+  steerable: true,
+})
+`
+
+/**
+ * Seed the starter agent into one workspace: write the file only when it is
+ * absent, so every launch is idempotent and user edits stick. The workspace
+ * keeps its own roster beside its own ledger (ruling #65 §2).
+ * @param dir - the workspace directory `daypaw` runs from; defaults to the
+ * process working directory.
+ */
+export function seedStarterAgent(dir: string = process.cwd()): void {
+  const file = join(dir, STARTER_AGENT_FILE)
+  if (existsSync(file)) return
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, STARTER_AGENT_SOURCE)
+}
 
 /** Whether two bundle lists hold the same values in the same order. */
 function sameBundles(left: readonly string[], right: readonly string[]): boolean {

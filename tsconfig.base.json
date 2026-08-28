@@ -203,6 +203,9 @@
       // The web-app bundle's startup row is its own subpath (same shape as
       // dsh-web-app/startup above); the generic wildcard cannot map it.
       "@daypaw/web-app/startup": ["./packages/daypaw/web-app/src/startup.ts"],
+      // The SDK's agents-directory loader is its own subpath (same shape as
+      // dsh-web-app/startup above); the generic wildcard cannot map it.
+      "@daypaw/sdk/agents-dir": ["./packages/daypaw/sdk/src/agents-dir.ts"],
       "@daypaw/*": ["./packages/daypaw/*/src"],
       "@deepseek-ai/dsh-client-ui-input-trigger": ["./packages/client/ui-input-trigger/src"],
       "@deepseek-ai/dsh-client-ui-reference": ["./packages/client/ui-reference/src"],

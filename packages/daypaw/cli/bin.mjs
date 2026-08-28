@@ -5,12 +5,13 @@
 // run the dsh bin from the bundled closure. The argv rewrite happens before
 // the dynamic import so the dsh bin never sees the raw arguments, and that
 // import keeps the dsh bin from evaluating before seeding completes.
-import { seedDaypawProfile, withDefaultProfile } from './lib/index.js'
+import { seedDaypawProfile, seedStarterAgent, withDefaultProfile } from './lib/index.js'
 
 await seedDaypawProfile().catch((error) => {
   console.error(`daypaw: ${error instanceof Error ? error.message : String(error)}`)
   process.exit(1)
 })
+seedStarterAgent()
 
 process.argv = [...process.argv.slice(0, 2), ...withDefaultProfile(process.argv.slice(2))]
 

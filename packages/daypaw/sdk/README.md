@@ -51,6 +51,22 @@ const { total } = await handle.result   // typed: { total: number }
 - `ctx.waitFor(gate, { schema?, timeout? })` — durable gate (HITL suspension): suspends the run inside the body (`status()` reports `{state:'waiting', gate}`); waiting costs nothing and the process may exit. The outcome returns as a `GateResolution` union value (`resolved` / `rejected` / `timedout` / `cancelled` — terminal states are values, not exceptions). Settle through `ctx.durable.resolveGate(runId, gate, settlement, source)`, first-wins idempotent; the zod `schema` validates on both the write and the delivery side.
 - Errors — engine failures surface as `RunFailedError` (cause attached), cancellations as `RunCancelledError`; input/output contract violations reject with the zod error.
 
+### Agents-directory loader (ADR 0012, `@daypaw/sdk/agents-dir`)
+
+`loadAgentFiles(ctx, dir)` — the shell host's definition source: scan one directory (absent = legal empty roster), import each module file in name order, call its default-exported injected factory with the SDK namespace, and bind every produced definition onto `ctx.durable`. The one file form:
+
+```js ignore-check
+// daypaw/agents/starter-assistant.mjs — no imports; the loader injects the namespace
+export default ({ defineAgent, z }) => defineAgent({
+  name: 'starter-assistant', version: '1',
+  input: z.object({ task: z.string() }), output: z.string(),
+  prompt: [], tools: [], model: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
+  maxTurns: 16, steerable: true,
+})
+```
+
+Files carry no bare imports (a delivered workspace cannot resolve them, and self-installing would duplicate the SDK copy in-process); same-directory relative imports stay available. `.mjs` / `.js` / `.ts` are module files, everything else is ignored; a present file that imports badly, exports no factory, throws, or produces a non-definition fails loud naming the file. Bind-installed definitions carry a `wire` face (ADR 0012): the input presentation (`text` for `z.string()` / `z.object({ task: z.string() })`, `json` otherwise) plus the opaque validator the engine's `durable/startRun` boundary calls before inserting a run.
+
 ### Agents (ADR 0010)
 
 ```ts

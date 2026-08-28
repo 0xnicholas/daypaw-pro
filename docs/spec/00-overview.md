@@ -54,6 +54,8 @@ daypaw profile 的组合面 v1 = **单行插件配方**：
 - **上游三族（jobs/workflow/schedule）默认不装**（[第 1 章](01-durable-execution.md) §1 旁立裁决）。
 - config 契约（`path` / `pollMs`）见 [engine README](../../packages/daypaw/engine/README.md)。
 
+**壳发起 run（ADR 0012）**：壳宿主的 agent 定义注册源 = 运行目录下的 `daypaw/agents/`（与 ledger 同域）：`@daypaw/web-app` 胶水的 `agentsDir` 配置（默认 `daypaw/agents`）在 `durable` 服务出现后经 `@daypaw/sdk/agents-dir` 装载——每个模块文件 default 导出注入式工厂（`export default ({ defineAgent, defineWorkflow, z }) => 定义`，零裸导入）；坏文件失败响亮指名文件，缺目录 = 合法空名册。CLI 首跑幂等播种 starter agent 到工作区 `daypaw/agents/starter-assistant.mjs`（永不覆盖）。发起面经 `durable/startRun`（start-or-attach），见[第 2 章](02-agent-engine-sdk.md)与[第 5 章](05-product-shell.md) §5。
+
 **分发形态（ADR 0011）**：客户交付走 CLI 自含单包——daypaw profile 模板随 `@daypaw/cli` 包自带、首跑自初始化；源码态组合仍是宿主在自己的 cordis.yml 写同一插件行（[examples/daypaw-skeleton](../../packages/examples/daypaw-skeleton/README.md) 示范）。模板不进上游 `PROFILE_TEMPLATES`：`daypaw` bin 每次启动先播种再引导 vendored dsh bin——首跑物化 `$DSH_HOME/profiles/daypaw`（bundles = `dsh-base` + `@daypaw/web-app`，裸 `daypaw` 直起产品壳，见[第 5 章](05-product-shell.md) §4；上面的单行配方以 `- insert:` 行落进 profile 自己的 `cordis.patch.yml`，随用户层语义归客户所有；旧版 CLI 播种的单发 headless 元组在仍与出厂一致时迁移到壳元组），并从 CLI 包自身依赖闭包把 daypaw 族平铺 heal 进安装 fallback `$DSH_HOME/profiles/node_modules`（launcher 维护的模块 fallback 只覆盖 dsh app 依赖闭包，够不到 daypaw 族，故 CLI 以自身 manifest 为锚调用同一 heal）；播种幂等、永不覆盖既有文件。独立 `@daypaw/bundle` 包不发布：单行 patch 的复制成本近零，CLI 包内 profile 模板已承担组合面分发；接线点不变——`dsh.bundle.patch` manifest 契约（[packages/bundle](../../packages/bundle/README.md)）+ `dsh plugin --profile <name> add <package>` 安装。
 
 否决：独立 bundle 包与 CLI 包并行发布——同一组合面两个分发载体纯增维护面（README limitations 门、hygiene），与「按需落地、勿提前实现」裁决相悖。

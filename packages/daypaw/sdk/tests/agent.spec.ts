@@ -345,6 +345,7 @@ describe('bindAgent over a real dsh composition', () => {
         kind: 'agent',
         name: 'reviewer',
         version: '1',
+        inputKind: 'json',
         display: { title: 'Code reviewer', description: 'Reviews code and reports a numeric score.' },
       },
     ])
@@ -355,7 +356,7 @@ describe('bindAgent over a real dsh composition', () => {
     await bindAgent(reviewerDef(), ctx)
     const [entry] = await ctx.durable.listDefinitions()
     // The key is absent (not undefined-valued) so the wire answer stays JSON-safe.
-    expect(entry).toStrictEqual({ kind: 'agent', name: 'reviewer', version: '1' })
+    expect(entry).toStrictEqual({ kind: 'agent', name: 'reviewer', version: '1', inputKind: 'json' })
     expect(entry && 'display' in entry).toBe(false)
     // The documented fallback: a catalog view renders the technical name.
     expect(entry?.display?.title ?? entry?.name).toBe('reviewer')

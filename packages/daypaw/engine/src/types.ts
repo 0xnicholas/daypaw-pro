@@ -17,6 +17,23 @@ export interface DefinitionDisplay {
 }
 
 /**
+ * One browser-initiated run start (ruling #65, ADR 0012): resolve a
+ * registered definition and start-or-attach a run of it over the wire. A
+ * Remote boundary type: lives in this types subpath so the Typert analyzer
+ * can resolve it.
+ */
+export interface StartRunRequest {
+  /** Definition name; the registry identity with the version. */
+  readonly defName: string
+  /** Exact definition version; omitted resolves the name's unique registered entry. */
+  readonly defVersion?: string
+  /** Run input; validated through the definition's wire face when it carries one. */
+  readonly input: Json
+  /** Persistent run identity; an existing id attaches instead of starting. */
+  readonly runId?: string
+}
+
+/**
  * Read-only registry entry returned by `listDefinitions`: identity and
  * display metadata, never the body.
  */
@@ -29,6 +46,12 @@ export interface DefinitionView {
   readonly version: string
   /** Declared display metadata; the key is absent when the definition declares none (wire-safe: no undefined values). */
   readonly display?: DefinitionDisplay
+  /**
+   * Dialog input presentation for browser-initiated starts (ruling #65):
+   * `text` | `json`, or `null` when the definition carries no wire face
+   * (wire-safe: no undefined values).
+   */
+  readonly inputKind: 'text' | 'json' | null
 }
 
 /**

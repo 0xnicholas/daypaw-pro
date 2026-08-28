@@ -18,6 +18,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
 import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
 import type { Json } from './types.ts'
+import type { StartRunRequest } from './types.ts'
 import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 
@@ -25,9 +26,10 @@ export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
 export type { Json } from './types.ts'
 export type {
   DefinitionDisplay, DefinitionView, EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
-  EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope,
+  EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope, EngineWireFace,
   GateResolution, GateResolutionSource, GateSchema, GateSettlement, RunLineage, WaitForOptions,
 } from './core.ts'
+export type { StartRunRequest } from './types.ts'
 export { SqliteJournalStore } from './sqlite-journal-store.ts'
 export type {
   JournalSegmentInsert, JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
@@ -161,6 +163,27 @@ export default class DurableEngine extends TypertRemoteService {
   @Remote('listDefinitions')
   async listDefinitions(): Promise<DefinitionView[]> {
     return (await this.coreOrFail()).listDefinitions()
+  }
+
+  /**
+   * Start a run of a registered definition over the wire, or attach to an
+   * existing runId (idempotent start-or-attach, ruling #65): resolve the
+   * registry identity, validate the input through the definition's wire face
+   * when present, then run. The handle's result is deliberately not awaited
+   * or returned — browsers observe runs through `listRuns` and
+   * `journalTimeline` (spec 05 §5's polling model), so a failed run must not
+   * surface as an unhandled rejection on the host.
+   * @param request - definition identity, input, and optional run identity.
+   * @returns the run id.
+   */
+  @Remote('startRun')
+  async startRun(request: StartRunRequest): Promise<{ runId: string }> {
+    const core = await this.coreOrFail()
+    const def = core.resolveDefinition(request.defName, request.defVersion)
+    const input = def.wire === undefined ? request.input : def.wire.parseInput(request.input)
+    const handle = core.run(def, input, request.runId === undefined ? {} : { runId: request.runId })
+    handle.result.catch(() => {})
+    return { runId: handle.id }
   }
 
   /**

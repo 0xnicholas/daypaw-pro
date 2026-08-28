@@ -51,6 +51,22 @@ const { total } = await handle.result   // typed: { total: number }
 - `ctx.waitFor(gate, { schema?, timeout? })` —— durable gate（HITL 挂起）：body 内挂起 run（`status()` 报 `{state:'waiting', gate}`），等待零算力、进程可退出；结局以 `GateResolution` 联合值返回（`resolved` / `rejected` / `timedout` / `cancelled`，终态非异常）。经 `ctx.durable.resolveGate(runId, gate, settlement, source)` 结算，first-wins 幂等；zod `schema` 在写入侧与投递侧双重校验。
 - 错误 —— 引擎失败以 `RunFailedError`（附 cause）浮出，取消以 `RunCancelledError`；输入/输出契约违反以 zod 错误 reject。
 
+### agents 目录装载器（ADR 0012，`@daypaw/sdk/agents-dir`）
+
+`loadAgentFiles(ctx, dir)` —— 壳宿主的定义源：扫描一个目录（缺席 = 合法空名册），按名序 import 每个模块文件，以其 default 导出的注入式工厂调用 SDK 命名空间，把全部产物经 `ctx.durable` 注册。唯一文件形态：
+
+```js ignore-check
+// daypaw/agents/starter-assistant.mjs — no imports; the loader injects the namespace
+export default ({ defineAgent, z }) => defineAgent({
+  name: 'starter-assistant', version: '1',
+  input: z.object({ task: z.string() }), output: z.string(),
+  prompt: [], tools: [], model: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
+  maxTurns: 16, steerable: true,
+})
+```
+
+文件零裸导入（交付态工作区解析不到 daypaw 家族，自装则引入进程内双拷贝）；同目录相对导入仍可用。`.mjs` / `.js` / `.ts` 为模块文件，其余条目忽略；坏文件（导入失败、无 default 工厂、抛错、产物非定义）失败响亮指名文件。经 bind 注册的定义携带 `wire` 面（ADR 0012）：输入呈现（`z.string()` / `z.object({ task: z.string() })` 为 `text`，其余 `json`）与引擎 `durable/startRun` 边界在插入 run 前调用的不透明校验器。
+
 ### Agents（ADR 0010）
 
 ```ts

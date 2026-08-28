@@ -39,6 +39,26 @@ dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色�
 
 #13 收尾计划的四批次（ADR 0008 §2）：A = fork 导入 + 首 checkpoint；B = spec 第 1 章（Durable Execution）；C = walking skeleton 落地（store → engine → sdk，按 `docs/fork/adding-a-daypaw-package.md`）；D = spec 00-overview（含 profile/bundle 行清单裁决）。
 
+### 壳宿主（Shell Host）
+
+`daypaw` 命令拉起的 Node 进程：浏览器壳背后的一切（dsh 会话引擎、durable 引擎与定义注册表、webserver 与前端 dist）住在它里面。SDK 用户的进程是另一类宿主。ADR 0012。
+
+### agents 目录（Agents Directory）
+
+壳宿主的引擎定义注册源：运行目录下的 `daypaw/agents/`，与 ledger 同域（每工作区自带 agent 集与账本）。装载器 `@daypaw/sdk/agents-dir` 按名序扫描模块文件；缺目录 = 合法空名册，坏文件 boot 失败响亮。ADR 0012。
+
+### 注入式工厂（Injected Factory）
+
+agents 目录文件的唯一形态：`export default ({ defineAgent, defineWorkflow, z }) => 定义`（或定义数组），零裸导入——交付态工作区解析不到 daypaw 家族，装载器注入 SDK 命名空间，进程内永远单拷贝。ADR 0012。
+
+### starter 播种（Starter Seeding）
+
+CLI 首跑幂等播种 starter agent 到工作区 `daypaw/agents/starter-assistant.mjs`（仅缺失时写入，永不覆盖，#34 profile 播种先例）：零 agent 文件的工作区弹窗也有可选。ADR 0012。
+
+### preset 兼容层（Preset Compatibility Layer）
+
+dsh agent preset 机制在 daypaw 壳内的终局定位：上游机制保留（仅影响旧会话），新任务弹窗与 agent 目录只读引擎定义注册表（ADR 0012「引擎定义即名册」）；双名册 Known Limitation（#60）随之解除。
+
 ## 编排（Durable Engine 域）
 
 ### Durable Engine（参照系名 Orchestrator）

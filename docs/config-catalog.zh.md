@@ -51,10 +51,18 @@ export interface Config {
   surfaceContext: boolean
   /** Explicit `--trusted-host` authorities from this invocation. */
   trustedHosts: string[]
+  /**
+   * Workspace agents directory (ruling #65, ADR 0012): module files whose
+   * default-exported factories become the host's engine definitions — the
+   * roster the new-task dialog and agent catalog read. Resolved against the
+   * directory `daypaw` runs from, like the engine's ledger path; an absent
+   * directory is the legal empty roster.
+   */
+  agentsDir: string
 }
 ```
 
-Source: [`packages/daypaw/web-app/src/index.ts:44`](../packages/daypaw/web-app/src/index.ts)
+Source: [`packages/daypaw/web-app/src/index.ts:46`](../packages/daypaw/web-app/src/index.ts)
 
 <a id="deepseek-aidsh-acp"></a>
 

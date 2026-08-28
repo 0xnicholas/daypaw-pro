@@ -657,6 +657,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   DefinitionDisplay: 'definition display metadata is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   DefinitionView: 'definition registry view entry is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunListFilter: 'run list filter is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
+  StartRunRequest: 'wire run-start request is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunLineage: 'run lineage result is owned by packages/daypaw/engine/README.md (fork docs, outside the upstream subsystems catalog)',
   RunRow: 'ledger run row contract is owned by packages/daypaw/store/README.md (fork docs, outside the upstream subsystems catalog)',
   JournalRow: 'ledger journal row contract is owned by packages/daypaw/store/README.md (fork docs, outside the upstream subsystems catalog)',

@@ -86,6 +86,8 @@ packages/daypaw/
 - **`defineAgent` 展示字段**：下限 = 业务名 + 描述，与注册表只读视图配套；集合细目落定 = `title` + `description`（spec 02 §1.2），未声明时呈现层回落到技术 `name`。
 - **steer 通道**（用户裁决；[#53](https://github.com/0xnicholas/daypaw-pro/issues/53)）：SDK/引擎加 steer，run 从单段变多段。呈现语义：对话中追问进行中的 run 追加进同一任务的对话流，不产生新任务；产出物以 run 终态 `output_json` 为准（§4 `ui-deliverables` 的识别依据），中间段不单独形成产出物区。
 
+壳发起面（ADR 0012，票 [#66](https://github.com/0xnicholas/daypaw-pro/issues/66) 落地引擎/交付侧，壳侧 UI 归 [#67](https://github.com/0xnicholas/daypaw-pro/issues/67)）：**`durable/startRun`** start-or-attach（runId 由弹窗生成、重试安全；版本缺省 = 唯一注册版本，多版本要求显式）；注册源 = cwd `daypaw/agents/` 注入式工厂目录装载（`@daypaw/web-app` `agentsDir` 配置，缺目录 = 空名册，坏文件 boot 失败响亮）；CLI 首跑幂等播种 starter agent。`listDefinitions` 视图新增 `inputKind`（`text`/`json`/null）：弹窗据此选自由文本或降级 JSON 框。终局裁决：引擎定义即名册（弹窗 + 目录页只读 `listDefinitions`），preset 退上游兼容层（仅影响旧会话），#60 双名册 Known Limitation 解除。
+
 host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjections`/mux 投影**（attach 路径 `pollMs` 为现成先例）。
 
 缓做与不做：`ctx.waitFor` gate 原语缓做（[第 1 章](01-durable-execution.md) §6 既定引擎工作，另立引擎票 #47）；v1 审批待办板块只用 dsh 交互式审批面（apiproxy pending 聚合 + mux 重放，wire 闭环已全），「等待人审批的 run」业务语义随原语落地后升级；pending 审批 unary 查询不做（mux-open 重放即冷启动基线）；路线 C 对话面缺口随 #36 否决消灭。

@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@daypaw/approval-history": "workspace:^",
+    "@daypaw/sdk": "workspace:^",
     "@daypaw/ui-agents": "workspace:^",
     "@daypaw/ui-brand": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",

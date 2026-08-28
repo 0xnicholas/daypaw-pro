@@ -4899,6 +4899,9 @@ importers:
       '@daypaw/approval-history':
         specifier: workspace:^
         version: link:../approval-history
+      '@daypaw/sdk':
+        specifier: workspace:^
+        version: link:../sdk
       '@daypaw/ui-agents':
         specifier: workspace:^
         version: link:../ui-agents

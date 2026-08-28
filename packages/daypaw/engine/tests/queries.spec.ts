@@ -88,6 +88,11 @@ describe('engine query face (ctx.durable)', () => {
     expect(ofChild.parent?.run_id).toBe('parent-1')
     expect(ofChild.children).toEqual([])
 
+    // A child whose parent row is gone (a ledger gap, not an error) answers
+    // parent: null — lineage never throws on dangling references.
+    await (await engine.run(def, null, { runId: 'orphan-1', parent: { runId: 'vanished', stepKey: 's' } })).result
+    expect(await engine.runLineage('orphan-1')).toMatchObject({ run: { run_id: 'orphan-1' }, parent: null })
+
     expect(await engine.runLineage('unknown')).toEqual({ run: null, parent: null, children: [] })
   })
 
@@ -135,8 +140,8 @@ describe('definition registry view (ctx.durable)', () => {
 
     const entries = await engine.listDefinitions()
     expect(entries).toEqual([
-      { kind: 'workflow', name: 'demo', version: '1', display: undefined },
-      { kind: 'agent', name: 'helper', version: '2', display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
+      { kind: 'workflow', name: 'demo', version: '1', inputKind: null, display: undefined },
+      { kind: 'agent', name: 'helper', version: '2', inputKind: null, display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
     ])
     // Wire-safe shape for the Remote endpoint: an undeclared display is an
     // ABSENT key, never an undefined value (the gateway rejects non-JSON).
@@ -162,8 +167,8 @@ describe('definition registry view (ctx.durable)', () => {
     snapshot.pop()
 
     expect(await engine.listDefinitions()).toEqual([
-      { kind: 'workflow', name: 'demo', version: '1', display: undefined },
-      { kind: 'agent', name: 'helper', version: '2', display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
+      { kind: 'workflow', name: 'demo', version: '1', inputKind: null, display: undefined },
+      { kind: 'agent', name: 'helper', version: '2', inputKind: null, display: { title: 'Ops helper', description: 'Runs the ops checklist' } },
     ])
   })
 })

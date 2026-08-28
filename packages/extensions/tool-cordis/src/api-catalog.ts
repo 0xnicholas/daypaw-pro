@@ -853,6 +853,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the registry entries in registration order.',
       },
       {
+        signature: '@Remote(\'startRun\') async startRun(request: StartRunRequest): Promise<{ runId: string }>',
+        description: 'Start a run of a registered definition over the wire, or attach to an existing runId (idempotent start-or-attach, ruling #65): resolve the registry identity, validate the input through the definition\'s wire face when present, then run. The handle\'s result is deliberately not awaited or returned — browsers observe runs through `listRuns` and `journalTimeline` (spec 05 §5\'s polling model), so a failed run must not surface as an unhandled rejection on the host.',
+        parameters: [{ name: 'request', description: 'definition identity, input, and optional run identity.' }],
+        returns: 'the run id.',
+      },
+      {
         signature: 'async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>',
         description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate.',
         parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row.' }],
@@ -3921,7 +3927,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DefinitionView',
-    declaration: 'export interface DefinitionView {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n}',
+    declaration: 'export interface DefinitionView {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n    readonly inputKind: \'text\' | \'json\' | null;\n}',
   },
   {
     name: 'DiffCallView',
@@ -4037,7 +4043,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineDefinition',
-    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n    readonly steerable?: boolean;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
+    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly wire?: EngineWireFace;\n    readonly display?: DefinitionDisplay;\n    readonly steerable?: boolean;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
   },
   {
     name: 'EngineRunHandle',
@@ -4058,6 +4064,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EngineStepOptions',
     declaration: 'export interface EngineStepOptions {\n    readonly key?: string;\n}',
+  },
+  {
+    name: 'EngineWireFace',
+    declaration: 'export interface EngineWireFace {\n    readonly inputKind: \'text\' | \'json\';\n    readonly parseInput: (value: unknown) => Json;\n}',
   },
   {
     name: 'EpochHeader',
@@ -5478,6 +5488,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SpillSource',
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: ToolCallId;\n    label: string;\n}',
+  },
+  {
+    name: 'StartRunRequest',
+    declaration: 'export interface StartRunRequest {\n    readonly defName: string;\n    readonly defVersion?: string;\n    readonly input: Json;\n    readonly runId?: string;\n}',
   },
   {
     name: 'StorageBackend',

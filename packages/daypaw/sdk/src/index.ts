@@ -17,6 +17,7 @@ import type { AgentDefinition, BoundAgent } from './agent.ts'
 import { boundAgentFor } from './agent.ts'
 import type { RunHandle, RunOptions } from './run-handle.ts'
 import { startRun } from './run-handle.ts'
+import { wireFace } from './wire.ts'
 
 // Consumers mount the engine through the SDK face so the vendored
 // `@daypaw/engine` copy inside the published tarball stays an implementation
@@ -180,6 +181,7 @@ export async function bind<I extends ZodType, O extends ZodType>(
       // The body boundary is `unknown`; run-start validated the stored input
       // against `def.input` before the engine serialized it.
       body: (ctx, input) => def.body(enrichStepCtx(ctx), input as Infer<I>),
+      wire: wireFace(def.input),
     }
     engineDefs.set(def, engineDef)
   }

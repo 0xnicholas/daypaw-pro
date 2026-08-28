@@ -20,6 +20,13 @@ interface EngineDefinition {
   /** Definition version; with name, the registry identity. */
   readonly version: string
   /**
+   * Wire face for browser-initiated starts (ruling #65, ADR 0012): how the
+   * dialog presents input and the opaque validator the
+   * `durable/startRun` boundary calls. SDK-installed at bind time; like the
+   * body, the engine treats `parseInput` as an opaque thunk.
+   */
+  readonly wire?: EngineWireFace
+  /**
    * Display metadata for host catalog views (spec 05 §5): a business-facing
    * name and description. Metadata only — never execution semantics.
    */
@@ -60,6 +67,12 @@ interface DefinitionView {
   readonly version: string
   /** Declared display metadata; the key is absent when the definition declares none (wire-safe: no undefined values). */
   readonly display?: DefinitionDisplay
+  /**
+   * Dialog input presentation for browser-initiated starts (ruling #65):
+   * `text` | `json`, or `null` when the definition carries no wire face
+   * (wire-safe: no undefined values).
+   */
+  readonly inputKind: 'text' | 'json' | null
 }
 ```
 
@@ -130,6 +143,19 @@ async idle(): Promise<void>
  * @returns the registry entries in registration order.
  */
 @Remote('listDefinitions') async listDefinitions(): Promise<DefinitionView[]>
+
+/**
+ * Start a run of a registered definition over the wire, or attach to an
+ * existing runId (idempotent start-or-attach, ruling #65): resolve the
+ * registry identity, validate the input through the definition's wire face
+ * when present, then run. The handle's result is deliberately not awaited
+ * or returned — browsers observe runs through `listRuns` and
+ * `journalTimeline` (spec 05 §5's polling model), so a failed run must not
+ * surface as an unhandled rejection on the host.
+ * @param request - definition identity, input, and optional run identity.
+ * @returns the run id.
+ */
+@Remote('startRun') async startRun(request: StartRunRequest): Promise<{ runId: string }>
 
 /**
  * Settle a gate (first-wins): the one resolve seam for SDK direct calls,

@@ -22,6 +22,7 @@ import type { JsonSchemaNode, ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type { DefinitionDisplay, EngineDefinition, EngineStepCtx } from '@daypaw/engine'
 import type { RunHandle, RunOptions } from './run-handle.ts'
 import { startRun } from './run-handle.ts'
+import { wireFace } from './wire.ts'
 
 /** zod schema → inferred TS type. */
 type Infer<I extends ZodType> = z.output<I>
@@ -454,6 +455,7 @@ export async function bindAgent<I extends ZodType, O extends ZodType>(
     ...(def.display === undefined ? {} : { display: def.display }),
     ...(def.steerable === true ? { steerable: true } : {}),
     body: compileBody(def, ctx),
+    wire: wireFace(def.input),
   }
   await engine.register(engineDef)
   const bound: BoundAgent<I, O> = {

@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto'
 import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
 import type { JournalStore, RunListFilter } from './seams.ts'
 import type { DefinitionDisplay, DefinitionView } from './types.ts'
+import type { Json } from './types.ts'
 
 export type { DefinitionDisplay, DefinitionView } from './types.ts'
 
@@ -192,6 +193,13 @@ export interface EngineDefinition {
   /** Definition version; with name, the registry identity. */
   readonly version: string
   /**
+   * Wire face for browser-initiated starts (ruling #65, ADR 0012): how the
+   * dialog presents input and the opaque validator the
+   * `durable/startRun` boundary calls. SDK-installed at bind time; like the
+   * body, the engine treats `parseInput` as an opaque thunk.
+   */
+  readonly wire?: EngineWireFace
+  /**
    * Display metadata for host catalog views (spec 05 §5): a business-facing
    * name and description. Metadata only — never execution semantics.
    */
@@ -205,6 +213,21 @@ export interface EngineDefinition {
   readonly steerable?: boolean
   /** Opaque body thunk; the engine calls it with a step ctx and the run input. */
   readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>
+}
+
+/**
+ * The wire face one definition carries for browser-initiated starts
+ * (ruling #65): the input presentation the dialog renders and the opaque
+ * input validator the engine's `durable/startRun` boundary calls before a
+ * run inserts. `parseInput` rejects contract violations; the engine never
+ * inspects what it validates (ADR 0010's engine-blind compile extends to
+ * the wire hook).
+ */
+export interface EngineWireFace {
+  /** Dialog input presentation: `text` = one free-text field for the starter shapes; `json` = a JSON box. */
+  readonly inputKind: 'text' | 'json'
+  /** Validate one wire input against the definition's contract; throws on violation. */
+  readonly parseInput: (value: unknown) => Json
 }
 
 /** Parent/child lineage of one run (spec 05 §5). Wire-safe: absent members are `null`, never `undefined` (JSON drops undefined). */
@@ -558,12 +581,40 @@ export class DurableEngineCore {
   }
 
   /**
+   * Resolve one registered definition by wire identity (ruling #65): an
+   * exact version pins the identity; an omitted version resolves the name's
+   * unique registered definition and rejects when several coexist (fail
+   * loud, naming the candidates). Kinds share the name space — an agent and
+   * a workflow under one name are an ambiguity, not a precedence.
+   * @param name - definition name.
+   * @param version - exact version; omitted resolves the name's unique entry.
+   * @returns the registered definition.
+   */
+  resolveDefinition(name: string, version?: string): EngineDefinition {
+    const candidates = [...this.definitions.values()].filter(
+      def => def.name === name && (version === undefined || def.version === version),
+    )
+    const [def] = candidates
+    if (def === undefined) {
+      throw new Error(
+        `durable engine: no registered definition matches ${version === undefined ? name : `${name}@${version}`}`,
+      )
+    }
+    if (candidates.length > 1) {
+      const listing = candidates.map(candidate => `${candidate.kind}/${candidate.name}/${candidate.version}`).join(', ')
+      throw new Error(`durable engine: definition ${name} is ambiguous across ${listing}; pass an exact version`)
+    }
+    return def
+  }
+
+  /**
    * Enumerate the registered definitions in registration order (spec 05 §5):
    * identity and display metadata, never the body. Each call returns fresh
    * copies, so a caller cannot reach the registry through the result. Like
    * {@link EngineRunHandle.status}, reads stay available after disposal. The
-   * `display` key is omitted (not undefined-valued) when undeclared: the
-   * gateway's Remote channel serves this method and rejects non-JSON values.
+   * `display` key is omitted (not undefined-valued) when undeclared, and
+   * `inputKind` is `null` for definitions without a wire face: the gateway's
+   * Remote channel serves this method and rejects non-JSON values.
    * @returns the registry entries in registration order.
    */
   listDefinitions(): DefinitionView[] {
@@ -572,6 +623,7 @@ export class DurableEngineCore {
       name: def.name,
       version: def.version,
       ...def.display === undefined ? {} : { display: { ...def.display } },
+      inputKind: def.wire?.inputKind ?? null,
     }))
   }
 

@@ -9,7 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { composeEntries, loadProfile } from '@deepseek-ai/dsh-app-boot'
 import DurableEngine from '@daypaw/engine'
-import { DAYPAW_PROFILE_NAME, seedDaypawProfile, withDefaultProfile } from '../src/index.ts'
+import { DAYPAW_PROFILE_NAME, seedDaypawProfile, seedStarterAgent, withDefaultProfile } from '../src/index.ts'
 
 const CLI_MANIFEST = fileURLToPath(new URL('../package.json', import.meta.url))
 /** The repo's dsh app manifest: the resolution anchor the seeded profile's bundles resolve from. */
@@ -236,5 +236,35 @@ describe('seeded daypaw profile through a real Loader composition', () => {
     await engine.register(def)
     const handle = await engine.run(def, null, { runId: 'seeded-1' })
     await expect(handle.result).resolves.toBe('seeded-ok')
+  })
+})
+
+describe('seedStarterAgent', () => {
+  it('seeds the injected-factory starter into the workspace on first run', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'daypaw-cli-workspace-'))
+    try {
+      seedStarterAgent(workspace)
+      const file = join(workspace, 'daypaw/agents/starter-assistant.mjs')
+      expect(existsSync(file)).toBe(true)
+      const source = await readFile(file, 'utf8')
+      expect(source).toContain('export default ({ defineAgent, z }) => defineAgent({')
+      expect(source).toContain('input: z.object({ task: z.string() })')
+      expect(source).toContain('steerable: true')
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it('never touches an existing starter (user edits stick)', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'daypaw-cli-workspace-'))
+    try {
+      const file = join(workspace, 'daypaw/agents/starter-assistant.mjs')
+      await mkdir(dirname(file), { recursive: true })
+      await writeFile(file, '// my own assistant\n')
+      seedStarterAgent(workspace)
+      expect(await readFile(file, 'utf8')).toBe('// my own assistant\n')
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
   })
 })
