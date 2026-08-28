@@ -8,7 +8,7 @@
  * selection lives in the shared catalog store, so a re-render never refetches.
  */
 import { useEffect } from 'react'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the catalog seat) in so
 // PropsRuntime<'inbox.agents.page'> resolves.

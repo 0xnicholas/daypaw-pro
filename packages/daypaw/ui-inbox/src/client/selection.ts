@@ -6,7 +6,8 @@
  * through their inject `hooks` compartments instead; the renderer binds it as
  * each component's `useSelection` hook.
  */
-import { createSnapshotStore, type SessionId, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** The three inbox groups. */
 export type InboxGroup = 'pending' | 'running' | 'done'

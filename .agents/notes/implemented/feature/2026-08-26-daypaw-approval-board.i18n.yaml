@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-26-daypaw-approval-board.md
 2026-08-26-daypaw-approval-board.md: f1b6d44679267a46fef8d847f1d3367408995918
-2026-08-26-daypaw-approval-board.zh.md: 5c5d5ddbe0a5141bbbef95ad259b1fbef6459057
+2026-08-26-daypaw-approval-board.zh.md: 96aac7e1f2a541107549912e6a04112d9f3bd013

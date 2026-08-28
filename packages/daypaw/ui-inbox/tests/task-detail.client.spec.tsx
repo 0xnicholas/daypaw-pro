@@ -2,8 +2,8 @@
 /** TaskDetail: selection-keyed detail column — empty state, session-task body, run header (status copy + 重试), body slot view. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { TaskDetail, type TaskDetailProps } from '../src/client/TaskDetail.tsx'
 import type { InboxDetailBodyOwnerProps } from '../src/client/contract.ts'
@@ -53,9 +53,9 @@ function mountDetail({ selection = DEFAULT_SELECTION, state = detailState() }: {
     <TaskDetail
       sessionId={'session-1' as never}
       SessionProvider={(() => null) as never}
-      useSession={neverHook} useProjection={neverHook}
+      useSession={neverHook} useProjection={neverHook} useConversation={neverHook} useChat={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook}
       useSelection={bindSnapshotSelector(createSnapshotStore<InboxSelection>(selection))}
       useDetail={bindSnapshotSelector(createSnapshotStore<TaskDetailState>(state))}
       retry={retry}

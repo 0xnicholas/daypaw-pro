@@ -13,6 +13,7 @@
 
 import { z } from 'zod'
 import type { ZodType } from 'zod'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type { ApprovalHistoryEntry, ApprovalHistoryProjection } from './types.ts'
@@ -32,14 +33,14 @@ const approvalHistorySchema: ZodType<ApprovalHistoryProjection> = z.array(z.obje
  * per the unit contract (persisted-cache precondition), so the state IS the
  * value and `view` returns it unchanged.
  */
-type ApprovalHistoryState = ApprovalHistoryEntry[]
+type ApprovalHistoryState = ApprovalHistoryProjection
 
 /** The `approvalHistory` unit registered on `ctx.sessionProjections` (exported for the unit spec). */
-export const approvalHistoryProjectionDefinition: ProjectionDefinition<'approvalHistory', ApprovalHistoryState> = {
+export const approvalHistoryProjectionDefinition = {
   key: 'approvalHistory',
-  schema: approvalHistorySchema,
-  init: () => [],
-  apply: (state, event) => {
+  stateSchema: approvalHistorySchema,
+  init: (): ApprovalHistoryState => [],
+  apply: (state: ApprovalHistoryState, event: SessionEvent): ApprovalHistoryState => {
     // Every uninteresting event returns the same reference (Object.is gates the change feed).
     if (event.type === 'approval/asked') {
       const entry: ApprovalHistoryEntry = { id: event.data.id, toolName: event.data.toolName }
@@ -55,6 +56,9 @@ export const approvalHistoryProjectionDefinition: ProjectionDefinition<'approval
     }
     return state
   },
-  view: state => state,
+  wire: {
+    viewSchema: approvalHistorySchema,
+    view: (state: ApprovalHistoryState): ApprovalHistoryProjection => state,
+  },
   stateVersion: 1,
-}
+} satisfies ProjectionDefinition<'approvalHistory', ApprovalHistoryState>

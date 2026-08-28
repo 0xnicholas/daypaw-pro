@@ -1,6 +1,8 @@
 /** NewTaskStore: roster load (healthy filter, default selection, latest-wins), submit guards, and the create→open→prompt sequence. */
 import { describe, expect, it, vi } from 'vitest'
-import { createSnapshotStore, type SessionListState, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { NewTaskStore, type NewTaskBinding, type NewTaskSessions } from '../src/client/new-task-store.ts'
 import { FakeTaskApi, fail, ok, preset } from './fake-task-api.client.ts'
@@ -84,7 +86,7 @@ describe('NewTaskStore roster', () => {
     api.onPresetList = () => parked as never
     const store = new NewTaskStore(api, sessionsBench().sessions)
     const stale = store.load()
-    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('fresh')], authorable: false, hasDocument: false }))
+    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('fresh')], authorable: false }))
     await store.load()
     release(ok({ presets: [preset('stale')], authorable: false, hasDocument: false }))
     await stale
@@ -100,7 +102,7 @@ describe('NewTaskStore roster', () => {
     api.onPresetList = () => parked as never
     const store = new NewTaskStore(api, sessionsBench().sessions)
     const stale = store.load()
-    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('fresh')], authorable: false, hasDocument: false }))
+    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('fresh')], authorable: false }))
     await store.load()
     reject(new Error('late failure'))
     await stale
@@ -111,7 +113,7 @@ describe('NewTaskStore roster', () => {
 describe('NewTaskStore submit', () => {
   async function submittingBench() {
     const api = new FakeTaskApi()
-    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha', { isDefault: true })], authorable: false, hasDocument: false }))
+    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha', { isDefault: true })], authorable: false }))
     const bench = sessionsBench()
     const store = await readyStore(api, bench.sessions)
     store.setText('  写一首诗  ')
@@ -123,8 +125,9 @@ describe('NewTaskStore submit', () => {
     bench.listSession('fx-new' as SessionId)
     const id = await store.submit()
     expect(id).toBe('fx-new')
-    // The create payload carries the picked preset; the prompt carries the trimmed text.
-    expect(api.callsOf('session.create')).toEqual([{ agentPreset: 'alpha' }])
+    // Create carries no payload; the picked preset rides agentPresets.select; the prompt carries the trimmed text.
+    expect(api.callsOf('session.create')).toEqual([undefined])
+    expect(api.callsOf('agentPresets.select')).toEqual([{ sessionId: 'fx-new', agentPreset: 'alpha' }])
     expect(bench.opened).toEqual(['fx-new'])
     expect(bench.prompt).toHaveBeenCalledWith([{ type: 'text', text: '写一首诗' }], 'queue')
     const state = store.store.getSnapshot()
@@ -155,12 +158,13 @@ describe('NewTaskStore submit', () => {
     store.setText('做点什么')
     bench.listSession('fx-new' as SessionId)
     expect(await store.submit()).toBe('fx-new')
-    expect(api.callsOf('session.create')).toEqual([{}])
+    expect(api.callsOf('session.create')).toEqual([undefined])
+    expect(api.callsOf('agentPresets.select')).toEqual([])
   })
 
   it('surfaces a create business failure inline and keeps the draft', async () => {
     const { api, bench, store } = await submittingBench()
-    api.onCreate = () => Promise.resolve(fail('preset unknown'))
+    api.onCreateSession = () => Promise.resolve(fail('create down'))
     expect(await store.submit()).toBeUndefined()
     const state = store.store.getSnapshot()
     expect(state.submitting).toBe(false)
@@ -173,14 +177,14 @@ describe('NewTaskStore submit', () => {
     const { api, store } = await submittingBench()
     // Transport-layer rejections can carry arbitrary values.
     // oxlint-disable-next-line typescript/prefer-promise-reject-errors
-    api.onCreate = () => Promise.reject('wire exploded')
+    api.onCreateSession = () => Promise.reject('wire exploded')
     expect(await store.submit()).toBeUndefined()
     expect(store.store.getSnapshot().submitFailed).toBe(true)
   })
 
   it('surfaces a prompt failure inline after the session opened', async () => {
     const api = new FakeTaskApi()
-    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha')], authorable: false, hasDocument: false }))
+    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha')], authorable: false }))
     const bench = sessionsBench({ promptOk: false })
     const store = await readyStore(api, bench.sessions)
     store.setText('x')
@@ -192,7 +196,7 @@ describe('NewTaskStore submit', () => {
 
   it('flags an inline failure when the created session resolves no binding', async () => {
     const api = new FakeTaskApi()
-    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha')], authorable: false, hasDocument: false }))
+    api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha')], authorable: false }))
     const bench = sessionsBench({ binding: false })
     const store = await readyStore(api, bench.sessions)
     store.setText('x')
@@ -216,10 +220,10 @@ describe('NewTaskStore submit', () => {
   it('rejects a second submit while one is in flight', async () => {
     const { api, bench, store } = await submittingBench()
     let release!: (value: unknown) => void
-    api.onCreate = () => new Promise((resolve) => { release = resolve }) as never
+    api.onCreateSession = () => new Promise((resolve) => { release = resolve }) as never
     const first = store.submit()
     expect(await store.submit()).toBeUndefined()
-    release(ok({ sessionId: 'fx-new' as SessionId }))
+    release(ok('fx-new' as SessionId))
     bench.listSession('fx-new' as SessionId)
     expect(await first).toBe('fx-new')
     expect(api.callsOf('session.create')).toHaveLength(1)

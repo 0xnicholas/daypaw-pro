@@ -11,7 +11,8 @@
  * registered). A session-less workflow-run selection renders the run
  * placeholder (its progress lives in the detail column).
  */
-import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'conversation' entry) in so
 // PropsRuntime<'conversation'> resolves.
@@ -66,9 +67,13 @@ const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
  * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the workspace element tree.
  */
-export function WorkspaceSwitch({ useSelection, useBoard, useSessions, select, renderSlot, t }: WorkspaceSwitchProps) {
+export function WorkspaceSwitch({
+  useSelection, useBoard, useSessions, useSessionPendingInteraction,
+  select, renderSlot, t,
+}: WorkspaceSwitchProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
+  const pending = useSessionPendingInteraction(s => s)
   const runs = useBoard(s => s.runs)
   const openTask = (sessionId: SessionId): void => { select({ kind: 'task', sessionId }) }
 
@@ -125,7 +130,7 @@ export function WorkspaceSwitch({ useSelection, useBoard, useSessions, select, r
       <header className={css.header}><h1 className={css.title}>{t(GROUP_TITLE[selection.group])}</h1></header>
       {renderSlot('inbox.workspace.banner', { openSettings: () => { select({ kind: 'settings' }) } })}
       {renderSlot('inbox.workspace.tasks', {
-        rows: projectInboxBoard(list, runs).rows[selection.group],
+        rows: projectInboxBoard(list, runs, pending).rows[selection.group],
         now: Date.now(),
         openTask,
         openRun: (runId: string): void => { select({ kind: 'run', runId }) },

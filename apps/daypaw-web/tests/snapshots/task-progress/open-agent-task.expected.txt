@@ -36,8 +36,8 @@ Assistant output renders **strong text**, *emphasis*, and `inline code`.
 ```ts
 const markdown = true
 ```
-user=问题 60：fx-bash 样本。
-user=问题 61：fx-write 样本。
+user=问题 60：bash 样本。
+user=问题 61：write 样本。
 user=问题 62：edit 样本。
 user=问题 63：write 样本。
 user=问题 64：edit 样本。

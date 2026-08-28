@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-Issue #58（spec 05 §2/§3/§6，壳板块增量 ③）把审批待办从 [IA 骨架](2026-08-24-daypaw-shell-ia-skeleton.md)的占位零分组变成壳的安全面：pending 审批须跨任务聚合进「等待你确认」分组并联动计数，选中任务的对话须置顶即时卡（「<任务名> 请你确认：<业务动作摘要>」+ 同意/拒绝，拒绝可附言回对话，原始命令收详情展开），冷启动须恢复待办。#44 裁决了 v1 后端面：只用 dsh 交互式审批面——apiproxy pending 聚合 + mux 重放——pending unary 查询不做，因此板块展示的每个事实都来自既有 wire。
+Issue #58（spec 05 §2/§3/§6，壳板块增量 ③）把审批待办从 [IA 骨架](2026-08-24-daypaw-shell-ia-skeleton.zh.md)的占位零分组变成壳的安全面：pending 审批须跨任务聚合进「等待你确认」分组并联动计数，选中任务的对话须置顶即时卡（「<任务名> 请你确认：<业务动作摘要>」+ 同意/拒绝，拒绝可附言回对话，原始命令收详情展开），冷启动须恢复待办。#44 裁决了 v1 后端面：只用 dsh 交互式审批面——apiproxy pending 聚合 + mux 重放——pending unary 查询不做，因此板块展示的每个事实都来自既有 wire。
 
 ## Decision
 
@@ -25,7 +25,7 @@ Issue #58（spec 05 §2/§3/§6，壳板块增量 ③）把审批待办从 [IA �
 
 ## Consequences
 
-板块仅凭重放填充，两种作答都可观察闭环（卡片消失、徽章清除、行回落状态分组、拒绝附言落为对话行），整个面都跑在上游既有 wire 上——fork 的增量是投影规则、卡片、附言路径与 fixture/文案接线。代价：一处上游 fixture 改动及其 spec（CORE_TOUCHES 行）、fx-gamma 的 running 翻转改为显式开启（`FixtureOptions.flipGammaRunning`，环境翻转与任何把 sessions 列表采进 golden 的车道竞态）、task-progress 快照车道改经等待你确认分组进入 fx-alpha 对话（board golden 刷新为新启动看板）。[任务进度 note](2026-08-26-daypaw-task-progress.md)的挂账项——占位零分组——在此了结；其 workflow-run 保留意见仍在（无 session 的 run 永远得不到徽章，workflow run 的审批在 run 作用域审批通道存在之前不上面板）。
+板块仅凭重放填充，两种作答都可观察闭环（卡片消失、徽章清除、行回落状态分组、拒绝附言落为对话行），整个面都跑在上游既有 wire 上——fork 的增量是投影规则、卡片、附言路径与 fixture/文案接线。代价：一处上游 fixture 改动及其 spec（CORE_TOUCHES 行）、fx-gamma 的 running 翻转改为显式开启（`FixtureOptions.flipGammaRunning`，环境翻转与任何把 sessions 列表采进 golden 的车道竞态）、task-progress 快照车道改经等待你确认分组进入 fx-alpha 对话（board golden 刷新为新启动看板）。[任务进度 note](2026-08-26-daypaw-task-progress.zh.md)的挂账项——占位零分组——在此了结；其 workflow-run 保留意见仍在（无 session 的 run 永远得不到徽章，workflow run 的审批在 run 作用域审批通道存在之前不上面板）。
 
 ## Testing
 

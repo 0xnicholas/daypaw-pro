@@ -1,6 +1,17 @@
+---
+description: "The daypaw agent catalog page, a fork client UI plugin occupying the 'inbox.agents.page' child slot declares on its workspace registrati"
+kind: "package-reference"
+---
+
 # @daypaw/ui-agents
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The daypaw agent catalog page, a fork client UI plugin occupying the `'inbox.agents.page'` child slot [`@daypaw/ui-inbox`](../ui-inbox/README.md) declares on its workspace registration. It implements the catalog half of [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) §3/§5: the card grid shows each agent's business name and description, and a card's detail view carries the registry identity `name@version`. v1 offers no version operations — the identity line is information, not a control.
 
@@ -31,3 +42,5 @@ None; this package neither assembles nor sends a provider request.
 - **The catalog and the new-task dialog read different rosters** — the catalog lists engine definitions while the dialog picks the preset a session composes from; unifying them waits on the browser-side run-start surface (the definition's zod input contract does not cross the wire).
 - **No version operations** — the detail view shows `name@version` as identity only; version selection or switching is deferred (spec 05 §2: no dead affordances in v1).
 - **No registry-change invalidation** — the roster loads once per mount; definitions bound after the first load appear on the next page open, and there is no pushed invalidation channel for the registry.
+
+### Dev Note

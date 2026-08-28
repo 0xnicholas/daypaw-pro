@@ -1,21 +1,19 @@
 /** daypaw agents apply: the ui-inbox catalog seat, the dictionaries, the shared catalog store, and teardown. */
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '../src/client/index.ts'
 import { apply as applyNodeHalf } from '../src/index.ts'
 import { AgentsPage, type AgentsPageInjected } from '../src/client/agents-page.tsx'
 
 // The locale service reads its initial locale from the browser; these specs
 // assert the shipped Chinese copy, so they state the browser they assume.
-usePinnedBrowserLanguages('zh-CN')
-
 async function bench() {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
+  locale.setLocale('zh')
   ctx.provide('locale', locale)
   // The catalog store reads connection.rpc only when a load runs; the apply
   // assertions never load, so a shape stub suffices.

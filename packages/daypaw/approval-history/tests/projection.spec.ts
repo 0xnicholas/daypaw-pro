@@ -41,7 +41,7 @@ function fold(events: readonly SessionEvent[]): ApprovalHistoryProjection {
     (folded, event) => approvalHistoryProjectionDefinition.apply(folded, event),
     approvalHistoryProjectionDefinition.init(),
   )
-  return approvalHistoryProjectionDefinition.view(state)
+  return approvalHistoryProjectionDefinition.wire.view(state)
 }
 
 describe('approvalHistory fold', () => {

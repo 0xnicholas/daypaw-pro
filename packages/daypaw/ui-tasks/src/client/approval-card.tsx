@@ -12,30 +12,25 @@
  */
 import { useState } from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PendingInteraction } from '@deepseek-ai/dsh-client-runtime/client'
+import type { PendingApproval } from '@deepseek-ai/dsh-client-ui-approval/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import css from './approval-card.module.css'
 
-/** One pending approval carrier, narrowed from the session's pending list. */
-export type PendingApprovalWait = Extract<PendingInteraction, { kind: 'approval' }>
+/** One pending approval carrier, narrowed from the session's pending-interaction roster. */
+export type PendingApprovalWait = PendingApproval
 
 /** The client-answerable outcomes (cancelled/unavailable are host-side settlements). */
 type ApprovalAnswer = 'allowed-once' | 'rejected'
 
 /**
- * Send the domain answer over the carrier: ok-shell with the audit
- * correlation echoed. A non-accepted receipt (late/duplicate answer) throws
- * so the card can re-arm.
+ * Send the domain answer over the carrier. A settled wait throws so the card
+ * can re-arm; settlement (the roster removing the wait) is frame-driven.
  * @param wait - the pending approval carrier.
  * @param outcome - the operator's decision.
- * @returns nothing; settlement arrives as the resolved frame.
+ * @returns nothing; settlement arrives as the roster update.
  */
 async function answerApproval(wait: PendingApprovalWait, outcome: ApprovalAnswer): Promise<void> {
-  const receipt = await wait.respond({
-    ok: true,
-    value: { sessionId: wait.sessionId, approvalId: wait.payload.approvalId, outcome },
-  })
-  if (!receipt.accepted) throw new Error(`approval answer not accepted: ${receipt.reason}`)
+  await wait.answer(outcome)
 }
 
 /**
@@ -106,7 +101,7 @@ export function ApprovalCard({ wait, taskTitle, callArgs, sendNote, t }: Approva
   return (
     <div className={css.card} data-approval-card="">
       <p className={css.headline}>
-        {t('approval.headline', { task: taskTitle, summary: wait.payload.reason ?? t('approval.generic') })}
+        {t('approval.headline', { task: taskTitle, summary: wait.reason ?? t('approval.generic') })}
       </p>
       {detail !== undefined && (
         <details className={css.details}>

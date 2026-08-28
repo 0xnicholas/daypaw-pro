@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /** SettingsPage: the four-tab rail — 通用 locale row, 凭据 inline editor, 模型 slot delegation, 关于 diagnostics copy. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 import { SettingsPage, type SettingsPageProps } from '../src/client/settings-page.tsx'
 import { SettingsTabController } from '../src/client/tab-store.ts'
@@ -10,7 +10,7 @@ import { createThemeRowStore } from '../src/client/theme-row.ts'
 import { CredentialsStore } from '../src/client/provider-keys.ts'
 import { AboutStore } from '../src/client/about-store.ts'
 import { zh } from '../src/client/locales.ts'
-import { FakeHostApi, fail, ok, providerView } from './fake-host-api.client.ts'
+import { FakeHostApi, fail, ok } from './fake-host-api.client.ts'
 
 afterEach(cleanup)
 
@@ -35,8 +35,8 @@ interface SectionCall {
 
 function mountPage(api: FakeHostApi) {
   const tabs = new SettingsTabController()
-  const credentials = new CredentialsStore(api)
-  const about = new AboutStore(api)
+  const credentials = new CredentialsStore({ credentials: api.credentials, llm: api.llm })
+  const about = new AboutStore(api.session, { list: { getSnapshot: () => ({ ids: [], byId: {}, current: undefined, phase: 'ready' as const, subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined }), subscribe: () => () => {} } })
   const themeRow = createThemeRowStore({ preference: 'light' })
   const setLocale = vi.fn()
   const setTheme = vi.fn()
@@ -51,7 +51,8 @@ function mountPage(api: FakeHostApi) {
       sessionId={undefined}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}
+      useSessionPendingInteraction={neverHook}
       close={close}
       renderSlot={renderSlot}
       useTab={bindSnapshotSelector(tabs.store)}
@@ -72,10 +73,8 @@ function mountPage(api: FakeHostApi) {
 
 /** Program one provider whose credential answer the case controls. */
 function programProvider(api: FakeHostApi, configured: boolean, writable = true): void {
-  api.onProviders = () => Promise.resolve(ok({ providers: [providerView('deepseek', 'DeepSeek')] }))
-  api.onDescribeCredentials = () => Promise.resolve(ok({
-    credentials: configured ? { DEEPSEEK_API_KEY: { configured: true, writable } } : {},
-  }))
+  api.onListProviders = () => Promise.resolve(ok([{ id: 'deepseek', name: 'DeepSeek' }]))
+  api.onDescribeCredentials = () => Promise.resolve(ok(configured ? { DEEPSEEK_API_KEY: { configured: true, writable } } : {}))
 }
 
 /** Open the 凭据 tab and wait for its first load to land. */
@@ -218,7 +217,7 @@ describe('SettingsPage 凭据 tab', () => {
 
   it('shows the load failure with a retry that reloads', async () => {
     const api = new FakeHostApi()
-    api.onProviders = () => Promise.resolve(fail('directory down'))
+    api.onListProviders = () => Promise.resolve(fail('directory down'))
     mountPage(api)
     fireEvent.click(screen.getByRole('button', { name: '凭据' }))
     await screen.findByRole('alert')
@@ -243,8 +242,9 @@ describe('SettingsPage 模型 tab', () => {
 
 describe('SettingsPage 关于 tab', () => {
   function programHost(api: FakeHostApi, extra: { provider?: string; model?: string } = {}): void {
-    api.onHostDescribe = () => Promise.resolve(ok({
-      version: '1.2.3', cwd: '/work', attachedSessions: 0, canOpenPath: true, ...extra,
+    api.onModelCatalog = () => Promise.resolve(ok({
+      default: { provider: extra.provider ?? 'deepseek', model: extra.model ?? 'deepseek-chat' },
+      routableProviders: [], groups: [], failures: [],
     }))
   }
 
@@ -260,32 +260,13 @@ describe('SettingsPage 关于 tab', () => {
     const clipboard = stubClipboard(() => Promise.resolve())
     mountPage(api)
     fireEvent.click(screen.getByRole('button', { name: '关于' }))
-    await screen.findByText('1.2.3')
-    expect(screen.getByText('/work')).toBeTruthy()
+    await screen.findByText('0')
     expect(screen.getByText('deepseek / deepseek-chat')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '复制诊断信息' }))
     await screen.findByRole('button', { name: '已复制' })
     expect(clipboard.writeText).toHaveBeenCalledWith(
-      'version: 1.2.3\ncwd: /work\nprovider: deepseek\nmodel: deepseek-chat\nattachedSessions: 0',
+      'provider: deepseek\nmodel: deepseek-chat\nattachedSessions: 0',
     )
-  })
-
-  it('names the provider alone when the host names no model, and omits the model row without a provider', async () => {
-    const api = new FakeHostApi()
-    programHost(api, { provider: 'deepseek' })
-    mountPage(api)
-    fireEvent.click(screen.getByRole('button', { name: '关于' }))
-    await screen.findByText('deepseek')
-    expect(screen.queryByText('deepseek / deepseek-chat')).toBeNull()
-    cleanup()
-    const second = new FakeHostApi()
-    programHost(second)
-    const { view } = mountPage(second)
-    fireEvent.click(screen.getByRole('button', { name: '关于' }))
-    await screen.findByText('1.2.3')
-    // The tab rail's 模型 button always exists; the about section must not gain a model row.
-    const section = view.container.querySelector('section')!
-    expect(within(section).queryByText('模型')).toBeNull()
   })
 
   it('reports a clipboard rejection', async () => {
@@ -294,7 +275,7 @@ describe('SettingsPage 关于 tab', () => {
     stubClipboard(() => Promise.reject(new Error('denied')))
     mountPage(api)
     fireEvent.click(screen.getByRole('button', { name: '关于' }))
-    await screen.findByText('1.2.3')
+    await screen.findByText('0')
     fireEvent.click(screen.getByRole('button', { name: '复制诊断信息' }))
     await screen.findByRole('alert')
     expect(screen.getByRole('alert').textContent).toBe('复制失败')
@@ -302,14 +283,14 @@ describe('SettingsPage 关于 tab', () => {
 
   it('shows the load failure with a retry', async () => {
     const api = new FakeHostApi()
-    api.onHostDescribe = () => Promise.resolve(fail('describe down'))
+    api.onModelCatalog = () => Promise.resolve(fail('catalog down'))
     mountPage(api)
     fireEvent.click(screen.getByRole('button', { name: '关于' }))
     await screen.findByRole('alert')
     expect(screen.getByRole('alert').textContent).toContain('诊断信息加载失败')
     programHost(api)
     fireEvent.click(screen.getByRole('button', { name: '重试' }))
-    await screen.findByText('1.2.3')
+    await screen.findByText('0')
   })
 
   it('renders the failure row even when the error text is absent', async () => {

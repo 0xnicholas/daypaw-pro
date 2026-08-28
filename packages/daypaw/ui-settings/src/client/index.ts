@@ -4,16 +4,18 @@
  * upstream 'settings.section' child slot so the dormant ui-settings-models
  * section wakes — plus the first-run API-key banner in
  * 'inbox.workspace.banner'. Credential/host/preset facts come through the
- * connection wire face; invalidations ride the forwarded `credentials/updated`
+ * Client Remote namespaces; invalidations ride the forwarded `credentials/reference-updated`
  * event and `connection/reset`.
  * Export discipline: packages/client/AGENTS.md.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the SlotRegistry service merge (ctx.slots).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the ctx.remote merge and the forwarded-event key face
-// (credentials/updated rides the allowlist) into this program.
+// (credentials/reference-updated rides the allowlist) into this program.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls ui-conversation's Context merge (ctx.get('conversation')
 // .blocks — the composer-block face this plugin pushes into).
@@ -60,7 +62,10 @@ const NS = 'daypaw-settings'
  * has no composer yet, so the input block is lazy wiring. `theme` backs the
  * General tab's preference row (light/dark/system, spec 05 §7).
  */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'theme']
+export const inject = [
+  'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.session', 'remote.agentPresets',
+  'sessions', 'theme',
+]
 
 /**
  * Register the dictionaries, the settings page occupant, and the first-run
@@ -70,12 +75,16 @@ export const inject = ['slots', 'locale', 'connection', 'remote', 'theme']
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'daypaw-ui-settings: dictionaries')
 
-  const connection = ctx.get('connection') as ConnectionHandle
+  const remote = ctx.remote
   const t = ctx.locale.bind(NS)
   const tabs = new SettingsTabController()
-  const credentials = new CredentialsStore(connection.api)
-  const about = new AboutStore(connection.api)
-  const card = new ApiKeyCardStore(connection.api)
+  const credentials = new CredentialsStore({ credentials: remote.credentials, llm: remote.llm })
+  const about = new AboutStore(remote.session, ctx.sessions)
+  const card = new ApiKeyCardStore({
+    agentPresets: remote.agentPresets,
+    credentials: remote.credentials,
+    session: remote.session,
+  })
   // The theme row mirror: seeded at apply, then advanced by every service
   // publish (preference switch, registry change, or an OS flip under
   // `system`).
@@ -92,7 +101,7 @@ export function apply(ctx: ClientContext): void {
       void card.load()
     }
     const disposers = [
-      ctx.remote.$on('credentials/updated', refresh),
+      ctx.remote.$on('credentials/reference-updated', refresh),
       ctx.on('connection/reset', refresh),
     ]
     return () => { for (const dispose of disposers) dispose() }

@@ -1,6 +1,17 @@
+---
+description: "The daypaw task surfaces, a fork client UI plugin occupying the four child slots declares on its nav, workspace, and detail registration"
+kind: "package-reference"
+---
+
 # @daypaw/ui-tasks
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The daypaw task surfaces, a fork client UI plugin occupying the four child slots [`@daypaw/ui-inbox`](../ui-inbox/README.md) declares on its nav, workspace, and detail registrations: the new-task dialog, one inbox group's task list, the selected task's business-language conversation view, and the selected task's detail body. It implements the task half of [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) — a task is the product word for a session or a top-level durable run, and this surface keeps run/session/journal vocabulary off the screen. Facts come through the connection wire face (`agentPresets.list`, `sessions.create`) and the sessions service (list projection, `open`, `binding`); the host stays the single fact source.
 
@@ -34,3 +45,5 @@ None; this package neither assembles nor sends a provider request.
 - **追问 is a disabled seat** — the follow-up input renders 追问即将上线 until the follow-up ticket lands.
 - **The conversation failure marker has no inline retry** — a terminal turn error renders 出错了 with no recovery affordance there; failed runs retry from the detail pane's header (ui-inbox).
 - **Workflow-run selections leave session-bound sections empty** — a workflow run has no session, so under the stale-seat guard its 进度 falls back to the journal step timeline and 审批历史 renders its empty state.
+
+### Dev Note

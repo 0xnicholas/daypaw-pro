@@ -39,4 +39,9 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     /** Ordered approval audit entries folded from `approval/asked` + `approval/decided`; see {@link ApprovalHistoryEntry}. */
     approvalHistory: ApprovalHistoryProjection
   }
+
+  interface SessionProjectionStateMap {
+    /** Fold state: the entries themselves in log order (plain JSON; the state IS the value). */
+    approvalHistory: ApprovalHistoryProjection
+  }
 }

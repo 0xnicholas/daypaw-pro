@@ -1,8 +1,5 @@
-/** Test-local programmable wire face: the four domains the settings page and first-run banner read or write. */
-import type {
-  ConfigurableProviderView, CredentialView, IApiClient, RpcResponse,
-} from '@deepseek-ai/dsh-api-remotes/client'
-import type { HostDescription } from '@deepseek-ai/dsh-client-connection/client'
+/** Test-local programmable wire face: the Client Remote namespaces the settings page and first-run banner read or write. */
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 
 /** Test-held settlement: the case decides when an RPC lands (generation-guard material). */
 export interface Deferred<T> {
@@ -25,97 +22,109 @@ export function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
-let nextRpc = 0
+/** Local structural Remote result envelope (bridged onto the generated slices by assertion). */
+export type Result<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string; details: unknown } }
 
 /**
- * A successful unary response.
+ * A successful Remote result.
  * @param value - the business value.
- * @returns the response envelope.
+ * @returns the result envelope.
  */
-export function ok<T>(value: T): RpcResponse<T> {
-  // No value import of RpcId: a tests-glob file lives in the host tsconfig
-  // program, and a wire-face value import would drag the client source tree in.
-  return { rpcId: `fake-${nextRpc++}` as never, result: { ok: true, value } }
+export function ok<T>(value: T): Result<T> {
+  return { ok: true, value }
 }
 
 /**
- * A business-failure unary response (the host answered; the answer is no).
+ * A business-failure Remote result (the host answered; the answer is no).
  * @param message - the failure text the surface must show.
- * @returns the response envelope.
+ * @returns the result envelope.
  */
-export function fail<T>(message: string): RpcResponse<T> {
-  return { rpcId: `fake-${nextRpc++}` as never, result: { ok: false, error: { code: 'internal', message, details: {} } } }
+export function fail<T>(message: string): Result<T> {
+  return { ok: false, error: { code: 'internal', message, details: {} } }
 }
+
+/** One preset row the roster carries. */
+export interface FakePresetRow {
+  id: string
+  trust: 'system' | 'user'
+  isDefault: boolean
+  name?: string
+  broken?: string
+}
+
+/** One provider directory row. */
+export interface FakeProviderInfo {
+  id: string
+  name: string
+}
+
+/** One credential state row. */
+export interface FakeCredentialInfo {
+  configured: boolean
+  writable: boolean
+}
+
+/** The model-catalog snapshot (the About tab reads its default selection). */
+export interface FakeModelCatalog {
+  default: { provider: string; model: string }
+  routableProviders: readonly string[]
+  groups: readonly { id: string; name: string; models: readonly { id: string; name: string }[] }[]
+  failures: readonly { id: string; name: string; message: string }[]
+}
+
+type PresetsNamespace = Pick<ClientRemote['agentPresets'], 'list' | 'select'>
+type CredentialsNamespace = Pick<ClientRemote['credentials'], 'describe' | 'set' | 'unset'>
+type LlmNamespace = Pick<ClientRemote['llm'], 'listProviders'>
+type SessionNamespace = Pick<ClientRemote['session'], 'modelCatalog'>
 
 /**
- * One configurable-provider directory row with the fields this page never reads defaulted.
- * @param provider - provider route id.
- * @param displayName - human-readable name (defaults to the route id).
- * @returns the wire row.
+ * Programmable fake covering the agentPresets/credentials/llm/session Remote
+ * namespaces the settings stores consume. Namespace members are typed as the
+ * real generated slices (assignability is the point under test); each routes
+ * through a programmable handler returning a local structural value, with the
+ * envelope bridged by assertion — the generated result types are nominal over
+ * identical shapes.
  */
-export function providerView(provider: string, displayName = provider): ConfigurableProviderView {
-  return { provider, displayName, settingsNs: 'llm', settingsPath: [], active: true }
-}
-
-/** The response value of agentPreset.list, derived from the wire face (the entry type is not re-exported). */
-type PresetListValue = Awaited<ReturnType<IApiClient['agentPresets']['list']>> extends RpcResponse<infer V> ? V : never
-
-// Parameter annotations below are local structural types on purpose (the CI
-// lint lane runs without built artifacts, where IApiClient's wire types
-// resolve to any and inferred params trip no-unsafe-argument) — the connection
-// package's FakeApiClient sets the precedent. The unused-domain handlers exist
-// so the fake satisfies the full domain interfaces the stores type against.
-/** Programmable fake covering the agentPresets/host/credentials/llm domains the stores consume. */
-export class FakeHostApi implements Pick<IApiClient, 'agentPresets' | 'host' | 'credentials' | 'llm'> {
+export class FakeHostApi {
   /** Chronological call record: [method, payload]. */
   readonly calls: { method: string; payload: unknown }[] = []
 
-  onPresetList: (payload: unknown) => Promise<RpcResponse<PresetListValue>> =
-    () => Promise.resolve(ok({ presets: [], authorable: false, hasDocument: false }))
-  onHostDescribe: (payload: unknown) => Promise<RpcResponse<HostDescription>> =
-    () => Promise.resolve(ok<HostDescription>({ version: '0-fake', cwd: '/f', attachedSessions: 0, canOpenPath: true }))
-  onDescribeCredentials: (payload: { refs: string[] }) => Promise<RpcResponse<{ credentials: Record<string, CredentialView> }>> =
-    () => Promise.resolve(ok({ credentials: {} }))
-  onSet: (payload: { ref: string; value: string }) => Promise<RpcResponse<object>> =
+  onPresetList: () => Promise<Result<{ presets: readonly FakePresetRow[]; authorable: boolean }>> =
+    () => Promise.resolve(ok({ presets: [], authorable: false }))
+  onModelCatalog: () => Promise<Result<FakeModelCatalog>> =
+    () => Promise.resolve(ok({ default: { provider: 'deepseek', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [] }))
+  onDescribeCredentials: (refs: readonly string[]) => Promise<Result<Record<string, FakeCredentialInfo>>> =
     () => Promise.resolve(ok({}))
-  onUnset: (payload: { ref: string }) => Promise<RpcResponse<object>> =
-    () => Promise.resolve(ok({}))
-  onProviders: (payload: unknown) => Promise<RpcResponse<{ providers: ConfigurableProviderView[] }>> =
-    () => Promise.resolve(ok({ providers: [] }))
+  onSet: (ref: string, value: string) => Promise<Result<void>> =
+    () => Promise.resolve(ok(undefined))
+  onUnset: (ref: string) => Promise<Result<void>> =
+    () => Promise.resolve(ok(undefined))
+  onListProviders: () => Promise<Result<readonly FakeProviderInfo[]>> =
+    () => Promise.resolve(ok([]))
 
-  readonly agentPresets: Pick<IApiClient, 'agentPresets'>['agentPresets'] = {
-    list: (payload: unknown) => this.record('agentPreset.list', payload, this.onPresetList(payload)),
-    select: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.select', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset }))),
-    read: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.read', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset, trust: 'user' as const, content: '' }))),
-    copy: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.copy', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset }))),
-    openDocument: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.openDocument', payload, Promise.resolve(ok({ opened: true as const }))),
-    remove: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.remove', payload, Promise.resolve(ok({}))),
+  readonly agentPresets: PresetsNamespace = {
+    list: (() => this.record('agentPresets.list', undefined, this.onPresetList())) as PresetsNamespace['list'],
+    select: ((sessionId: string) =>
+      this.record('agentPresets.select', { sessionId }, Promise.resolve(ok({})))) as PresetsNamespace['select'],
   }
 
-  readonly host: Pick<IApiClient, 'host'>['host'] = {
-    describe: (payload: unknown) => this.record('host.describe', payload, this.onHostDescribe(payload)),
-    pickDirectory: (payload: unknown) => this.record('host.pickDirectory', payload, Promise.resolve(ok({ path: null }))),
-    listDirectory: (payload: unknown) =>
-      this.record('host.listDirectory', payload, Promise.resolve(ok({ path: '/f', home: '/f', crumbs: [], entries: [], truncated: false }))),
-    createDirectory: (payload: unknown) => this.record('host.createDirectory', payload, Promise.resolve(ok({ path: '/f/new' }))),
-    openPath: (payload: unknown) => this.record('host.openPath', payload, Promise.resolve(ok({ opened: true as const }))),
+  readonly credentials: CredentialsNamespace = {
+    describe: ((refs: readonly string[]) =>
+      this.record('credentials.describe', [...refs], this.onDescribeCredentials([...refs]))) as CredentialsNamespace['describe'],
+    set: ((ref: string, value: string) =>
+      this.record('credentials.set', { ref, value }, this.onSet(ref, value))) as CredentialsNamespace['set'],
+    unset: ((ref: string) =>
+      this.record('credentials.unset', { ref }, this.onUnset(ref))) as CredentialsNamespace['unset'],
   }
 
-  readonly credentials: Pick<IApiClient, 'credentials'>['credentials'] = {
-    describe: (payload: { refs: string[] }) => this.record('credentials.describe', payload, this.onDescribeCredentials(payload)),
-    set: (payload: { ref: string; value: string }) => this.record('credentials.set', payload, this.onSet(payload)),
-    unset: (payload: { ref: string }) => this.record('credentials.unset', payload, this.onUnset(payload)),
+  readonly llm: LlmNamespace = {
+    listProviders: (() =>
+      this.record('llm.listProviders', undefined, this.onListProviders())) as LlmNamespace['listProviders'],
   }
 
-  readonly llm: Pick<IApiClient, 'llm'>['llm'] = {
-    providers: (payload: unknown) => this.record('llm.providers', payload, this.onProviders(payload)),
-    models: (payload: unknown) => this.record('llm.models', payload, Promise.resolve(ok({ groups: [], failures: [] }))),
-    discoverModels: (payload: unknown) => this.record('llm.discoverModels', payload, Promise.resolve(ok({ models: [] }))),
+  readonly session: SessionNamespace = {
+    modelCatalog: (() =>
+      this.record('session.modelCatalog', undefined, this.onModelCatalog())) as SessionNamespace['modelCatalog'],
   }
 
   /**

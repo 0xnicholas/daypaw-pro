@@ -1,6 +1,17 @@
+---
+description: "The durable execution engine (ctx.durable): run lifecycle, step-dedup re-drive, durable gates (ctx.waitFor), the steer channel for opted"
+kind: "package-reference"
+---
+
 # @daypaw/engine
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The durable execution engine (`ctx.durable`): run lifecycle, step-dedup re-drive, durable gates (`ctx.waitFor`), the steer channel for opted-in definitions, single-writer claims, and boot-scan revival over the [`@daypaw/store`](../store/README.md) ledger. Load it as a Cordis plugin; applications call it through the typed [`@daypaw/sdk`](../sdk/README.md) facade. Semantics: [spec ch.1](../../../docs/spec/01-durable-execution.md); walking-skeleton scope: [ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md).
 
@@ -65,3 +76,5 @@ None — the ledger is never part of a live request prefix.
 - **`RunOptions.meta` is not persisted** — the skeleton's `runs` table has no meta column; meta lives on the in-process handle only.
 - **Runtime invariant companion is a placeholder** — the core deliberately keeps no Cordis event stream to hook; the run/journal/promise state machines are asserted by the fault-injection suite at every append point (spec ch.1 §9).
 - **Not independently published** — the engine ships vendored inside the `@daypaw/sdk` tarball (ADR 0011); consumers import its faces through `@daypaw/sdk`.
+
+### Dev Note

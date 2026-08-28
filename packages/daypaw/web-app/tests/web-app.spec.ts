@@ -83,8 +83,18 @@ describe('web-app runtime glue', () => {
       },
     } as never)
     provideLoader(ctx)
+    // frontend-static injects the connection trust fence for its fallback
+    // seat; the fake serves the shell pages.
+    ctx.provide('connection', { authorizeIndex: () => true } as never)
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-    apply(ctx, new Config({ printUrl: true, surfaceContext: true, trustedHosts: ['lab.internal'] }))
+    // Run the glue as a real plugin fiber: its nested frontend-static and
+    // system-prompt fibers activate under it (direct apply leaves nested
+    // fibers unactivated).
+    const glue = ctx.plugin({
+      name: 'web-app',
+      apply: (inner) => { apply(inner, new Config({ printUrl: true, surfaceContext: true, trustedHosts: ['lab.internal'] })) },
+    })
+    await glue
     await ctx.plugin(SystemPrompt, { persona: '' })
     // Settle the injected registrations.
     await new Promise(resolve => setTimeout(resolve, 0))

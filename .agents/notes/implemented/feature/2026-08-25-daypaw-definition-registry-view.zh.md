@@ -11,7 +11,7 @@ Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目�
 ## Decision
 
 - **`EngineDefinition.display?: DefinitionDisplay`** —— 定义记录增加可选的展示元数据载体（`title` + `description`，即 #40 的下限集合）。它只是元数据：引擎执行从不读它，引擎层词汇不变。
-- **`DurableEngineCore.listDefinitions()`** —— 按登记顺序枚举注册表，返回全新的 `{ kind, name, version, display }` 拷贝（`display` 对象也拷贝），调用方无法经结果够到私有 `Map` 或表内记录，body 永不离开 core。与[查询面](2026-08-25-daypaw-engine-query-face.md)一致，该读不带 disposal 断言：dispose 后可读对齐 `handle.status()` 先例。
+- **`DurableEngineCore.listDefinitions()`** —— 按登记顺序枚举注册表，返回全新的 `{ kind, name, version, display }` 拷贝（`display` 对象也拷贝），调用方无法经结果够到私有 `Map` 或表内记录，body 永不离开 core。与[查询面](2026-08-25-daypaw-engine-query-face.zh.md)一致，该读不带 disposal 断言：dispose 后可读对齐 `handle.status()` 先例。
 - **`ctx.durable.listDefinitions()`** —— 服务层异步包装，与其他方法一样生成进 cordis catalog。`DefinitionView` 与 `DefinitionDisplay` 落在 `core.ts` 注册表旁；catalog 生成器的 `TYPE_LINK_EXEMPTIONS` 把两者指向引擎 README。
 - **不落盘** —— 注册表在每次进程启动时由登记重建，展示元数据随进程内记录走，无需 ledger 列或迁移。
 
@@ -32,4 +32,4 @@ Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目�
 
 ## Deferred
 
-查询/读面的 SDK facade 镜像待库层消费方出现。配套的 `defineAgent` 侧已随 #52 落地：[defineAgent 展示字段](2026-08-25-daypaw-define-agent-display-fields.md)。
+查询/读面的 SDK facade 镜像待库层消费方出现。配套的 `defineAgent` 侧已随 #52 落地：[defineAgent 展示字段](2026-08-25-daypaw-define-agent-display-fields.zh.md)。

@@ -8,7 +8,7 @@
  * delegates the body to the 'inbox.detail.body' occupant; anything else falls
  * back to the empty state.
  */
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'details' entry) in so
 // PropsRuntime<'details'> resolves.

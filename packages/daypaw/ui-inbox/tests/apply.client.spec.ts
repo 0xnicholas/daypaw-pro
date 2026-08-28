@@ -1,7 +1,7 @@
 /** Apply wiring: three columns, shared selection, engine-fed board/detail stores, retry dispatch, shadowing, teardown. */
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { apply, inject } from '../src/client/index.ts'
@@ -46,7 +46,9 @@ async function bench(declare = true) {
   await ctx.plugin(SlotRegistry).await()
   const layout = { toggleSidebar: vi.fn() }
   ctx.provide('layout', layout)
-  ctx.provide('locale', new LocaleRuntime(ctx))
+  const locale = new LocaleRuntime(ctx)
+  locale.setLocale('zh')
+  ctx.provide('locale', locale)
   const sessions = { open: vi.fn() }
   ctx.provide('sessions', sessions as never)
   const rpc = fakeRpc()
@@ -120,7 +122,7 @@ describe('ui-inbox apply', () => {
     expect(b.slots.snapshot('inbox.settings.page')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
     expect(b.slots.snapshot('inbox.agents.page')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
     expect(b.slots.snapshot('inbox.workspace.tasks')).toMatchObject([{ kind: 'single', scope: 'root' }])
-    expect(b.slots.snapshot('inbox.workspace.conversation')).toMatchObject([{ kind: 'single', scope: 'session-maybe' }])
+    expect(b.slots.snapshot('inbox.workspace.conversation')).toMatchObject([{ kind: 'single', scope: 'session' }])
     // The detail occupant declares the detail body hole it renders.
     const detailEntry = b.slots.entriesOfSlot('details')[0]!
     expect(Object.keys(detailEntry.children ?? {})).toEqual(['inbox.detail.body'])

@@ -1,13 +1,14 @@
 /**
  * First-run API-key banner store: resolves the display name (the default
  * agent preset's `name`, falling back to its id) and the provider the host
- * runs with (`host.describe.provider`, falling back to deepseek), then checks
+ * defaults to (`session/modelCatalog`'s default selection, falling back to
+ * deepseek), then checks
  * whether that provider's conventional credential reference is configured.
  * The banner IS the completion ledger: configured = done, so there is no
- * persisted flag — a `credentials/updated` push re-runs the check.
+ * persisted flag — a `credentials/reference-updated` push re-runs the check.
  */
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { deriveKeyRef } from './provider-keys.ts'
 
 /** The provider route assumed while the host description names none. */
@@ -39,7 +40,11 @@ export class ApiKeyCardStore {
   /**
    * @param api - the wire face (agentPresets/host/credentials domains).
    */
-  constructor(private readonly api: Pick<IApiClient, 'agentPresets' | 'host' | 'credentials'>) {}
+  constructor(private readonly api: {
+    agentPresets: Pick<ClientRemote['agentPresets'], 'list'>
+    credentials: Pick<ClientRemote['credentials'], 'describe'>
+    session: Pick<ClientRemote['session'], 'modelCatalog'>
+  }) {}
 
   /**
    * Run the readiness check: default preset name + host provider, then the
@@ -52,19 +57,19 @@ export class ApiKeyCardStore {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading' })
     try {
-      const [presetsResponse, hostResponse] = await Promise.all([
-        this.api.agentPresets.list({}),
-        this.api.host.describe({}),
+      const [presetsResponse, catalogResponse] = await Promise.all([
+        this.api.agentPresets.list(),
+        this.api.session.modelCatalog(),
       ])
-      if (!presetsResponse.result.ok) throw new Error(presetsResponse.result.error.message)
-      if (!hostResponse.result.ok) throw new Error(hostResponse.result.error.message)
-      const defaultPreset = presetsResponse.result.value.presets.find(preset => preset.isDefault)
+      if (!presetsResponse.ok) throw new Error(presetsResponse.error.message)
+      if (!catalogResponse.ok) throw new Error(catalogResponse.error.message)
+      const defaultPreset = presetsResponse.value.presets.find(preset => preset.isDefault)
       const name = defaultPreset === undefined ? FALLBACK_AGENT_NAME : (defaultPreset.name ?? defaultPreset.id)
-      const provider = hostResponse.result.value.provider ?? FALLBACK_PROVIDER
+      const provider = catalogResponse.value.default.provider
       const ref = deriveKeyRef(provider)
-      const credentialsResponse = await this.api.credentials.describe({ refs: [ref] })
-      if (!credentialsResponse.result.ok) throw new Error(credentialsResponse.result.error.message)
-      const configured = credentialsResponse.result.value.credentials[ref]?.configured === true
+      const credentialsResponse = await this.api.credentials.describe([ref])
+      if (!credentialsResponse.ok) throw new Error(credentialsResponse.error.message)
+      const configured = credentialsResponse.value[ref]?.configured === true
       if (generation !== this.generation) return
       this.store.update((s) => {
         s.status = 'ready'

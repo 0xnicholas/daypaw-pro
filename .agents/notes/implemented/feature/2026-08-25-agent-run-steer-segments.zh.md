@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-spec 05 §5 后端增量第四项（issue #53）：对进行中 run 的追问追加进同一任务的对话流——不产生新任务，产出物只由终态 `output_json` 派生。此前 run 是单段的：启动时给输入，quiesce 时要么 `submit` 要么失败（[defineAgent 编译 note](../architecture/2026-08-22-define-agent-compilation.md) 的唤醒契约）。四个决策开放：追问在 ledger 里放哪、在跑的 body 何时消费、哪些定义种类可被 steer、opt-in 的 run 里不带 submit 的 turn 意味着什么。parked 等待的机械复用 [gate 原语](2026-08-23-durable-gate-waitfor.md) 的进程内直推 + `pollMs` 轮询先例，落在[走骨](../architecture/2026-08-19-daypaw-walking-skeleton.md) ledger 之上。
+spec 05 §5 后端增量第四项（issue #53）：对进行中 run 的追问追加进同一任务的对话流——不产生新任务，产出物只由终态 `output_json` 派生。此前 run 是单段的：启动时给输入，quiesce 时要么 `submit` 要么失败（[defineAgent 编译 note](../architecture/2026-08-22-define-agent-compilation.zh.md) 的唤醒契约）。四个决策开放：追问在 ledger 里放哪、在跑的 body 何时消费、哪些定义种类可被 steer、opt-in 的 run 里不带 submit 的 turn 意味着什么。parked 等待的机械复用 [gate 原语](2026-08-23-durable-gate-waitfor.zh.md) 的进程内直推 + `pollMs` 轮询先例，落在[走骨](../architecture/2026-08-19-daypaw-walking-skeleton.zh.md) ledger 之上。
 
 ## 决策
 

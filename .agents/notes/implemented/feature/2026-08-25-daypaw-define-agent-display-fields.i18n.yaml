@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-25-daypaw-define-agent-display-fields.md
 2026-08-25-daypaw-define-agent-display-fields.md: 4a9bbad57d0c2c84f3182c2e998effacc0751c67
-2026-08-25-daypaw-define-agent-display-fields.zh.md: 4f7cffd089595ddca0d10ae3c0bce6bb28ce2df0
+2026-08-25-daypaw-define-agent-display-fields.zh.md: 6e3784eb2b180a8de31baa0d3eec4bbb6d43cc33

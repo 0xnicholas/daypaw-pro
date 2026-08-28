@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** TaskList: projected rows with the agent label and 最近动态 line, click-through to openTask, and the empty state. */
+/** TaskList: projected rows with the title and 最近动态 line, click-through to openTask, and the empty state. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
@@ -23,17 +23,16 @@ function mountList(rows: TaskListProps['rows']) {
   render(
     <TaskList
       rows={rows} now={NOW} openTask={openTask} openRun={openRun}
-      useSessions={neverHook} useWorkspaces={neverHook} t={t}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook} t={t}
     />,
   )
   return { openTask, openRun }
 }
 
-const row = (title: string, updatedAt: number, agentPreset?: string): TaskListProps['rows'][number] => ({
+const row = (title: string, updatedAt: number): TaskListProps['rows'][number] => ({
   sessionId: title as SessionId,
   title,
   updatedAt,
-  ...(agentPreset === undefined ? {} : { agentPreset }),
 })
 
 /** A durable-run row fixture; `sessionless` drops the session identity (a workflow run). */
@@ -49,14 +48,13 @@ const runRow = (
 })
 
 describe('TaskList', () => {
-  it('renders each row with its title, agent, and 最近动态 line, opening the conversation on click', () => {
+  it('renders each row with its title and 最近动态 line, opening the conversation on click', () => {
     const { openTask } = mountList([
-      row('写一首诗', NOW - 5 * 60_000, 'standard'),
-      row('整理周报', NOW - 3 * 3_600_000, 'my-agent'),
+      row('写一首诗', NOW - 5 * 60_000),
+      row('整理周报', NOW - 3 * 3_600_000),
     ])
     fireEvent.click(screen.getByRole('button', { name: /写一首诗/ }))
     expect(openTask).toHaveBeenCalledWith('写一首诗')
-    expect(screen.getByText('my-agent')).toBeTruthy()
     expect(screen.getByText('最近动态 5 分钟前')).toBeTruthy()
     expect(screen.getByText('最近动态 3 小时前')).toBeTruthy()
   })

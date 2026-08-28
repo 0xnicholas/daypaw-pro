@@ -30,4 +30,4 @@ ADR 0010 §4 已裁 defineAgent 面——声明式 spec 编译为不透明引擎
 - 免 key 快照（`examples/daypaw-skeleton/tests/agent.snapshot.ts`）经真实示例宿主钉住模型可见面——persona 段、`submit` schema、输入消息，以及 SIGKILL 后的合成续跑 steer——fixture 为手写 replay override，无需 API key；未来有 key 的场景仍走录制。
 - 编译闭包把整个 LLM 世界集中在 `packages/daypaw/sdk/src/agent.ts`；引擎只增加 step 作用域、`runId`/`signal` 暴露与父子血缘列（已在 migration 0001）——无任何 agent 感知。
 - 已接受的代价（ADR 0010 §5）：续跑 steer 与崩溃半轮的失败尝试留在 resume 后的上下文；并发的第二个宿主组合必须重新声明定义（首个 face 的闭包绑定在自己的 Context 上）。
-- 相关：[daypaw walking skeleton](2026-08-19-daypaw-walking-skeleton.md) 拥有本面所乘的 attach/boot 扫描语义。
+- 相关：[daypaw walking skeleton](2026-08-19-daypaw-walking-skeleton.zh.md) 拥有本面所乘的 attach/boot 扫描语义。

@@ -6,7 +6,7 @@
  * parameter; the dialog and task-list holes carry their facts through owner
  * props instead.
  */
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from './runs-api.ts'
 
 /** Owner share of a workspace banner entry. */
@@ -46,7 +46,6 @@ export interface TaskRow {
   /** Human-facing label (the session's displayTitle, else the run's defName). */
   title: string
   /** Agent preset the task runs, when the session header carries one. */
-  agentPreset?: string
   /** Last activity timestamp (epoch ms). */
   updatedAt: number
   /**
@@ -139,7 +138,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * inject parameter). An absent occupant falls back to the owner's
      * placeholder.
      */
-    'inbox.workspace.conversation': { kind: 'single'; scope: 'session-maybe' }
+    'inbox.workspace.conversation': { kind: 'single'; scope: 'session' }
     /**
      * The Agents catalog page: the single occupant draws the whole catalog
      * surface (cards + detail) inside the middle column. An absent occupant

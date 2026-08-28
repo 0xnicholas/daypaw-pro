@@ -1,6 +1,17 @@
+---
+description: "daypaw durable 引擎的类型化 facade：defineWorkflow 声明代码编排 run，defineAgent 声明声明式 LLM 循环 spec，bind / bindAgent 把它们挂到宿主组合。两个面都返回 run()（幂等 start-or"
+kind: "package-reference"
+---
+
 # @daypaw/sdk
 
 [English](README.md) | 中文
+
+## 概述
+
+## 目录
+
+
 
 daypaw durable 引擎的类型化 facade：`defineWorkflow` 声明代码编排 run，`defineAgent` 声明声明式 LLM 循环 spec，`bind` / `bindAgent` 把它们挂到宿主组合。两个面都返回 `run()`（幂等 start-or-attach）与类型化 `RunHandle`。类型权威：[spec 第 2 章 §1.1/§1.2](../../../docs/spec/02-agent-engine-sdk.md)；编程模型决策：[ADR 0003](../../../docs/adr/0003-engine-sdk-programming-model.md) 与 [ADR 0010](../../../docs/adr/0010-define-agent-compilation-and-execution.md)。
 
@@ -104,3 +115,5 @@ prompt 段与工具表按定义稳定，一个 run 的请求共享一个前缀�
 - **`meta` 仅调用方侧** —— 走骨不落盘；见引擎 README。
 - **首条输入落账前崩溃会以无输入对话复活** —— 窗口只有 session 物化到首条 user message append 之间的几条同步语句；复活后转为重停泊（或无段 0 的 resume 唤醒），直到下一条 steer，且 steer 只携带自己的追问。
 - **`@daypaw/engine` / `@daypaw/store` 不独立发布** —— 随本 tarball vendored（ADR 0011）；经本包 import 其面，绝不直接引用。
+
+### 开发备注

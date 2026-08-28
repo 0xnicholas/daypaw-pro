@@ -1,6 +1,17 @@
+---
+description: "Shared SQLite contract for the daypaw engine ledger. This package owns the physical layout — schema constants, row types, numbered SQL m"
+kind: "package-reference"
+---
+
 # @daypaw/store
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 Shared SQLite contract for the daypaw engine ledger. This package owns the physical layout — schema constants, row types, numbered SQL migrations, and the open/migrate sequence — and nothing else: every state decision lives in [`@daypaw/engine`](../engine/README.md). Design authority: [spec ch.1 §3–§4](../../../docs/spec/01-durable-execution.md); package split: [ADR 0006](../../../docs/adr/0006-engine-package-structure.md).
 
@@ -43,3 +54,5 @@ None — the ledger is never part of a live request prefix.
 - **No `retry_policy_json` column yet** — the retry surface is deferred; the column arrives by a later migration when that surface lands (simplification ruling, issue #24).
 - **Single-process ownership discipline is the engine's job** — this package neither enforces nor documents cross-process write policy beyond SQLite WAL semantics.
 - **Not independently published** — the store ships vendored inside the `@daypaw/sdk` tarball (ADR 0011).
+
+### Dev Note

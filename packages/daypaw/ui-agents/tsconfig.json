@@ -15,9 +15,6 @@
       "path": "../../client/ui-slots"
     },
     {
-      "path": "../../client/runtime"
-    },
-    {
       "path": "../../client/locale"
     },
     {
@@ -34,6 +31,9 @@
     },
     {
       "path": "../../runtime-diagnostics/invariants"
+    },
+    {
+      "path": "../../client/store"
     }
   ]
 }

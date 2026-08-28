@@ -9,8 +9,8 @@
  * sections (progress tail, approvals) read it only when its sessionId matches
  * the selection's session identity (an agent run's identity IS its runId).
  */
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ChatSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: ui-inbox's SlotMap merge (the detail seat) plus the detail view
 // and wire types it re-exports for occupants.
@@ -174,10 +174,10 @@ function Approvals({ ownSeat, entries, t }: SectionProps & {
  * @param props - composed slot props (owner share + session standard kit + locale seat).
  * @returns the four-section body tree, or null.
  */
-export function DetailBody({ detail, useSession, sessionId, useProjection, t }: DetailBodyProps) {
+export function DetailBody({ detail, useSession, useChat, sessionId, useProjection, t }: DetailBodyProps) {
   // The seats are read unconditionally (hook order); seatMatches below decides
   // whether their values apply to this selection.
-  const chat = useSession(s => s.chat)
+  const chat = useChat(s => s)
   const running = useSession(s => s.running)
   const approvals = useProjection('approvalHistory')
   if (detail.kind === 'none') return null

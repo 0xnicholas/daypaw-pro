@@ -53,18 +53,9 @@
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'
 
-    - id: storage
-      name: '@deepseek-ai/dsh-storage'
-
-    - id: storage-json
-      name: '@deepseek-ai/dsh-storage-json'
-      config:
-        root: !!js dshHomePath('storages')
-
-    - id: storage-domain
-      name: '@deepseek-ai/dsh-storage-domain'
-      config:
-        backend: json
+    # Subagent preset model routing for the delegation tools.
+    - id: subagent-model-selection-settings
+      name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
 
     - id: message-feedback
       name: '@deepseek-ai/dsh-message-feedback'
@@ -75,14 +66,15 @@
     - id: session-log-download
       name: '@deepseek-ai/dsh-session-log-export'
 
+    # Session and file references for inline composer suggestions.
+    - id: session-reference
+      name: '@deepseek-ai/dsh-session-reference'
+
+    - id: file-reference-local
+      name: '@deepseek-ai/dsh-file-reference-local'
+
     - id: workspace
       name: '@deepseek-ai/dsh-workspace'
-
-    - id: session-projection-cache
-      name: '@deepseek-ai/dsh-session-projection-cache'
-      config:
-        writeEveryEvents: 200
-        writeIntervalMs: 5000
 
     # Whole-log turn/step counts for the chat stats strip (the sessionStats
     # projection key); the projection registry itself is a base-layer row.
@@ -105,10 +97,17 @@
     - id: plugin-inventory
       name: '@deepseek-ai/dsh-host-plugin-inventory'
 
-    # The API gateway: the transport-agnostic dispatch face every client shape
-    # shares. The base layer's agent-default-model service owns the default model.
-    - id: api-gateway
-      name: '@deepseek-ai/dsh-host-apiproxy'
+    # Session commands, cold reads, and live control over Typert Remote.
+    - id: session-controller
+      name: '@deepseek-ai/dsh-api-session-controller'
+
+    # Configuration-surface reads and writes over Typert Remote.
+    - id: settings-controller
+      name: '@deepseek-ai/dsh-api-settings-controller'
+
+    # Workspace commands and reconnect-safe projection over Typert Remote.
+    - id: workspace-controller
+      name: '@deepseek-ai/dsh-api-workspace-controller'
 
     - id: cordis-host-runner
       name: '@deepseek-ai/dsh-cordis-host-runner'
@@ -176,9 +175,6 @@
     - id: api-remotes
       name: '@deepseek-ai/dsh-api-remotes'
 
-    - id: client-runtime
-      name: '@deepseek-ai/dsh-client-runtime'
-
     - id: cordis-client-runner
       name: '@deepseek-ai/dsh-cordis-client-runner'
 
@@ -190,6 +186,16 @@
 
     - id: ui-layout
       name: '@deepseek-ai/dsh-client-ui-layout'
+
+    # The slot registry service and React renderer: synthesizes selector hooks
+    # for injected stores and renders the assembled slot tree.
+    - id: ui-renderer
+      name: '@deepseek-ai/dsh-client-ui-renderer'
+
+    # Session Controller adapter: session list/lifecycle selector hooks and
+    # the pending-interaction roster the approval board reads.
+    - id: ui-session
+      name: '@deepseek-ai/dsh-client-ui-session'
 
     # daypaw brand theme (spec 05 §7): stacks the warm-orange accent /
     # warm-neutral base token layer and the --dp-space-* density scale onto
@@ -240,6 +246,17 @@
 
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'
+
+    # Publishes pending approvals into the session roster (the board's
+    # 等待你确认 feed) and answers the Remote Event waterfall. The fork's own
+    # conversation view shadows its composer presentation.
+    - id: ui-approval
+      name: '@deepseek-ai/dsh-client-ui-approval'
+
+    # The Chat conversation target: assembles the chat snapshot the fork's
+    # business-language projection and approval-card pairing read.
+    - id: ui-chat
+      name: '@deepseek-ai/dsh-client-ui-chat'
 
     # Tool call tree, generic fallback, and keyed business Tool views.
     - id: ui-tool

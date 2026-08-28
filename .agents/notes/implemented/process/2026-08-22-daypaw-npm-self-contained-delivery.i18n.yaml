@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-22-daypaw-npm-self-contained-delivery.md
 2026-08-22-daypaw-npm-self-contained-delivery.md: d85633d7d8e4aad813115af985ad7a052a56a4c3
-2026-08-22-daypaw-npm-self-contained-delivery.zh.md: f2d8112ced911a5c36f6ed84e6d6f5c247441c71
+2026-08-22-daypaw-npm-self-contained-delivery.zh.md: e1f7e51b5665688500a4453944d119c611446246

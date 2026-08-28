@@ -27,4 +27,4 @@ ADR 0008 把走骨定义为最薄的端到端耐久竖切——`@daypaw/store` +
 
 - 证明线通过：第一步效果出现后杀死、重启，第一步恰执行一次，在飞的步骤重执行（执行 at-least-once，step 提交 exactly-once）。
 - 两活进程驱动同一 ledger 仍在 v1 包络之外（引擎 README 记载）；attach 轮询路径覆盖运维场景。
-- 本 note 推迟的 promise 行、`waiting` 状态与 gate 决议已随 `ctx.waitFor` 落地（issue #47，[gate note](../feature/2026-08-23-durable-gate-waitfor.md)）；timers 表、`ctx.sleep` 与关系 invariant 仍是按需驱动的后续工作。
+- 本 note 推迟的 promise 行、`waiting` 状态与 gate 决议已随 `ctx.waitFor` 落地（issue #47，[gate note](../feature/2026-08-23-durable-gate-waitfor.zh.md)）；timers 表、`ctx.sleep` 与关系 invariant 仍是按需驱动的后续工作。

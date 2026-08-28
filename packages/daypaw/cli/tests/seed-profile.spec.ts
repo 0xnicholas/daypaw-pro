@@ -30,7 +30,7 @@ afterEach(async () => {
 
 async function seed(): Promise<string> {
   home = await mkdtemp(join(tmpdir(), 'daypaw-cli-seed-'))
-  seedDaypawProfile(home)
+  await seedDaypawProfile(home)
   return join(home, 'profiles', DAYPAW_PROFILE_NAME)
 }
 
@@ -104,7 +104,7 @@ describe('seedDaypawProfile', () => {
     const manifest = await readFileUtf8(manifestPath)
     await rm(fallbackLink('@daypaw/engine'))
 
-    seedDaypawProfile(home)
+    await seedDaypawProfile(home)
 
     expect(await readFileUtf8(patchPath)).toBe('# user edits\n[]\n')
     expect(await readFileUtf8(manifestPath)).toBe(manifest)
@@ -119,7 +119,7 @@ describe('seedDaypawProfile', () => {
       dsh: { profile: { bundles: [...PREVIOUS_BUNDLES] } },
     })
 
-    seedDaypawProfile(home)
+    await seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base', '@daypaw/web-app'])
@@ -138,7 +138,7 @@ describe('seedDaypawProfile', () => {
     // parent walk continues to the healed fallback.
     await symlink(join(home!, 'removed-prefix', 'engine'), join(dir, 'node_modules', '@daypaw', 'engine'), 'junction')
 
-    seedDaypawProfile(home)
+    await seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base', '@daypaw/web-app'])
@@ -155,7 +155,7 @@ describe('seedDaypawProfile', () => {
       dsh: { profile: { bundles: userOwned } },
     })
 
-    seedDaypawProfile(home)
+    await seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(userOwned)

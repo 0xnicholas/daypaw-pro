@@ -94,7 +94,6 @@ export function TaskList({ rows, now, openTask, openRun, t }: TaskListProps) {
             }}
           >
             <span className={css.title}>{row.title}</span>
-            {row.agentPreset !== undefined && <span className={css.agent}>{row.agentPreset}</span>}
             {row.awaitingApproval === true
               // The pending-group status reads 等待确认 whatever the run says;
               // run-less session rows (no run status to show) carry it too.

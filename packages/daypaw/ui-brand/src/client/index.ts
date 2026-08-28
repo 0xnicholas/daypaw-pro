@@ -6,7 +6,7 @@
  * else. The user's light/dark/system preference keeps driving the base
  * palettes, so switching themes re-picks the layer's leg per scheme.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls ui-theme's Context merge (ctx.theme) in; the runtime reach
 // goes through the service, never a value import (client bundle purity gate).
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'

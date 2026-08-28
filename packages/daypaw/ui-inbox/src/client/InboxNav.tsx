@@ -9,7 +9,8 @@
  */
 import { useState } from 'react'
 import clsx from 'clsx'
-import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'sidebar' entry) in so
 // PropsRuntime<'sidebar'> resolves.
@@ -62,11 +63,15 @@ const GROUP_LABEL: Record<InboxGroup, InboxKey> = {
  * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the column element tree.
  */
-export function InboxNav({ collapsed, useSelection, useBoard, useSessions, select, toggleSidebar, renderSlot, t }: InboxNavProps) {
+export function InboxNav({
+  collapsed, useSelection, useBoard, useSessions, useSessionPendingInteraction,
+  select, toggleSidebar, renderSlot, t,
+}: InboxNavProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
+  const pending = useSessionPendingInteraction(s => s)
   const runs = useBoard(s => s.runs)
-  const counts = projectInboxBoard(list, runs).counts
+  const counts = projectInboxBoard(list, runs, pending).counts
   // Dialog open state is component-local: only this component knows it.
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -122,7 +127,7 @@ export function InboxNav({ collapsed, useSelection, useBoard, useSessions, selec
   return (
     <div className={css.root}>
       <div className={css.logoRow}>
-        <span className={css.brand}>daypaw</span>
+        <span className={css.brand}>{t('nav.brand')}</span>
         <Tooltip label={t('nav.toggle.collapse')} delayMs={500}>
           <button
             type="button"

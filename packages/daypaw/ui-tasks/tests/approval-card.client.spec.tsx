@@ -2,8 +2,7 @@
 /** ApprovalCard: the headline join, the one-shot answer encoding, the reject note, the details expander, failure re-arm. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { PendingWait } from '@deepseek-ai/dsh-client-runtime/client'
-import type { RpcId, RpcReceipt, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { ApprovalCard, type ApprovalCardProps, type PendingApprovalWait } from '../src/client/approval-card.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -15,28 +14,26 @@ const t: ApprovalCardProps['t'] = (key, params) => {
   return text
 }
 
-/** Mint an approval wait whose respond reports to the given spy. */
-function approvalWait(respond: (message: unknown) => Promise<RpcReceipt>, reason?: string): PendingApprovalWait {
-  return new PendingWait(
-    'approval',
-    'rpc-1' as RpcId,
-    's1' as SessionId,
-    {
-      approvalId: 'ap-1' as PendingApprovalWait['payload']['approvalId'],
-      toolName: 'dangerous_tool',
-      callId: 'call-1' as NonNullable<PendingApprovalWait['payload']['callId']>,
-      ...reason === undefined ? {} : { reason },
-    },
-    respond,
-  )
+/** Mint an approval wait whose answer reports to the given spy. */
+function approvalWait(answer: (outcome: 'allowed-once' | 'rejected') => Promise<void>, reason?: string): PendingApprovalWait {
+  return {
+    kind: 'approval',
+    key: 'approval:1',
+    sessionId: 's1' as SessionId,
+    toolName: 'dangerous_tool',
+    callId: 'call-1' as never,
+    reason,
+    result: Promise.resolve('allowed-once' as const),
+    answer,
+  } as unknown as PendingApprovalWait
 }
 
-const accepted = (): Promise<RpcReceipt> => Promise.resolve({ accepted: true })
+const accepted = (): Promise<void> => Promise.resolve()
 
 function mountCard(overrides: Partial<ApprovalCardProps> = {}) {
-  const respond = vi.fn(accepted)
+  const answer = vi.fn(accepted)
   const sendNote = vi.fn(() => Promise.resolve())
-  const wait = approvalWait(respond, '清理临时目录')
+  const wait = approvalWait(answer, '清理临时目录')
   render(
     <ApprovalCard
       wait={wait}
@@ -47,7 +44,7 @@ function mountCard(overrides: Partial<ApprovalCardProps> = {}) {
       {...overrides}
     />,
   )
-  return { respond, sendNote, wait }
+  return { answer, sendNote, wait }
 }
 
 describe('ApprovalCard', () => {
@@ -82,46 +79,38 @@ describe('ApprovalCard', () => {
     expect(screen.getByText('not-json-at-all')).toBeTruthy()
   })
 
-  it('answers 同意 with the domain encoding and latches the buttons', async () => {
-    const { respond } = mountCard()
+  it('answers 同意 with the domain outcome and latches the buttons', async () => {
+    const { answer } = mountCard()
     const allow = screen.getByRole('button', { name: '同意' })
     fireEvent.click(allow)
-    await waitFor(() => { expect(respond).toHaveBeenCalledTimes(1) })
-    expect(respond).toHaveBeenCalledWith({
-      type: 'client-response',
-      rpcId: 'rpc-1',
-      result: { ok: true, value: { sessionId: 's1', approvalId: 'ap-1', outcome: 'allowed-once' } },
-    })
+    await waitFor(() => { expect(answer).toHaveBeenCalledTimes(1) })
+    expect(answer).toHaveBeenCalledWith('allowed-once')
     expect(allow).toHaveProperty('disabled', true)
     expect(screen.getByRole('button', { name: '拒绝' })).toHaveProperty('disabled', true)
   })
 
   it('rejects through the two-step note flow: first click opens the note row, confirm sends rejected plus the note', async () => {
-    const { respond, sendNote } = mountCard()
+    const { answer, sendNote } = mountCard()
     fireEvent.click(screen.getByRole('button', { name: '拒绝' }))
     const note = screen.getByRole('textbox', { name: '给 Agent 捎句话（可选）…' })
     fireEvent.change(note, { target: { value: ' 先别删，留着排障 ' } })
     fireEvent.click(screen.getByRole('button', { name: '确认拒绝' }))
     await waitFor(() => { expect(sendNote).toHaveBeenCalledWith('先别删，留着排障') })
-    expect(respond).toHaveBeenCalledWith({
-      type: 'client-response',
-      rpcId: 'rpc-1',
-      result: { ok: true, value: { sessionId: 's1', approvalId: 'ap-1', outcome: 'rejected' } },
-    })
-    expect(respond.mock.invocationCallOrder[0]!).toBeLessThan(sendNote.mock.invocationCallOrder[0]!)
+    expect(answer).toHaveBeenCalledWith('rejected')
+    expect(answer.mock.invocationCallOrder[0]!).toBeLessThan(sendNote.mock.invocationCallOrder[0]!)
   })
 
   it('rejects without a note when the note row stays empty', async () => {
-    const { respond, sendNote } = mountCard()
+    const { answer, sendNote } = mountCard()
     fireEvent.click(screen.getByRole('button', { name: '拒绝' }))
     fireEvent.click(screen.getByRole('button', { name: '确认拒绝' }))
-    await waitFor(() => { expect(respond).toHaveBeenCalledTimes(1) })
+    await waitFor(() => { expect(answer).toHaveBeenCalledTimes(1) })
     expect(sendNote).not.toHaveBeenCalled()
   })
 
-  it('re-arms and flags the failure when the answer is not accepted', async () => {
-    const respond = vi.fn(() => Promise.resolve<RpcReceipt>({ accepted: false, reason: 'not-pending' }))
-    mountCard({ wait: approvalWait(respond, '清理临时目录') })
+  it('re-arms and flags the failure when the answer rejects', async () => {
+    const answer = vi.fn(() => Promise.reject(new Error('not-pending')))
+    mountCard({ wait: approvalWait(answer, '清理临时目录') })
     const allow = screen.getByRole('button', { name: '同意' })
     fireEvent.click(allow)
     await screen.findByText('操作失败，请重试')

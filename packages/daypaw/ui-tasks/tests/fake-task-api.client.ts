@@ -1,73 +1,78 @@
-/** Test-local programmable wire face: the agentPresets + sessions.create domains the new-task dialog consumes. */
-import type { IApiClient, RpcResponse, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+/** Test-local programmable wire face: the agentPresets namespace + session create the new-task dialog consumes. */
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { NewTaskApi } from '../src/client/new-task-store.ts'
 
-let nextRpc = 0
+/** Local structural Remote result envelope. */
+type Result<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string; details: unknown } }
 
 /**
- * A successful unary response.
+ * A successful Remote result.
  * @param value - the business value.
- * @returns the response envelope.
+ * @returns the result envelope.
  */
-export function ok<T>(value: T): RpcResponse<T> {
-  return { rpcId: `fake-${nextRpc++}` as never, result: { ok: true, value } }
+export function ok<T>(value: T): Result<T> {
+  return { ok: true, value }
 }
 
 /**
- * A business-failure unary response (the host answered; the answer is no).
+ * A business-failure Remote result.
  * @param message - the failure text the surface must show.
- * @returns the response envelope.
+ * @returns the result envelope.
  */
-export function fail<T>(message: string): RpcResponse<T> {
-  return { rpcId: `fake-${nextRpc++}` as never, result: { ok: false, error: { code: 'internal', message, details: {} } } }
+export function fail<T>(message: string): Result<T> {
+  return { ok: false, error: { code: 'internal', message, details: {} } }
 }
-
-/** The response value of agentPreset.list, derived from the wire face (the entry type is not re-exported). */
-type PresetListValue = Awaited<ReturnType<IApiClient['agentPresets']['list']>> extends RpcResponse<infer V> ? V : never
 
 /** One preset wire row. */
-type PresetEntry = PresetListValue['presets'][number]
+export interface FakePreset {
+  id: string
+  trust: 'system' | 'user'
+  isDefault: boolean
+  name?: string
+  broken?: string
+}
 
-/** One preset row with the fields the dialog never reads defaulted.
+/**
+ * One preset row with the fields the dialog never reads defaulted.
  * @param id - preset id.
  * @param extra - field overrides (name/broken/isDefault…).
  * @returns the wire row.
  */
-export function preset(id: string, extra: Partial<PresetEntry> = {}): PresetEntry {
+export function preset(id: string, extra: Partial<FakePreset> = {}): FakePreset {
   return { id, trust: 'system', isDefault: false, ...extra }
 }
 
-// Parameter annotations below are local structural types on purpose (the CI
-// lint lane runs without built artifacts, where wire types resolve to any and
-// inferred params trip no-unsafe-argument) — the settings package's
-// FakeHostApi sets the precedent.
-/** Programmable fake covering the two domains the dialog consumes. */
+type PresetsNamespace = Pick<ClientRemote['agentPresets'], 'list' | 'select'>
+
+/**
+ * Programmable fake covering the dialog's wire domains. Namespace members are
+ * the real generated slices; programmable handlers return local structural
+ * values with the envelope bridged by assertion (the settings FakeHostApi
+ * precedent).
+ */
 export class FakeTaskApi implements NewTaskApi {
   /** Chronological call record: [method, payload]. */
   readonly calls: { method: string; payload: unknown }[] = []
 
-  onPresetList: () => Promise<RpcResponse<PresetListValue>> =
-    () => Promise.resolve(ok({ presets: [], authorable: false, hasDocument: false }))
-  onCreate: (payload: { agentPreset?: string }) => Promise<RpcResponse<{ sessionId: SessionId }>> =
-    () => Promise.resolve(ok({ sessionId: 'fx-new' as SessionId }))
+  onPresetList: () => Promise<Result<{ presets: readonly FakePreset[]; authorable: boolean }>> =
+    () => Promise.resolve(ok({ presets: [], authorable: false }))
+  onCreateSession: () => Promise<Result<SessionId>> =
+    () => Promise.resolve(ok('fx-new' as SessionId))
+  onSelect: (sessionId: string, agentPreset: string) => Promise<Result<unknown>> =
+    (_sessionId, agentPreset) => Promise.resolve(ok({ agentPreset }))
 
-  readonly agentPresets: NewTaskApi['agentPresets'] = {
-    list: () => this.record('agentPreset.list', {}, this.onPresetList()),
-    select: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.select', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset }))),
-    read: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.read', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset, trust: 'user' as const, content: '' }))),
-    copy: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.copy', payload, Promise.resolve(ok({ agentPreset: payload.agentPreset }))),
-    openDocument: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.openDocument', payload, Promise.resolve(ok({ opened: true as const }))),
-    remove: (payload: { agentPreset: string }) =>
-      this.record('agentPreset.remove', payload, Promise.resolve(ok({}))),
+  readonly agentPresets: PresetsNamespace = {
+    list: (() => this.record('agentPresets.list', undefined, this.onPresetList())) as PresetsNamespace['list'],
+    select: ((sessionId: string, agentPreset: string) =>
+      this.record('agentPresets.select', { sessionId, agentPreset }, this.onSelect(sessionId, agentPreset))) as PresetsNamespace['select'],
   }
 
-  readonly sessions: NewTaskApi['sessions'] = {
-    create: (payload: { agentPreset?: string }) => this.record('session.create', payload, this.onCreate(payload)),
-  }
+  readonly createSession: () => Promise<SessionId> =
+    () => this.record('session.create', undefined, this.onCreateSession()).then((result) => {
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    })
 
   /**
    * Every payload recorded for one method, in call order.

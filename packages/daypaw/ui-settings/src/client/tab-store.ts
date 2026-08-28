@@ -5,7 +5,7 @@
  * InboxSelectionController pattern: the bare source travels in each register
  * call's inject `hooks` compartment.
  */
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** The four settings sections. */
 export type SettingsTab = 'general' | 'credentials' | 'models' | 'about'

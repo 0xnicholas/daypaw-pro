@@ -1,7 +1,8 @@
-/** projectInboxBoard: the hybrid run+session projection — dedupe, session-less workflow rows, status grouping, merge order. */
+/** projectInboxBoard: the hybrid run+session+roster projection — dedupe, session-less workflow rows, status grouping, merge order. */
 import { describe, expect, it } from 'vitest'
-import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { WireRun, WireRunStatus } from '../src/client/runs-api.ts'
 import { projectInboxBoard } from '../src/client/task-projection.ts'
 
@@ -24,8 +25,6 @@ interface SummarySpec {
   blank?: boolean
   title?: string
   updatedAt?: number
-  agentPreset?: string
-  pendingInteraction?: SessionSummary['pendingInteraction']
 }
 
 function listState(rows: readonly SummarySpec[]): SessionListState {
@@ -37,8 +36,6 @@ function listState(rows: readonly SummarySpec[]): SessionListState {
       running: row.running ?? false,
       blank: row.blank ?? false,
       updatedAt: row.updatedAt ?? 1,
-      ...row.agentPreset === undefined ? {} : { agentPreset: row.agentPreset },
-      ...row.pendingInteraction === undefined ? {} : { pendingInteraction: row.pendingInteraction },
     }
   }
   return {
@@ -52,9 +49,18 @@ function listState(rows: readonly SummarySpec[]): SessionListState {
   }
 }
 
+/** Roster entry carrying one effective interaction kind. */
+const interaction = (kind: string): SessionPendingInteraction =>
+  ({ key: `fx-${kind}`, kind, sessionId: 'x' as SessionId }) as unknown as SessionPendingInteraction
+
+/** Roster map helper: id → effective kind. */
+function roster(entries: readonly (readonly [string, string])[]): ReadonlyMap<SessionId, SessionPendingInteraction> {
+  return new Map(entries.map(([id, kind]) => [id as SessionId, interaction(kind)]))
+}
+
 describe('projectInboxBoard', () => {
   it('projects an empty board from nothing', () => {
-    expect(projectInboxBoard(listState([]), [])).toEqual({
+    expect(projectInboxBoard(listState([]), [], roster([]))).toEqual({
       counts: { pending: 0, running: 0, done: 0 },
       rows: { pending: [], running: [], done: [] },
     })
@@ -64,28 +70,27 @@ describe('projectInboxBoard', () => {
     const list = listState([{ id: 'a', running: true }, { id: 'b' }, { id: 'draft', blank: true }])
     // An id the list names but byId lacks (reconnect re-pull window) projects no row.
     list.ids.push('ghost' as SessionId)
-    const board = projectInboxBoard(list, [])
+    const board = projectInboxBoard(list, [], roster([]))
     expect(board.counts).toEqual({ pending: 0, running: 1, done: 1 })
     expect(board.rows.running.map(row => [row.title, row.sessionId, row.run])).toEqual([['title-a', 'a', undefined]])
     expect(board.rows.done.map(row => row.title)).toEqual(['title-b'])
   })
 
   it('projects an agent run as a session-backed row and dedupes its session twin', () => {
-    const list = listState([{ id: 'r1', title: 'Fix the flaky test', updatedAt: 50, agentPreset: 'standard' }])
-    const board = projectInboxBoard(list, [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests', updatedAt: 300 })])
+    const list = listState([{ id: 'r1', title: 'Fix the flaky test', updatedAt: 50 }])
+    const board = projectInboxBoard(list, [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests', updatedAt: 300 })], roster([]))
     expect(board.counts).toEqual({ pending: 0, running: 1, done: 0 })
     // The session's displayTitle wins over the defName; the twin session row is skipped.
     expect(board.rows.running).toEqual([{
       sessionId: 'r1',
       title: 'Fix the flaky test',
-      agentPreset: 'standard',
       updatedAt: 300,
       run: { runId: 'r1', status: 'running', defKind: 'agent' },
     }])
   })
 
   it('projects an unlisted agent run session-less (sessions.open fails loud on unlisted ids)', () => {
-    const board = projectInboxBoard(listState([]), [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests' })])
+    const board = projectInboxBoard(listState([]), [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests' })], roster([]))
     expect(board.rows.running).toEqual([{
       title: 'fix-tests',
       updatedAt: 100,
@@ -97,13 +102,14 @@ describe('projectInboxBoard', () => {
     const board = projectInboxBoard(
       listState([{ id: 'r1', blank: true }]),
       [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests' })],
+      roster([]),
     )
     expect(board.rows.running.map(row => row.title)).toEqual(['fix-tests'])
     expect(board.counts).toEqual({ pending: 0, running: 1, done: 0 })
   })
 
   it('projects a workflow run as a session-less row titled by its defName', () => {
-    const board = projectInboxBoard(listState([]), [run({ runId: 'r1', defKind: 'workflow', defName: 'close-the-books' })])
+    const board = projectInboxBoard(listState([]), [run({ runId: 'r1', defKind: 'workflow', defName: 'close-the-books' })], roster([]))
     expect(board.rows.running).toEqual([{
       title: 'close-the-books',
       updatedAt: 100,
@@ -118,7 +124,7 @@ describe('projectInboxBoard', () => {
     ['failed', 'done'],
     ['cancelled', 'done'],
   ] as const)('groups a %s run into %s', (status: WireRunStatus, group: 'running' | 'done') => {
-    const board = projectInboxBoard(listState([]), [run({ status })])
+    const board = projectInboxBoard(listState([]), [run({ status })], roster([]))
     expect(board.counts[group]).toBe(1)
     expect(board.rows[group][0]?.run?.status).toBe(status)
   })
@@ -127,7 +133,7 @@ describe('projectInboxBoard', () => {
     const board = projectInboxBoard(listState([]), [
       run({ runId: 'parent' }),
       run({ runId: 'child', parentRunId: 'parent' }),
-    ])
+    ], roster([]))
     expect(board.counts).toEqual({ pending: 0, running: 1, done: 0 })
     expect(board.rows.running[0]?.run?.runId).toBe('parent')
   })
@@ -141,7 +147,7 @@ describe('projectInboxBoard', () => {
       run({ runId: 'tie-run', defKind: 'workflow', updatedAt: 100 }),
       run({ runId: 'new-run', defKind: 'workflow', status: 'done', updatedAt: 500 }),
       run({ runId: 'mid-run', defKind: 'workflow', status: 'done', updatedAt: 50 }),
-    ])
+    ], roster([]))
     expect(board.rows.running.map(row => row.title)).toEqual(['close-the-books', 'title-tie-session'])
     // Done group: the two runs lead (updatedAt desc), the settled session trails.
     expect(board.rows.done.map(row => row.run?.runId ?? 'session')).toEqual(['new-run', 'mid-run', 'session'])
@@ -149,8 +155,9 @@ describe('projectInboxBoard', () => {
 
   it('routes an approval-badged run row to 等待你确认 and flags it, whatever the run status', () => {
     const board = projectInboxBoard(
-      listState([{ id: 'r1', title: 'Fix the flaky test', pendingInteraction: 'approval' }]),
+      listState([{ id: 'r1', title: 'Fix the flaky test' }]),
       [run({ runId: 'r1', defKind: 'agent', defName: 'fix-tests', updatedAt: 300 })],
+      roster([['r1', 'approval']]),
     )
     expect(board.counts).toEqual({ pending: 1, running: 0, done: 0 })
     expect(board.rows.pending).toEqual([{
@@ -163,26 +170,19 @@ describe('projectInboxBoard', () => {
   })
 
   it('routes an approval-badged run-less session to 等待你确认', () => {
-    const board = projectInboxBoard(listState([{ id: 'a', running: true, pendingInteraction: 'approval' }]), [])
+    const board = projectInboxBoard(listState([{ id: 'a', running: true }]), [], roster([['a', 'approval']]))
     expect(board.counts).toEqual({ pending: 1, running: 0, done: 0 })
     expect(board.rows.pending.map(row => [row.sessionId, row.awaitingApproval])).toEqual([['a', true]])
   })
 
-  it('keeps question and plan-review badges in their status groups (the board is the 审批 surface)', () => {
+  it('keeps question and other interaction kinds in their status groups (the board is the 审批 surface)', () => {
     const list = listState([
-      { id: 'q', running: true, pendingInteraction: 'question' },
-      { id: 'p', pendingInteraction: 'plan-review' },
+      { id: 'q', running: true },
+      { id: 'o' },
     ])
-    const board = projectInboxBoard(list, [])
+    const board = projectInboxBoard(list, [], roster([['q', 'question'], ['o', 'other']]))
     expect(board.counts).toEqual({ pending: 0, running: 1, done: 1 })
-  })
-
-  it('returns the row to its status group once the answer clears the badge', () => {
-    const runs = [run({ runId: 'r1', defKind: 'agent' })]
-    const waiting = projectInboxBoard(listState([{ id: 'r1', pendingInteraction: 'approval' }]), runs)
-    expect(waiting.counts).toEqual({ pending: 1, running: 0, done: 0 })
-    const answered = projectInboxBoard(listState([{ id: 'r1' }]), runs)
-    expect(answered.counts).toEqual({ pending: 0, running: 1, done: 0 })
-    expect(answered.rows.running[0]?.awaitingApproval).toBeUndefined()
+    expect(board.rows.running.every(row => row.awaitingApproval === undefined)).toBe(true)
+    expect(board.rows.done.every(row => row.awaitingApproval === undefined)).toBe(true)
   })
 })

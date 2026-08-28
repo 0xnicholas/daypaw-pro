@@ -2,7 +2,7 @@
 /** ApiKeyCard: the first-run yellow card — undecided states render nothing, visibility drives the composer block seat. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { ApiKeyCard, type ApiKeyCardProps } from '../src/client/api-key-card.tsx'
 import { ApiKeyCardStore } from '../src/client/card-store.ts'
@@ -29,7 +29,7 @@ function mountCard(options: { sessionId?: SessionId; configured?: boolean } = {}
       sessionId={options.sessionId}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook} useSessionPendingInteraction={neverHook}
       openSettings={openSettings}
       useCard={bindSnapshotSelector(card.store)}
       openCredentialsTab={openCredentialsTab}

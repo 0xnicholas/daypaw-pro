@@ -6,15 +6,19 @@
  * ConversationView into 'inbox.workspace.conversation' (the business-language
  * flow), and DetailBody into 'inbox.detail.body' (the right column's four
  * sections). Session facts come through the sessions service, the session
- * standard kit (useSession/useProjection), and the connection wire face; the
- * host stays the single fact source.
+ * standard kit (useChat/useSession/useProjection), and the Client Remote
+ * namespaces; the host stays the single fact source.
  * Export discipline: packages/client/AGENTS.md.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the SlotRegistry service merge (ctx.slots).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+// Type-only: pulls the session-controller Context merges (ctx.sessions, ctx.remote).
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls ui-inbox's SlotMap merge (the four target seats).
 import type {} from '@daypaw/ui-inbox/client'
 import { NewTaskDialog, type NewTaskDialogInjected } from './new-task-dialog.tsx'
@@ -49,7 +53,7 @@ const NS = 'daypaw-tasks'
  * NOT constrained; registrations depend on each seat through
  * `slots.inject()`.
  */
-export const inject = ['slots', 'locale', 'connection', 'sessions']
+export const inject = ['slots', 'locale', 'sessions', 'remote', 'remote.agentPresets']
 
 /** Register the dictionaries and the three task-surface occupants.
  * @param ctx - client root context.
@@ -57,8 +61,11 @@ export const inject = ['slots', 'locale', 'connection', 'sessions']
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'daypaw-ui-tasks: dictionaries')
 
-  const connection = ctx.get('connection') as ConnectionHandle
-  const newTask = new NewTaskStore(connection.api, ctx.sessions)
+  const remote = ctx.remote
+  const newTask = new NewTaskStore(
+    { agentPresets: remote.agentPresets, createSession: () => ctx.sessions.create({}) },
+    ctx.sessions,
+  )
 
   // The reject note rides the ordinary prompt path (the NewTaskStore first
   // prompt precedent): queue mode lets a running task consume it as steering.

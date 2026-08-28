@@ -7,12 +7,10 @@
 // import keeps the dsh bin from evaluating before seeding completes.
 import { seedDaypawProfile, withDefaultProfile } from './lib/index.js'
 
-try {
-  seedDaypawProfile()
-} catch (error) {
+await seedDaypawProfile().catch((error) => {
   console.error(`daypaw: ${error instanceof Error ? error.message : String(error)}`)
   process.exit(1)
-}
+})
 
 process.argv = [...process.argv.slice(0, 2), ...withDefaultProfile(process.argv.slice(2))]
 

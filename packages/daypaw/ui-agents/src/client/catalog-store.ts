@@ -7,8 +7,8 @@
  * is the agent directory. The host stays the single fact source; a failure
  * anywhere lands inline on the page.
  */
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { CatalogApi } from './definitions-api.ts'
 
 /** One catalog card (agents only; broken or non-agent definitions never list). */

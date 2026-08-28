@@ -1,34 +1,45 @@
 /**
- * About tab store: the `host.describe` snapshot (version, cwd, provider/model)
- * plus the diagnostics text the copy button writes to the clipboard.
+ * About tab store: the client-visible host facts — the default provider/model
+ * selection (`session/modelCatalog`) and the attached-session count — plus
+ * the diagnostics text the copy button writes to the clipboard. The wire
+ * surface no longer carries host version or cwd; the copy lists what the
+ * client can actually observe.
  */
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import type { HostDescription } from '@deepseek-ai/dsh-client-connection/client'
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { messageOf } from './provider-keys.ts'
+
+/** The observable host facts the About tab lists. */
+export interface HostFacts {
+  /** Default provider used by unconfigured sessions. */
+  provider: string
+  /** Default model on that provider. */
+  model: string
+  /** Sessions the host currently lists. */
+  attachedSessions: number
+}
 
 /** Tab snapshot. */
 export interface AboutState {
   status: 'idle' | 'loading' | 'ready' | 'error'
   /** Whole-load failure text. */
   error: string | null
-  /** The host description, once loaded. */
-  description: HostDescription | null
+  /** The host facts, once loaded. */
+  description: HostFacts | null
 }
 
 /**
  * Assemble the plain-text diagnostics block the copy button carries.
- * @param description - the loaded host description.
+ * @param description - the loaded host facts.
  * @returns one `key: value` line per field.
  */
-export function diagnosticsText(description: HostDescription): string {
+export function diagnosticsText(description: HostFacts): string {
   const lines = [
-    `version: ${description.version}`,
-    `cwd: ${description.cwd}`,
+    `provider: ${description.provider}`,
+    `model: ${description.model}`,
+    `attachedSessions: ${description.attachedSessions}`,
   ]
-  if (description.provider !== undefined) lines.push(`provider: ${description.provider}`)
-  if (description.model !== undefined) lines.push(`model: ${description.model}`)
-  lines.push(`attachedSessions: ${description.attachedSessions}`)
   return lines.join('\n')
 }
 
@@ -43,22 +54,30 @@ export class AboutStore {
   private generation = 0
 
   /**
-   * @param api - the wire face (host domain).
+   * @param api - the wire face (session catalog).
+   * @param sessions - the sessions service (the attached count).
    */
-  constructor(private readonly api: Pick<IApiClient, 'host'>) {}
+  constructor(
+    private readonly api: Pick<ClientRemote['session'], 'modelCatalog'>,
+    private readonly sessions: Pick<ISessions, 'list'>,
+  ) {}
 
   /**
-   * Load the host description once per invalidation; a failure moves the tab
-   * to its error row with a retry.
+   * Load the observable host facts once per invalidation; a failure moves the
+   * tab to its error row with a retry.
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading'; s.error = null })
     try {
-      const response = await this.api.host.describe({})
-      if (!response.result.ok) throw new Error(response.result.error.message)
-      const description = response.result.value
+      const response = await this.api.modelCatalog()
+      if (!response.ok) throw new Error(response.error.message)
+      const description: HostFacts = {
+        provider: response.value.default.provider,
+        model: response.value.default.model,
+        attachedSessions: this.sessions.list.getSnapshot().ids.length,
+      }
       if (generation !== this.generation) return
       this.store.update((s) => {
         s.status = 'ready'

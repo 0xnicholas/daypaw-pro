@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-26-daypaw-task-progress.md
 2026-08-26-daypaw-task-progress.md: e67084a753126dbf621738c7559658f6b38530dc
-2026-08-26-daypaw-task-progress.zh.md: 3d393a145fea614c7f686c54211320380922beea
+2026-08-26-daypaw-task-progress.zh.md: f498dcdbcdb25b2c78caf25ca608893beb4a10c5

@@ -7,7 +7,7 @@
  */
 import { useEffect } from 'react'
 import clsx from 'clsx'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the dialog seat) in so
 // PropsRuntime<'inbox.new-task.dialog'> resolves.

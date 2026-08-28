@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-daypaw-shell-ia-skeleton.md
 2026-08-24-daypaw-shell-ia-skeleton.md: 7080d5152586c7f1e34e7193ec3008207718786e
-2026-08-24-daypaw-shell-ia-skeleton.zh.md: 4fcda5d51b0d736ec51fcead473870b12e0d7f39
+2026-08-24-daypaw-shell-ia-skeleton.zh.md: 5bbacd4ca261654307d1ff1479675db349c4cabd

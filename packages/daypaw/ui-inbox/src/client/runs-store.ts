@@ -6,8 +6,8 @@
  * (the CatalogStore precedent in ui-agents); the host stays the single fact
  * source and any wire failure lands in the store's error status.
  */
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { RunsApi, WireJournalEntry, WireRun, WireRunLineage } from './runs-api.ts'
 
 /**

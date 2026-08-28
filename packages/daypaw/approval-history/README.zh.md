@@ -1,8 +1,19 @@
+---
+description: "daypaw 浏览器壳的 session 投影单元 approvalHistory。本插件把 声明的 approval/asked + approval/decided 审计事件对折叠成按序的每会话审批列表，供任务详情面板的「审批历史」区块渲染，并注册到 ctx.sess"
+kind: "package-reference"
+---
+
 # @daypaw/approval-history
 
 [English](README.md) | 中文
 
-daypaw 浏览器壳的 session 投影单元 `approvalHistory`。本插件把 [`@deepseek-ai/dsh-user-approval`](../../interaction/user-approval/README.md) 声明的 `approval/asked` + `approval/decided` 审计事件对折叠成按序的每会话审批列表，供任务详情面板的「审批历史」区块渲染，并注册到 `ctx.sessionProjections`。插件只拥有折叠逻辑；投递（快照、变更订阅、持久缓存）由 seam 负责。
+## 概述
+
+## 目录
+
+
+
+daypaw 浏览器壳的 session 投影单元 `approvalHistory`。本插件把 [`@deepseek-ai/dsh-user-approval`](../../interaction/user-approval/README.zh.md) 声明的 `approval/asked` + `approval/decided` 审计事件对折叠成按序的每会话审批列表，供任务详情面板的「审批历史」区块渲染，并注册到 `ctx.sessionProjections`。插件只拥有折叠逻辑；投递（快照、变更订阅、持久缓存）由 seam 负责。
 
 ## 投影单元
 
@@ -33,3 +44,5 @@ daypaw 浏览器壳的 session 投影单元 `approvalHistory`。本插件把 [`@
 
 - **渲染不在本包范围** —— 本包只提供投影值；「审批历史」区块的 UI 在 fork 的 client 层（ui 包）。
 - **无逐调用粒度** —— 每次询问一条；跨多个工具调用的询问（无 `callId`）是单行，具体调用的 `callId` 只能从日志本身取回。
+
+### 开发备注

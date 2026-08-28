@@ -1,17 +1,19 @@
 /**
  * New-task dialog store: the healthy agent-preset roster (a broken preset can
  * never compose a task, so it is filtered, not shown) and the submit sequence
- * — create the session with the chosen preset, wait for the list projection
- * to carry it, open it, then prompt the first task text. The host stays the
- * single fact source; a failure anywhere lands inline on the dialog.
+ * — create the session, wait for the list projection to carry it, open it,
+ * select the chosen preset, then prompt the first task text. The host stays
+ * the single fact source; a failure anywhere lands inline on the dialog.
  */
-import type { IApiClient, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ISessions, SessionBinding, SessionFace, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { ISessions, SessionBinding, SessionFace } from '@deepseek-ai/dsh-api-session-controller/client'
 
 /** One selectable agent row (healthy presets only). */
 export interface AgentOption {
-  /** Preset id (also the create payload's agentPreset). */
+  /** Preset id (the agentPresets select target). */
   id: string
   /** Display name, falling back to the id. */
   label: string
@@ -36,7 +38,11 @@ export interface NewTaskState {
 }
 
 /** The wire domains the dialog consumes. */
-export type NewTaskApi = Pick<IApiClient, 'agentPresets'> & { sessions: Pick<IApiClient['sessions'], 'create'> }
+export type NewTaskApi = {
+  agentPresets: Pick<ClientRemote['agentPresets'], 'list' | 'select'>
+  /** Create a session on the host. */
+  createSession(): Promise<SessionId>
+}
 
 /** The session binding members the dialog consumes (the first prompt only). */
 export type NewTaskBinding = Pick<SessionBinding, 'sessionId'> & { readonly session: Pick<SessionFace, 'prompt'> }
@@ -72,9 +78,9 @@ export class NewTaskStore {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading' })
     try {
-      const response = await this.api.agentPresets.list({})
-      if (!response.result.ok) throw new Error(response.result.error.message)
-      const agents = response.result.value.presets
+      const response = await this.api.agentPresets.list()
+      if (!response.ok) throw new Error(response.error.message)
+      const agents = response.value.presets
         .filter(preset => preset.broken === undefined)
         .map(preset => ({ id: preset.id, label: preset.name ?? preset.id, isDefault: preset.isDefault }))
       if (generation !== this.generation) return
@@ -116,13 +122,13 @@ export class NewTaskStore {
     if (text === '') return undefined
     this.store.update((s) => { s.submitting = true; s.submitFailed = false })
     try {
-      const created = await this.api.sessions.create(
-        state.selected === undefined ? {} : { agentPreset: state.selected },
-      )
-      if (!created.result.ok) throw new Error(created.result.error.message)
-      const sessionId = created.result.value.sessionId
+      const sessionId = await this.api.createSession()
       await this.whenListed(sessionId)
       this.sessions.open(sessionId)
+      if (state.selected !== undefined) {
+        const selected = await this.api.agentPresets.select(sessionId, state.selected)
+        if (!selected.ok) throw new Error(selected.error.message)
+      }
       const binding = this.sessions.binding(sessionId)
       if (binding === undefined) throw new Error(`ui-tasks: created session "${sessionId}" resolved no binding`)
       const prompted = await binding.session.prompt([{ type: 'text', text }], 'queue')

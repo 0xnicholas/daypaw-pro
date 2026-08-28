@@ -1,6 +1,6 @@
 /** Shared lazy-invalidation guard and first-open load hook for the settings page's tab stores. */
 import { useEffect } from 'react'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** A tab controller that fetches on demand: a status-carrying snapshot plus its load. */
 export interface LazilyLoaded {

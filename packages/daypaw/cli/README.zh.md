@@ -1,6 +1,17 @@
+---
+description: "自包含 daypaw CLI：npm i -g @daypaw/cli 安装 daypaw 命令——从打进本包的 vendored 运行时闭包直接启动产品壳，无需另装任何 @deepseek-ai/* 包。裸 daypaw 启动浏览器壳并打印 URL 行（daypaw w"
+kind: "package-reference"
+---
+
 # @daypaw/cli
 
 [English](README.md) | 中文
+
+## 概述
+
+## 目录
+
+
 
 自包含 daypaw CLI：`npm i -g @daypaw/cli` 安装 `daypaw` 命令——从打进本包的 vendored 运行时闭包直接启动产品壳，无需另装任何 `@deepseek-ai/*` 包。裸 `daypaw` 启动浏览器壳并打印 URL 行（`daypaw web: http://127.0.0.1:<端口>`）；壳应用自己的参数紧随其后（`daypaw --port 8080`、`daypaw --help`）。durable ledger 落在启动目录的 `daypaw/ledger.db`。交付形态：[ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)。
 
@@ -30,6 +41,8 @@ manifest 即 deploy root，其 `dependencies` 精确决定哪些 workspace 包�
 
 - **宿主机平台闭包**——tarball 打包的是构建宿主机上 deploy 出的闭包；宿主之外的平台特定 native 依赖在安装时从 npm 解析，无已发布 native 兜底的平台未测试。
 - **单发 headless 不是本 CLI 的面**（spec 05 §4）——壳即产品；程序化 durable 运行走 `@daypaw/sdk`，或显式 `--profile` 启动上游 headless profile。
-- **播种仅限 CLI**——`daypaw` profile 模板在本包内，不在上游 launcher 的 `PROFILE_TEMPLATES` 里，源码态 `pnpm dsh --profile daypaw` 不会自初始化；源码态组合请改用 [examples/daypaw-skeleton](../../../examples/daypaw-skeleton/README.md)。
+- **播种仅限 CLI**——`daypaw` profile 模板在本包内，不在上游 launcher 的 `PROFILE_TEMPLATES` 里，源码态 `pnpm dsh --profile daypaw` 不会自初始化；源码态组合请改用 [examples/daypaw-skeleton](../../../packages/examples/daypaw-skeleton/README.zh.md)。
 - **不承诺跨版本续跑在飞 run**——按 ADR 0011 §2，升级须先 drain ledger 或弃库重跑。
 - **无 `NPM_TOKEN` 时发布路径未验证**——release workflow 的 publish job 依赖该 secret；受门验证的是 pack 路径。
+
+### 开发备注

@@ -1,11 +1,12 @@
 /** daypaw tasks apply: the three ui-inbox seats, the dictionaries, the shared new-task store, and teardown. */
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionListState, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
+import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '../src/client/index.ts'
 import { apply as applyNodeHalf } from '../src/index.ts'
 import { NewTaskDialog, type NewTaskDialogInjected } from '../src/client/new-task-dialog.tsx'
@@ -16,15 +17,14 @@ import { FakeTaskApi } from './fake-task-api.client.ts'
 
 // The locale service reads its initial locale from the browser; these specs
 // assert the shipped Chinese copy, so they state the browser they assume.
-usePinnedBrowserLanguages('zh-CN')
-
 async function bench() {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
+  locale.setLocale('zh')
   ctx.provide('locale', locale)
   const api = new FakeTaskApi()
-  ctx.provide('connection', { api } as never)
+  new TestRemote(ctx, { agentPresets: api.agentPresets })
   const list: SnapshotStore<SessionListState> = createSnapshotStore<SessionListState>({
     ids: [], byId: {}, current: undefined, phase: 'ready',
     subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
@@ -38,7 +38,7 @@ async function bench() {
       name: 'root',
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
-        'conversation': { kind: 'single', scope: 'session-maybe' },
+        'conversation': { kind: 'single', scope: 'session' },
         'details': { kind: 'single', scope: 'session' },
       },
     } as never,
@@ -54,7 +54,7 @@ async function bench() {
       name: 'conversation',
       children: {
         'inbox.workspace.tasks': { kind: 'single', scope: 'root' },
-        'inbox.workspace.conversation': { kind: 'single', scope: 'session-maybe' },
+        'inbox.workspace.conversation': { kind: 'single', scope: 'session' },
       },
     } as never,
     () => null,
@@ -69,7 +69,7 @@ async function bench() {
 
 describe('ui-tasks apply', () => {
   it('declares only the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'sessions'])
+    expect(inject).toEqual(['slots', 'locale', 'sessions', 'remote', 'remote.agentPresets'])
   })
 
   it('the node half provides no host-side behavior', () => {

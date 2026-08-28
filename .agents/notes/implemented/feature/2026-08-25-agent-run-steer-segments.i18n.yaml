@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-25-agent-run-steer-segments.md
 2026-08-25-agent-run-steer-segments.md: 620013a304ecf0c783e997534c854bea2b28033d
-2026-08-25-agent-run-steer-segments.zh.md: 9536fdacbca4a6ef2a75542081efb55ae3a8fe02
+2026-08-25-agent-run-steer-segments.zh.md: f987d2eb3e7ac59a4834d40fccf9615927e6a915

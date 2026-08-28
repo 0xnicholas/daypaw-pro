@@ -1,17 +1,11 @@
 /**
  * Fixture daypaw durable lane: the `durable/*` Remote endpoints over the seeded
  * run ledger (list/lineage/timeline/rerun) and the approvalHistory projection
- * fold (baseline replay plus live advance on asked/decided appends).
+ * fold (control-stream baseline plus live advance on asked/decided appends).
  */
 import { describe, expect, it } from 'vitest'
-import type { SessionId } from '../src/client/api.ts'
-import { RpcId } from '../src/client/api.ts'
-import type { MuxFrame, RpcRequest } from '../src/client/api.ts'
-import { createFixtureApi, createFixtureFaces } from '../src/client/fixture.ts'
-
-const sid = (id: string): SessionId => id as SessionId
-let reqCount = 0
-const req = <P>(payload: P): RpcRequest<P> => ({ rpcId: RpcId(`t-${reqCount++}`), payload })
+import type { ClientConnectionRpc } from '../src/client/index.ts'
+import { createFixtureFaces } from '../src/client/fixture.ts'
 
 interface TimingHooks {
   appendApproval(id: string, approvalId: string, toolName: string, outcome: 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'): void
@@ -128,24 +122,40 @@ describe('fixture durable endpoints', () => {
 })
 
 describe('fixture approvalHistory projection', () => {
-  it('replays the seeded pairs in the history-tail baseline', async () => {
-    const api = createFixtureApi()
-    const tail = await api.sessions.history(req({ sessionId: sid('fx-alpha'), maxMessages: 10 }))
-    if (!tail.result.ok) throw new Error('history failed')
-    expect(tail.result.value.projections?.values['approvalHistory']).toEqual([
-      { id: 'fx-approval-hist-1', toolName: 'bash', reason: '写入工作区外路径', outcome: 'allowed-once' },
-      { id: 'fx-approval-hist-2', toolName: 'write', outcome: 'rejected' },
-    ])
+  const openControl = (rpc: ClientConnectionRpc, signal: AbortSignal): AsyncIterable<unknown> => {
+    const stream = rpc.open?.('/api', 'session/control', { args: {} }, signal)
+    if (stream === undefined) throw new Error('fixture control stream is unavailable')
+    return stream
+  }
+
+  it('replays the seeded pairs in the control baseline', async () => {
+    const { rpc } = createFixtureFaces()
+    const abort = new AbortController()
+    for await (const frame of openControl(rpc, abort.signal)) {
+      const baseline = frame as {
+        type: string
+        value: { projections: Record<string, { values: Record<string, unknown> }> }
+      }
+      if (baseline.type !== 'baseline') continue
+      abort.abort()
+      expect(baseline.value.projections['fx-alpha']?.values['approvalHistory']).toEqual([
+        { id: 'fx-approval-hist-1', toolName: 'bash', reason: '写入工作区外路径', outcome: 'allowed-once' },
+        { id: 'fx-approval-hist-2', toolName: 'write', outcome: 'rejected' },
+      ])
+      return
+    }
+    throw new Error('fixture control baseline missing')
   })
 
   it('pushes a live approvalHistory frame on each asked/decided append', async () => {
-    const api = createFixtureApi()
+    const { rpc } = createFixtureFaces()
     const abort = new AbortController()
-    const framesPromise = (async (): Promise<MuxFrame[]> => {
-      const frames: MuxFrame[] = []
-      for await (const envelope of api.events.mux(req({}), abort.signal)) {
-        frames.push(envelope.payload)
-        if (frames.filter(f => f.type === 'session/projection' && f.key === 'approvalHistory').length >= 3) abort.abort()
+    const framesPromise = (async (): Promise<unknown[]> => {
+      const frames: unknown[] = []
+      for await (const frame of openControl(rpc, abort.signal)) {
+        frames.push(frame)
+        if (frames.filter(f => (f as { type: string; key?: string }).type === 'projection'
+          && (f as { key?: string }).key === 'approvalHistory').length >= 2) abort.abort()
       }
       return frames
     })()
@@ -153,11 +163,12 @@ describe('fixture approvalHistory projection', () => {
     timing().appendApproval('fx-alpha', 'fx-approval-live-1', 'web_fetch', 'rejected')
     const frames = await framesPromise
     const history = frames
-      .filter((f): f is Extract<MuxFrame, { type: 'session/projection' }> => f.type === 'session/projection' && f.key === 'approvalHistory')
-      .map(f => f.value as { id: string; toolName: string; outcome?: string }[])
-    // Baseline (the seeded pairs), asked (outcome pending), decided (paired).
-    expect(history.length).toBe(3)
-    expect(history[1]?.at(-1)).toEqual({ id: 'fx-approval-live-1', toolName: 'web_fetch' })
-    expect(history[2]?.at(-1)).toEqual({ id: 'fx-approval-live-1', toolName: 'web_fetch', outcome: 'rejected' })
+      .filter((f): f is { type: 'projection'; key: string; value: { id: string; toolName: string; outcome?: string }[] } =>
+        (f as { type: string }).type === 'projection' && (f as { key?: string }).key === 'approvalHistory')
+      .map(f => f.value)
+    // Asked (outcome pending), then decided (paired).
+    expect(history.length).toBe(2)
+    expect(history[0]?.at(-1)).toEqual({ id: 'fx-approval-live-1', toolName: 'web_fetch' })
+    expect(history[1]?.at(-1)).toEqual({ id: 'fx-approval-live-1', toolName: 'web_fetch', outcome: 'rejected' })
   })
 })

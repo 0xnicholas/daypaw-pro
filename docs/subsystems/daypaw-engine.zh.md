@@ -2,7 +2,7 @@
 
 [English](daypaw-engine.md) | 中文
 
-fork 自有的 durable 执行服务（`ctx.durable`，包 [`@daypaw/engine`](../../packages/daypaw/engine)）：run 生命周期、step 去重续跑、单写者认领与 boot 扫描复活，落在 [`@daypaw/store`](../../packages/daypaw/store) SQLite ledger 之上。语义见[spec 第 1 章](../spec/01-durable-execution.md)；走骨决策记录在[走骨 Agent Note](../../.agents/notes/implemented/architecture/2026-08-19-daypaw-walking-skeleton.md)；可调用 API 与配置归包 [README](../../packages/daypaw/engine/README.md)。
+fork 自有的 durable 执行服务（`ctx.durable`，包 [`@daypaw/engine`](../../packages/daypaw/engine)）：run 生命周期、step 去重续跑、单写者认领与 boot 扫描复活，落在 [`@daypaw/store`](../../packages/daypaw/store) SQLite ledger 之上。语义见[spec 第 1 章](../spec/01-durable-execution.md)；走骨决策记录在[走骨 Agent Note](../../.agents/notes/implemented/architecture/2026-08-19-daypaw-walking-skeleton.zh.md)；可调用 API 与配置归包 [README](../../packages/daypaw/engine/README.zh.md)。
 
 来源：[`packages/daypaw/engine/src/index.ts`](../../packages/daypaw/engine/src/index.ts)、[`packages/daypaw/engine/src/core.ts`](../../packages/daypaw/engine/src/core.ts) 与 [`packages/daypaw/engine/src/types.ts`](../../packages/daypaw/engine/src/types.ts)。
 
@@ -71,7 +71,7 @@ Attach 永不夺权：他处驱动的 run 按 `pollMs` 轮询，复活归 boot �
 
 ## Cordis API
 
-Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
 <a id="ctxdurable--durableengine"></a>
 
@@ -167,5 +167,5 @@ async resolveGate(runId: string, gate: string, settlement: GateSettlement, sourc
 @Remote('rerun') async rerun(runId: string): Promise<string>
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:69`](../../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts`](../../packages/daypaw/engine/src/index.ts)
 <!-- END GENERATED cordis-surface -->

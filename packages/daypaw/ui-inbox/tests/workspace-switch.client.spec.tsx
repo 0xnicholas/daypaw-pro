@@ -2,8 +2,9 @@
 /** WorkspaceSwitch: the middle column follows the shared selection and delegates the banner/settings/tasks/conversation holes. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
-import { createSnapshotStore, type SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { WorkspaceSwitch, type WorkspaceSwitchProps } from '../src/client/WorkspaceSwitch.tsx'
 import type {
@@ -32,7 +33,6 @@ function listState(): SessionListState {
     running,
     blank,
     updatedAt: 1,
-    ...(id === 'b' ? { agentPreset: 'standard' } : {}),
   })
   return {
     // 'ghost' proves the masked-gap arm: an id the list names but byId lacks
@@ -65,7 +65,10 @@ function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode, r
       sessionId={undefined}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
+      useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
       useSessions={bindSnapshotSelector(createSnapshotStore(listState()))} useWorkspaces={neverHook}
+      useConversation={neverHook}
+      SessionProvider={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
       useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
       select={(next) => { controller.select(next) }}
@@ -103,7 +106,7 @@ describe('WorkspaceSwitch', () => {
     act(() => { controller.select({ kind: 'group', group: 'done' }) })
     const done = calls.findLast(call => call.key === 'inbox.workspace.tasks')!
     const doneOwner = done.owner as unknown as InboxTasksOwnerProps
-    expect(doneOwner.rows.map(row => [row.title, row.agentPreset])).toEqual([['title-b', 'standard'], ['title-c', undefined]])
+    expect(doneOwner.rows.map(row => row.title)).toEqual(['title-b', 'title-c'])
     // openTask selects the task kind, which the controller drives to sessions.open.
     doneOwner.openTask('b' as SessionId)
     expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 'b' })

@@ -102,7 +102,7 @@ function migrateShippedBundles(dir: string): void {
  * a no-op on a current profile.
  * @param home - the Harness home; defaults to {@link resolveDshHome}.
  */
-export function seedDaypawProfile(home: string = resolveDshHome()): void {
+export async function seedDaypawProfile(home: string = resolveDshHome()): Promise<void> {
   const dir = resolveProfileDir(DAYPAW_PROFILE_NAME, home)
   if (!existsSync(join(dir, 'package.json'))) {
     mkdirSync(dir, { recursive: true })
@@ -113,7 +113,7 @@ export function seedDaypawProfile(home: string = resolveDshHome()): void {
   } else {
     migrateShippedBundles(dir)
   }
-  healProfilesModuleFallback(CLI_MANIFEST, home)
+  await healProfilesModuleFallback({ installAnchor: CLI_MANIFEST, home })
 }
 
 /**

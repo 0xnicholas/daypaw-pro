@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-durable-gate-waitfor.md
 2026-08-23-durable-gate-waitfor.md: 3987ace708d0baa3eb609b3019b96d7b9d39f53f
-2026-08-23-durable-gate-waitfor.zh.md: b596b7ee89163da5c50e0cede2121fe954694a6c
+2026-08-23-durable-gate-waitfor.zh.md: 7b23c1bbdfaa8854f73530b34973daed5944f74a

@@ -1,6 +1,17 @@
+---
+description: "Session-projection unit approvalHistory for the daypaw browser shell. The plugin folds the approval/asked + approval/decided audit pair "
+kind: "package-reference"
+---
+
 # @daypaw/approval-history
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 Session-projection unit `approvalHistory` for the daypaw browser shell. The plugin folds the `approval/asked` + `approval/decided` audit pair (declared by [`@deepseek-ai/dsh-user-approval`](../../interaction/user-approval/README.md)) into the ordered per-session approval list the task detail pane's 审批历史 section renders, and registers it on `ctx.sessionProjections`. The plugin owns only the fold; the seam owns delivery (snapshot, change feed, persisted cache).
 
@@ -33,3 +44,5 @@ None — the projection is never part of a live request prefix.
 
 - **Rendering is out of scope** — this package serves the projection value only; the 审批历史 section UI lives in the fork's client layer (ui packages).
 - **No per-call granularity** — one entry per ask; an ask spanning multiple tool calls (no `callId`) is a single row, and the `callId` of a specific call is recoverable only from the log itself.
+
+### Dev Note

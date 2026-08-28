@@ -6,7 +6,7 @@
  * holds the persisted preference, never the resolved active theme (spec 05
  * §7: the switch is a preference, `system` included).
  */
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ThemePreference, ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 
 /** Row state mirrored from the theme service snapshot. */

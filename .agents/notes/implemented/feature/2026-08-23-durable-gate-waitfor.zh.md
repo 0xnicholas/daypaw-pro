@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-spec 01 §6 把 durable promise 定义为 HITL gate：workflow 挂在一个具名 gate 上，外部行动者 resolve 它，而 run 必须在其间扛住进程死亡。[走骨 note](../architecture/2026-08-19-daypaw-walking-skeleton.md) 把 promise 存储与 `waiting` 状态推迟到这次按需落地（issue #47）。四个决策开放：gate 单独落地还是与 `ctx.sleep` 一起、promise 决议是否单设缝包、payload schema 在哪一级校验、两个决议竞态时采哪种结算语义。
+spec 01 §6 把 durable promise 定义为 HITL gate：workflow 挂在一个具名 gate 上，外部行动者 resolve 它，而 run 必须在其间扛住进程死亡。[走骨 note](../architecture/2026-08-19-daypaw-walking-skeleton.zh.md) 把 promise 存储与 `waiting` 状态推迟到这次按需落地（issue #47）。四个决策开放：gate 单独落地还是与 `ctx.sleep` 一起、promise 决议是否单设缝包、payload schema 在哪一级校验、两个决议竞态时采哪种结算语义。
 
 ## 决策
 

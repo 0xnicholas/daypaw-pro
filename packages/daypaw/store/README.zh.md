@@ -1,8 +1,19 @@
+---
+description: "daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——schema 常量、行类型、编号 SQL 迁移与 open/migrate 序列——仅此而已：一切状态裁决在 。设计权威：；包切分：。"
+kind: "package-reference"
+---
+
 # @daypaw/store
 
 [English](README.md) | 中文
 
-daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——schema 常量、行类型、编号 SQL 迁移与 open/migrate 序列——仅此而已：一切状态裁决在 [`@daypaw/engine`](../engine/README.md)。设计权威：[spec 第 1 章 §3–§4](../../../docs/spec/01-durable-execution.md)；包切分：[ADR 0006](../../../docs/adr/0006-engine-package-structure.md)。
+## 概述
+
+## 目录
+
+
+
+daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——schema 常量、行类型、编号 SQL 迁移与 open/migrate 序列——仅此而已：一切状态裁决在 [`@daypaw/engine`](../engine/README.zh.md)。设计权威：[spec 第 1 章 §3–§4](../../../docs/spec/01-durable-execution.md)；包切分：[ADR 0006](../../../docs/adr/0006-engine-package-structure.md)。
 
 ## 存储模型
 
@@ -43,3 +54,5 @@ daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——sch
 - **尚无 `retry_policy_json` 列** —— retry 面已推迟；该列随其落地以后续迁移加入（简化裁决，issue #24）。
 - **单进程属主纪律归引擎** —— 本包除 SQLite WAL 语义外既不强制也不描述跨进程写策略。
 - **不独立发布** —— 本包随 `@daypaw/sdk` tarball vendored 分发（ADR 0011）。
+
+### 开发备注

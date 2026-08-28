@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-Issue #52（spec 05 §5，后端面增量第三项）声明产品壳 agent 目录经[定义注册表只读视图](2026-08-25-daypaw-definition-registry-view.md)读出的展示元数据：业务名 + 描述（#40 的下限集合）。引擎载体（`EngineDefinition.display`）随 #51 落地，但 SDK 声明面没有声明它的入口，定义什么都不声明时的行为也没有定义。
+Issue #52（spec 05 §5，后端面增量第三项）声明产品壳 agent 目录经[定义注册表只读视图](2026-08-25-daypaw-definition-registry-view.zh.md)读出的展示元数据：业务名 + 描述（#40 的下限集合）。引擎载体（`EngineDefinition.display`）随 #51 落地，但 SDK 声明面没有声明它的入口，定义什么都不声明时的行为也没有定义。
 
 ## Decision
 

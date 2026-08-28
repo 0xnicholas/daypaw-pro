@@ -2,7 +2,7 @@
 /** AgentsPage: the load lifecycle states, the card grid, and the detail view (name@version identity, no version operations). */
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { AgentsPage, type AgentsPageProps } from '../src/client/agents-page.tsx'
 import { CatalogStore } from '../src/client/catalog-store.ts'
 import type { CatalogApi } from '../src/client/definitions-api.ts'
@@ -27,7 +27,8 @@ function mountPage(api: CatalogApi = CARDS_API) {
       sessionId={undefined}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}
+      useSessionPendingInteraction={neverHook}
       useCatalog={bindSnapshotSelector(store.store)}
       store={store}
       t={t}

@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-19-daypaw-walking-skeleton.md
 2026-08-19-daypaw-walking-skeleton.md: ff67ceb0405c93c58eaf6e832afe4bd52a1d7602
-2026-08-19-daypaw-walking-skeleton.zh.md: b7b0fe7b0ccceaf6c62493b2d89c136b4bc624f7
+2026-08-19-daypaw-walking-skeleton.zh.md: ad1b423559182320ca5bc33a6257e0a077081c8e

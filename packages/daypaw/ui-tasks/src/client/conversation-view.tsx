@@ -11,11 +11,13 @@
  * replay restores it after a cold start, and the resolved broadcast removes
  * it — the card itself never polls.
  */
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the conversation seat) in so
 // PropsRuntime<'inbox.workspace.conversation'> resolves.
 import type {} from '@daypaw/ui-inbox/client'
+// Type-only: pulls ui-chat's session-standard merge (useChat).
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ApprovalCard, type PendingApprovalWait } from './approval-card.tsx'
 import { projectBusinessRows } from './chat-projection.ts'
@@ -38,30 +40,31 @@ export type ConversationViewProps =
   & PropsLocale<'daypaw-tasks'>
 
 /**
- * Render the selected task's conversation.
- * @param props - composed slot props (session-maybe standard kit + injected face + locale seat).
+ * Render the selected task's conversation (session scope: the seat renders
+ * only while a task's session is selected).
+ * @param props - composed slot props (session standard kit + injected face + locale seat).
  * @returns the conversation element tree.
  */
-export function ConversationView({ useSession, useSessions, sessionId, sendNote, t }: ConversationViewProps) {
-  const chat = useSession(s => s.chat)
-  const running = useSession(s => s.running) ?? false
-  const pending = useSession(s => s.pending)
-  const runningCalls = useSession(s => s.runningCalls)
-  const taskTitle = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.displayTitle)
-  const rows = chat === undefined ? [] : projectBusinessRows(chat)
+export function ConversationView({
+  useSession, useSessions, useChat, useSessionPendingInteraction, sessionId, sendNote, t,
+}: ConversationViewProps) {
+  const chat = useChat(s => s)
+  const running = useSession(s => s.running)
+  const pending = useSessionPendingInteraction(s => s.get(sessionId))
+  const runningCalls = useChat(s => s.legacy.runningCalls)
+  const taskTitle = useSessions(s => s.byId[sessionId]?.displayTitle)
+  const rows = projectBusinessRows(chat)
 
-  const approval: PendingApprovalWait | undefined = pending?.find(
-    (wait): wait is PendingApprovalWait => wait.kind === 'approval',
-  )
-  // The paired call stays in runningCalls while the approval blocks its
+  const approval: PendingApprovalWait | undefined = pending
+  // The paired call stays in the running calls while the approval blocks its
   // execution; its raw args feed the card's details expander.
-  const callArgs = approval?.payload.callId === undefined
+  const callArgs = approval === undefined
     ? undefined
-    : runningCalls?.find(call => call.callId === approval.payload.callId)?.argsRaw
+    : runningCalls.find(call => call.callId === approval.callId)?.argsRaw
 
   return (
     <div className={css.root}>
-      {approval !== undefined && sessionId !== undefined && (
+      {approval && sessionId && (
         <ApprovalCard
           key={approval.key}
           wait={approval}

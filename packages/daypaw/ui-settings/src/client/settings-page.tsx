@@ -9,7 +9,7 @@
  */
 import { useState } from 'react'
 import clsx from 'clsx'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { LocaleRuntime, LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 import type { ThemePreference } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
@@ -60,7 +60,7 @@ export type SettingsPageProps =
   & PropsLocale<'daypaw-settings'>
 
 /** The four tabs in rail order. */
-const TABS: readonly SettingsTab[] = ['general', 'credentials', 'models', 'about']
+const TAB_IDS: readonly SettingsTab[] = ['general', 'credentials', 'models', 'about']
 
 /** Tab label keys, in TABS order's key space. */
 const TAB_LABEL: Record<SettingsTab, DaypawSettingsKey> = {
@@ -91,7 +91,7 @@ export function SettingsPage({
       <header className={css.header}><h1 className={css.title}>{t('title')}</h1></header>
       <div className={css.body}>
         <nav className={css.tabs}>
-          {TABS.map(id => (
+          {TAB_IDS.map(id => (
             <button
               key={id}
               type="button"
@@ -310,23 +310,13 @@ function AboutTab({ state, store, t }: {
   return (
     <section>
       <div className={css.row}>
-        <span className={css.rowLabel}>{t('about.version')}</span>
-        <span className={css.rowValue}>{description.version}</span>
+        <span className={css.rowLabel}>{t('about.model')}</span>
+        <span className={css.rowValue}>{description.provider} / {description.model}</span>
       </div>
       <div className={css.row}>
-        <span className={css.rowLabel}>{t('about.cwd')}</span>
-        <span className={css.rowValue}>{description.cwd}</span>
+        <span className={css.rowLabel}>{t('about.attached')}</span>
+        <span className={css.rowValue}>{description.attachedSessions}</span>
       </div>
-      {description.provider === undefined
-        ? null
-        : (
-          <div className={css.row}>
-            <span className={css.rowLabel}>{t('about.model')}</span>
-            <span className={css.rowValue}>
-              {description.model === undefined ? description.provider : `${description.provider} / ${description.model}`}
-            </span>
-          </div>
-        )}
       <div className={css.row}>
         <button type="button" className={css.button} onClick={copy}>
           {copied ? t('about.copied') : t('about.copy')}

@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-Issue #57（spec 05 §2/§5，壳板块增量 ②）把收件箱板块变成任务进度面：「进行中/已完成」分组由 durable 引擎的查询面供给，右侧详情栏承载四个区块（进度 / 子任务 / 产出物 / 审批历史），失败的 run 提供「重试」。[引擎查询面](2026-08-25-daypaw-engine-query-face.md)已给 host 提供 `listRuns`/`runLineage`/`journalTimeline`，但浏览器只能走 gateway 的 Typert Remote 通道（[agent 目录](2026-08-25-daypaw-agent-catalog.md)的约束），且[任务对话](2026-08-24-daypaw-task-conversation.md)的板块只认识 session——workflow run 没有 session，纯 sessions 板块永远列不出它。
+Issue #57（spec 05 §2/§5，壳板块增量 ②）把收件箱板块变成任务进度面：「进行中/已完成」分组由 durable 引擎的查询面供给，右侧详情栏承载四个区块（进度 / 子任务 / 产出物 / 审批历史），失败的 run 提供「重试」。[引擎查询面](2026-08-25-daypaw-engine-query-face.zh.md)已给 host 提供 `listRuns`/`runLineage`/`journalTimeline`，但浏览器只能走 gateway 的 Typert Remote 通道（[agent 目录](2026-08-25-daypaw-agent-catalog.zh.md)的约束），且[任务对话](2026-08-24-daypaw-task-conversation.zh.md)的板块只认识 session——workflow run 没有 session，纯 sessions 板块永远列不出它。
 
 ## Decision
 

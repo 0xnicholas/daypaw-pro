@@ -7,12 +7,9 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import type {
-  ChatSnapshot, ConversationSnapshot,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { EMPTY_CONVERSATION_VIEWS } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import type { ChatNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { ConversationNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   TaskDetailView, WireJournalEntry, WireRun, WireRunLineage,
 } from '@daypaw/ui-inbox/client'
@@ -27,50 +24,41 @@ const neverHook = (() => { throw new Error('the detail body must not read this h
 
 let seq = 0
 
-/** Mint one visible business-readable Chat node. */
-function userNode(text: string): ChatNode<'user'> {
+/** Mint one business-readable conversation node. */
+function userNode(text: string): ConversationNode {
   seq += 1
-  return {
-    key: `n${seq}`, kind: 'user', id: `id${seq}`, target: 'chat', anchorSeq: seq,
-    location: { kind: 'unresolved' }, visibility: 'visible',
-    data: { kind: 'user', seq, time: seq * 1000, source: null, content: [{ type: 'text', text }] },
-  }
+  return { kind: 'user', seq, time: seq * 1000, source: null, content: [{ type: 'text', text }] }
 }
 
 /** Mint one terminal failure marker node. */
-function errorNode(): ChatNode<'turn-error'> {
+function errorNode(): ConversationNode {
   seq += 1
-  return {
-    key: `n${seq}`, kind: 'turn-error', id: `id${seq}`, target: 'chat', anchorSeq: seq,
-    location: { kind: 'unresolved' }, visibility: 'visible',
-    data: { kind: 'turn-error', seq, time: 1, turn: 1, step: 1, message: 'provider exploded' },
-  }
+  return { kind: 'turn-error', seq, time: 1, turn: 1, step: 1, message: 'provider exploded' }
 }
 
-/** Assemble a Chat snapshot over the given nodes (fixture-shaped readers). */
-function chatWith(nodes: readonly ChatNode[]): ChatSnapshot {
-  const byKey = new Map(nodes.map(n => [n.key, n]))
+/** Assemble a Chat snapshot whose legacy slice carries the given nodes. */
+function chatWith(nodes: readonly ConversationNode[]): ChatSnapshot {
   return {
-    order: nodes.map(n => n.key),
-    nodes: { get: key => byKey.get(key), values: () => nodes },
+    order: [], nodes: { get: () => undefined, values: () => [] },
     locations: { getTurn: () => [], getStep: () => [] },
+    navigation: { items: () => [] },
     timeline: { turnOrder: [], turns: new Map() },
-    legacy: { nodes: [], turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
+    legacy: { nodes, turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [] },
   }
 }
 
 const EMPTY_CHAT = chatWith([])
 
-/** A ConversationSnapshot carrying only what the body reads. */
-function sessionWith(sessionId: string, chat: ChatSnapshot, running: boolean): ConversationSnapshot {
+/** The session snapshot facts the body reads (chat rides its own hook). */
+function sessionWith(sessionId: string, running: boolean) {
   return {
-    sessionId: sessionId as SessionId, views: EMPTY_CONVERSATION_VIEWS, chat, nodes: [],
-    turnTimings: new Map(), turnEnds: new Map(), partial: null, runningCalls: [],
-    pending: [], queue: [], running, composerPhase: 'active', removed: false,
-    openState: 'open', openError: null, hasMore: false, loadingOlder: false,
-    promptError: null, blank: false, subagent: null, lastAgentError: null,
+    sessionId: sessionId as SessionId, queue: [], pendingSubmissions: [], running,
+    subagent: null, removed: false, openState: 'open' as const, openError: null,
+    hasMore: false, loadingOlder: false, promptError: null, blank: false,
+    lastAgentError: null, promptAttempted: false, awaitingFirstTurn: false,
   }
 }
+
 
 /** A run row fixture (workflow by default). */
 function run(over: Partial<WireRun> = {}): WireRun {
@@ -101,22 +89,25 @@ function runDetail(over: Partial<WireRun> & {
 interface MountOptions {
   /** The session seat's id (defaults to matching a session-kind detail's 's1'). */
   seatSessionId?: string
-  /** The session seat's snapshot. */
-  session?: ConversationSnapshot
+  /** The session seat's snapshot and its chat snapshot. */
+  session?: ReturnType<typeof sessionWith>
+  chat?: ChatSnapshot
   /** The seat's approvalHistory projection value (undefined = capability absent). */
   approvals?: readonly ApprovalHistoryEntry[] | undefined
 }
 
 function mountBody(detail: TaskDetailView, opts: MountOptions = {}) {
-  const session = opts.session ?? sessionWith('s1', EMPTY_CHAT, false)
+  const session = opts.session ?? sessionWith('s1', false)
   const useSession: DetailBodyProps['useSession'] = sel => sel(session)
+  const useChat: DetailBodyProps['useChat'] = sel => sel(opts.chat ?? EMPTY_CHAT)
   const useProjection = ((key: string) => key === 'approvalHistory' ? opts.approvals : undefined) as DetailBodyProps['useProjection']
   return render(
     <DetailBody
-      detail={detail} useSession={useSession} useProjection={useProjection}
+      detail={detail} useSession={useSession} useChat={useChat} useProjection={useProjection}
       sessionId={(opts.seatSessionId ?? 's1') as SessionId}
+      useConversation={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook} t={t}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook} t={t}
     />,
   )
 }
@@ -138,7 +129,8 @@ describe('DetailBody', () => {
     }), {
       // The seat carries another task's live session; ledger facts still render.
       seatSessionId: 'other',
-      session: sessionWith('other', chatWith([userNode('别的任务')]), true),
+      session: sessionWith('other', true),
+      chat: chatWith([userNode('别的任务')]),
       approvals: [approval('a1', { outcome: 'allowed-once' })],
     })
     expect(screen.getByText('收集数据')).toBeTruthy()
@@ -170,9 +162,10 @@ describe('DetailBody', () => {
       output: { summary: '写完了', count: 2, meta: { pages: 3 }, extra: null },
     }), {
       seatSessionId: 'agent-1',
-      session: sessionWith('agent-1', chatWith([
+      session: sessionWith('agent-1', true),
+      chat: chatWith([
         userNode('第一条'), userNode('第二条'), userNode('第三条'), userNode('第四条'), errorNode(),
-      ]), true),
+      ]),
       approvals: [
         approval('a1', { reason: '要删除临时文件', outcome: 'allowed-once' }),
         approval('a2', { outcome: 'rejected' }),
@@ -214,7 +207,8 @@ describe('DetailBody', () => {
   it('guards an agent run against a stale session seat', () => {
     mountBody(runDetail({ defKind: 'agent', runId: 'agent-1', timeline: undefined }), {
       seatSessionId: 'other',
-      session: sessionWith('other', chatWith([userNode('别的任务')]), false),
+      session: sessionWith('other', false),
+      chat: chatWith([userNode('别的任务')]),
       approvals: [approval('a1', { outcome: 'allowed-once' })],
     })
     expect(screen.getByText('暂无进度')).toBeTruthy()
@@ -224,7 +218,8 @@ describe('DetailBody', () => {
 
   it('draws a session task from its matching seat: rows without the running line once settled', () => {
     mountBody({ kind: 'session', sessionId: 's1' as SessionId }, {
-      session: sessionWith('s1', chatWith([userNode('写一首诗')]), false),
+      session: sessionWith('s1', false),
+      chat: chatWith([userNode('写一首诗')]),
       approvals: undefined,
     })
     expect(screen.getByText('写一首诗')).toBeTruthy()
@@ -237,7 +232,7 @@ describe('DetailBody', () => {
 
   it('shows the running line alone while a session task has no rows yet', () => {
     mountBody({ kind: 'session', sessionId: 's1' as SessionId }, {
-      session: sessionWith('s1', EMPTY_CHAT, true),
+      session: sessionWith('s1', true),
     })
     expect(screen.getByText('进行中')).toBeTruthy()
     expect(screen.queryByText('暂无进度')).toBeNull()
@@ -251,7 +246,8 @@ describe('DetailBody', () => {
   it('guards a session task against a stale seat', () => {
     mountBody({ kind: 'session', sessionId: 's1' as SessionId }, {
       seatSessionId: 'other',
-      session: sessionWith('other', chatWith([userNode('别的任务')]), false),
+      session: sessionWith('other', false),
+      chat: chatWith([userNode('别的任务')]),
       approvals: [],
     })
     expect(screen.getByText('暂无进度')).toBeTruthy()

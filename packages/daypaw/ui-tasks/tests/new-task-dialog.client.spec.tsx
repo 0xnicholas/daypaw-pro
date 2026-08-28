@@ -2,8 +2,10 @@
 /** NewTaskDialog: first-open roster load, picker + draft + submit gating, success navigation, inline failures. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
-import { createSnapshotStore, type SessionListState, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { NewTaskDialog, type NewTaskDialogProps } from '../src/client/new-task-dialog.tsx'
 import { NewTaskStore, type NewTaskSessions } from '../src/client/new-task-store.ts'
@@ -43,7 +45,7 @@ function mountDialog(api: FakeTaskApi) {
   const view = render(
     <NewTaskDialog
       close={close} openTask={openTask}
-      useSessions={neverHook} useWorkspaces={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook}
       useNewTask={bindSnapshotSelector(store.store)}
       store={store} t={t}
     />,
@@ -61,7 +63,7 @@ describe('NewTaskDialog', () => {
     // Loading state: the submit stays disabled while the roster settles.
     expect(screen.getByRole('button', { name: '开始任务' })).toHaveProperty('disabled', true)
     await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
-    expect(api.callsOf('agentPreset.list')).toHaveLength(1)
+    expect(api.callsOf('agentPresets.list')).toHaveLength(1)
     // The deployment default is preselected by its display name.
     const select = screen.getByRole('combobox', { name: '执行 Agent' }) as HTMLSelectElement
     expect(select.value).toBe('beta')
@@ -84,13 +86,13 @@ describe('NewTaskDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: '开始任务' }))
     // The submitting label shows while the sequence runs.
     await waitFor(() => { expect(openTask).toHaveBeenCalledWith('fx-new') })
-    expect(api.callsOf('session.create')).toEqual([{ agentPreset: 'alpha' }])
+    expect(api.callsOf('agentPresets.select')).toEqual([{ sessionId: 'fx-new', agentPreset: 'alpha' }])
   })
 
   it('shows the failure inline and does not navigate', async () => {
     const api = new FakeTaskApi()
     api.onPresetList = () => Promise.resolve(ok({ presets: [preset('alpha', { isDefault: true })], authorable: false, hasDocument: false }))
-    api.onCreate = () => Promise.resolve(fail('preset unknown'))
+    api.onCreateSession = () => Promise.resolve(fail('create down'))
     const { openTask } = mountDialog(api)
     await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
     fireEvent.change(screen.getByRole('textbox', { name: '任务内容' }), { target: { value: 'x' } })
@@ -116,7 +118,7 @@ describe('NewTaskDialog', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '任务内容' }), { target: { value: '做点什么' } })
     fireEvent.click(screen.getByRole('button', { name: '开始任务' }))
     await waitFor(() => { expect(openTask).toHaveBeenCalledWith('fx-new') })
-    expect(api.callsOf('session.create')).toEqual([{}])
+    expect(api.callsOf('session.create')).toEqual([undefined])
   })
 
   it('switches the picked agent through the store', async () => {

@@ -11,7 +11,7 @@
  */
 import { useEffect } from 'react'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the 'inbox.workspace.banner' entry).
 import type {} from '@daypaw/ui-inbox/client'

@@ -15,9 +15,6 @@
       "path": "../../client/ui-slots"
     },
     {
-      "path": "../../client/runtime"
-    },
-    {
       "path": "../../client/locale"
     },
     {
@@ -40,6 +37,24 @@
     },
     {
       "path": "../../runtime-diagnostics/invariants"
+    },
+    {
+      "path": "../../client/store"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.client.json"
+    },
+    {
+      "path": "../../client/ui-session"
+    },
+    {
+      "path": "../../client/ui-chat"
+    },
+    {
+      "path": "../../client/ui-approval"
+    },
+    {
+      "path": "../../llm/llm"
     }
   ]
 }

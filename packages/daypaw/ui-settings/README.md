@@ -1,6 +1,17 @@
+---
+description: "The daypaw settings surface and first-run API-key banner, a fork client UI plugin occupying the two child slots declares on its workspac"
+kind: "package-reference"
+---
+
 # @daypaw/ui-settings
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The daypaw settings surface and first-run API-key banner, a fork client UI plugin occupying the two child slots [`@daypaw/ui-inbox`](../ui-inbox/README.md) declares on its workspace registration. It implements the settings single page of [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) — 通用/凭据/模型/关于 — and the yellow first-run card that sends a keyless deployment there. Facts come through the connection wire face (`agentPresets.list` / `host.describe` / `llm.providers` / `credentials.*`); the host stays the single fact source and every write reloads from its answer.
 
@@ -33,3 +44,5 @@ None; this package neither assembles nor sends a provider request.
 - **No assembled-web snapshot pins this package's output** — the fork's assembled web lane (`apps/daypaw-web/tests/`, landed with the task-conversation ticket) boots this package but serializes only the task conversation; the settings page and banner stay covered by component and apply specs only.
 - **`deriveKeyRef`/`messageOf` restate upstream helpers** — the client bundle purity gate forbids a cross-plugin value import from `ui-settings-models`, so the two one-liners are rewritten here and asserted by this package's tests.
 - **Density is not a preference** — spec 05 §7 fixed one density (medium-low), carried as the `--dp-space-*` scale by [`@daypaw/ui-brand`](../ui-brand/README.md); the General tab therefore ships no density row.
+
+### Dev Note

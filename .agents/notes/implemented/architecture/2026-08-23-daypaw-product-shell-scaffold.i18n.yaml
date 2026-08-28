@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-daypaw-product-shell-scaffold.md
 2026-08-23-daypaw-product-shell-scaffold.md: c0796e07a5a422a5f00e103eb87aa66fc981c180
-2026-08-23-daypaw-product-shell-scaffold.zh.md: 30ee6d5ee5a880d5142151495724abf8eeeb5e5b
+2026-08-23-daypaw-product-shell-scaffold.zh.md: f0f9411ff749603747cf8a931d94e9a732482700

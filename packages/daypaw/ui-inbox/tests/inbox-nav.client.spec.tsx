@@ -2,8 +2,10 @@
 /** InboxNav: groups with live sessions-list counts, selection routing, the delegated new-task dialog, collapsed rail, skeleton snapshot. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
-import { createSnapshotStore, type SessionListState, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { InboxNav, type InboxNavProps } from '../src/client/InboxNav.tsx'
 import { InboxSelectionController } from '../src/client/selection.ts'
@@ -63,6 +65,7 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
   const view = render(
     <InboxNav
       collapsed={collapsed} width={collapsed ? 56 : 300}
+      useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
       useSessions={bindSnapshotSelector(sessionsStore(rows))} useWorkspaces={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
       useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
@@ -150,6 +153,7 @@ describe('InboxNav', () => {
     render(
       <InboxNav
         collapsed={false} width={300}
+        useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
         useSessions={bindSnapshotSelector(sessionsStore([]))} useWorkspaces={neverHook}
         useSelection={bindSnapshotSelector(controller.store)}
         useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs: [] }))}

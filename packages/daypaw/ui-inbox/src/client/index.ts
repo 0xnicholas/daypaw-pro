@@ -17,11 +17,13 @@
  * run's TaskDetailStore, and selection changes rebind it — the engine ledger
  * stays the single fact source (the ui-agents catalog precedent).
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { shallowEqual } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import { shallowEqual } from '@deepseek-ai/dsh-client-store'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the SlotRegistry service merge (ctx.slots).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls ui-layout's SlotMap merge ('sidebar'/'conversation'/'details').
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 // Type-only: pulls this package's own SlotMap merge (the child slots the nav
@@ -154,7 +156,7 @@ export function apply(ctx: ClientContext): void {
         'inbox.settings.page': { kind: 'single', scope: 'session-maybe' },
         'inbox.agents.page': { kind: 'single', scope: 'session-maybe' },
         'inbox.workspace.tasks': { kind: 'single', scope: 'root' },
-        'inbox.workspace.conversation': { kind: 'single', scope: 'session-maybe' },
+        'inbox.workspace.conversation': { kind: 'single', scope: 'session' },
       },
       inject: (): WorkspaceSwitchInjected => ({
         hooks: { selection: selection.store, board: board.store },

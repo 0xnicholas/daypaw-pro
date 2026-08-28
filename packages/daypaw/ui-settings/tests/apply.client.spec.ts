@@ -1,9 +1,11 @@
 /** daypaw settings apply: the two ui-inbox seats, the settings.section declaration, pushed invalidations, and teardown. */
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { stubSettingsScope, TestRemote, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
+import { stubSettingsScope, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ThemeSettings } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
@@ -15,22 +17,30 @@ import { FakeHostApi, ok } from './fake-host-api.client.ts'
 
 // The locale service reads its initial locale from the browser; these specs
 // assert the shipped Chinese copy, so they state the browser they assume.
-usePinnedBrowserLanguages('zh-CN')
-
 async function bench(withConversation: boolean) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
+  locale.setLocale('zh')
   ctx.provide('locale', locale)
   // The theme service the General tab's preference row rides (a real
   // ThemeRuntime over a stub settings scope, the ui-theme bench shape).
   const theme = new ThemeRuntime(ctx, stubSettingsScope<ThemeSettings>().scope)
   ctx.provide('theme', theme)
-  // The plugin injects `remote`; forwarded events reach it through the same
-  // `$dispatch` handoff the connection sink makes.
-  new TestRemote(ctx)
+  // The plugin injects `remote` + `sessions`; namespaces ride the TestRemote
+  // constructor and forwarded events reach subscribers through its emit driver.
   const api = new FakeHostApi()
-  ctx.provide('connection', { api } as never)
+  const remote = new TestRemote(ctx, {
+    agentPresets: api.agentPresets,
+    credentials: api.credentials,
+    llm: api.llm,
+    session: api.session,
+  })
+  ctx.provide('sessions', {
+    list: createSnapshotStore<SessionListState>({
+      ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    }),
+  })
   const conversation = { blocks: { set: vi.fn() } }
   if (withConversation) ctx.provide('conversation', conversation)
   const slots = ctx.get('slots') as SlotRegistry
@@ -50,12 +60,15 @@ async function bench(withConversation: boolean) {
     } as never,
     () => null,
   )
-  return { ctx, slots, locale, theme, api, conversation }
+  return { ctx, slots, locale, theme, api, remote, conversation }
 }
 
 describe('ui-settings apply', () => {
   it('declares only the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'theme'])
+    expect(inject).toEqual([
+      'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.session', 'remote.agentPresets',
+      'sessions', 'theme',
+    ])
   })
 
   it('the node half provides no host-side behavior', () => {
@@ -78,25 +91,25 @@ describe('ui-settings apply', () => {
     // The dictionaries answer in the browser's zh locale.
     expect(b.locale.bind('daypaw-settings')('title')).toBe('设置')
     // The boot readiness check ran without anyone opening the page.
-    expect(b.api.callsOf('agentPreset.list')).toHaveLength(1)
+    expect(b.api.callsOf('agentPresets.list')).toHaveLength(1)
   })
 
   it('re-runs the banner check on pushed invalidations while idle tabs stay lazy', async () => {
     const b = await bench(false)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
-    expect(b.api.callsOf('agentPreset.list')).toHaveLength(1)
-    b.ctx.remote.$dispatch('credentials/updated', ['DEEPSEEK_API_KEY'])
-    expect(b.api.callsOf('agentPreset.list')).toHaveLength(2)
+    expect(b.api.callsOf('agentPresets.list')).toHaveLength(1)
+    b.remote.emit('credentials/reference-updated', ['DEEPSEEK_API_KEY'])
+    expect(b.api.callsOf('agentPresets.list')).toHaveLength(2)
     // The credentials tab never loaded: no directory fetch rides the push.
-    expect(b.api.callsOf('llm.providers')).toEqual([])
+    expect(b.api.callsOf('llm.listProviders')).toEqual([])
     // A loaded tab does refresh; the about tab stays lazy until opened.
     const pageFace = (b.slots.entriesOfSlot('inbox.settings.page')[0]!.inject as unknown as () => SettingsPageInjected)()
     await pageFace.credentialsStore.load()
-    expect(b.api.callsOf('llm.providers')).toHaveLength(1)
+    expect(b.api.callsOf('llm.listProviders')).toHaveLength(1)
     b.ctx.emit('connection/reset')
-    expect(b.api.callsOf('agentPreset.list')).toHaveLength(3)
-    expect(b.api.callsOf('llm.providers')).toHaveLength(2)
-    expect(b.api.callsOf('host.describe')).toHaveLength(3) // the card's checks only; the about tab never opened
+    expect(b.api.callsOf('agentPresets.list')).toHaveLength(3)
+    expect(b.api.callsOf('llm.listProviders')).toHaveLength(2)
+    expect(b.api.callsOf('session.modelCatalog')).toHaveLength(3) // the card's checks only; the about tab never opened
   })
 
   it('pushes the composer block through the conversation service when one exists', async () => {
@@ -158,14 +171,14 @@ describe('ui-settings apply', () => {
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     await fiber.dispose()
-    b.ctx.remote.$dispatch('credentials/updated', [])
+    b.remote.emit('credentials/reference-updated', [])
     b.ctx.emit('connection/reset')
-    expect(b.api.callsOf('agentPreset.list')).toHaveLength(1) // the boot check only
+    expect(b.api.callsOf('agentPresets.list')).toHaveLength(1) // the boot check only
   })
 })
 
 describe('ok helper', () => {
-  it('mints sequential response envelopes (keeps the shared fake honest)', () => {
-    expect(ok({}).result).toEqual({ ok: true, value: {} })
+  it('mints result envelopes (keeps the shared fake honest)', () => {
+    expect(ok({})).toEqual({ ok: true, value: {} })
   })
 })

@@ -1,6 +1,17 @@
+---
+description: "The typed facade over the daypaw durable engine: defineWorkflow declares a code-orchestrated run, defineAgent declares a declarative LLM"
+kind: "package-reference"
+---
+
 # @daypaw/sdk
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The typed facade over the daypaw durable engine: `defineWorkflow` declares a code-orchestrated run, `defineAgent` declares a declarative LLM-loop spec, and `bind` / `bindAgent` attach them to a host composition. Both faces return `run()` (idempotent start-or-attach) plus a typed `RunHandle`. Type authority: [spec ch.2 §1.1/§1.2](../../../docs/spec/02-agent-engine-sdk.md); programming-model decisions: [ADR 0003](../../../docs/adr/0003-engine-sdk-programming-model.md) and [ADR 0010](../../../docs/adr/0010-define-agent-compilation-and-execution.md).
 
@@ -104,3 +115,5 @@ Prompt segments and the tool list are stable per definition, so a run's requests
 - **`meta` is caller-side only** — not persisted by the skeleton; see the engine README.
 - **A crash before the initial input reaches the log revives into an input-less conversation** — the window is the few synchronous statements between session materialization and the first user-message append; the revival then re-parks (or resume-wakes without segment 0) until the next steer, which delivers only its own follow-up.
 - **`@daypaw/engine` / `@daypaw/store` are not independently published** — they ship vendored inside this tarball (ADR 0011); import their faces through this package, never directly.
+
+### Dev Note

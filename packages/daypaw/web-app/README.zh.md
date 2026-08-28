@@ -1,8 +1,19 @@
+---
+description: "daypaw 浏览器表层组合包： 的 fork 承载体，与上游胶水差 §4 裁决的几点——解析的 dist 包（@daypaw/web-frontend）、Web 表层提示词文案、daypaw web: URL 行前缀（DAYPAW_WEB_URL 改名缓期，见已知限制）"
+kind: "package-bundle"
+---
+
 # `@daypaw/web-app`
 
 [English](README.md) | 中文
 
-daypaw 浏览器表层组合包：[`@deepseek-ai/dsh-web-app`](../../bundle/web-app/README.md) 的 fork 承载体，与上游胶水差 [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) §4 裁决的几点——解析的 dist 包（`@daypaw/web-frontend`）、Web 表层提示词文案、`daypaw web:` URL 行前缀（`DAYPAW_WEB_URL` 改名缓期，见已知限制）。[`cordis.patch.yml`](cordis.patch.yml) 叠加在 [`dsh-base`](../../bundle/base/README.md) 之上：设置 coding persona，插入 Web 宿主行（webserver、API 网关、workspace、投影缓存、存储）、浏览器插件名录与始终挂载的客户端插件重载链（[`dsh-client-hmr`](../../client/hmr/README.md)，在重建 watcher 改写客户端 bundle 之前保持空闲），并挂载本包的 `web-runtime` 粘合插件（配置为 `{printUrl, surfaceContext, trustedHosts}`）。该插件通过 `@daypaw/web-frontend` 的 exports 解析已构建的前端 dist，只采样一次依赖 bind 的 LAN 信任信息并将其作为 `webRuntime` 提供给浏览器信任栅栏和客户端名录，挂载 [`frontend-static`](../../host/frontend-static/README.md) 回退席位所有者，在 `surfaceContext` 为 true 时注册 Harness 源码与 Web 表层提示词段落，以及 bash 可见的 `DSH_WEB_URL` 运行时变量，并在 `printUrl` 为 true 时等自身的 Loader 配置树结算后再打印 `daypaw web:` URL 行，避免兄弟行失败时公告一个已失效的应用。本组合包还持有应用命令行：普通 `web-startup` 提供方（[`src/startup.ts`](src/startup.ts)）注入 `ctx.cmdlineArgs`（[`dsh-cmdline`](../../boot/cmdline/README.md)），解析 `--host`、`--port`、可重复的 `--trusted-host` 以及应用自己的 `--help`，再提供 `webStartup`。它会在发布该服务前拒绝 `--host 0.0.0.0`，因为 CLI 目前有意不支持绑定所有网络接口。由 flag 配置的行会注入该服务，并在惰性配置中直接读取它，因此参数解析完成前不会有任何东西绑定端口，`--help` 调用也不会启动服务器。
+## 概述
+
+## 目录
+
+
+
+daypaw 浏览器表层组合包：[`@deepseek-ai/dsh-web-app`](../../bundle/web-app/README.zh.md) 的 fork 承载体，与上游胶水差 [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) §4 裁决的几点——解析的 dist 包（`@daypaw/web-frontend`）、Web 表层提示词文案、`daypaw web:` URL 行前缀（`DAYPAW_WEB_URL` 改名缓期，见已知限制）。[`cordis.patch.yml`](cordis.patch.yml) 叠加在 [`dsh-base`](../../bundle/base/README.zh.md) 之上：设置 coding persona，插入 Web 宿主行（webserver、API 网关、workspace、投影缓存、存储）、浏览器插件名录与始终挂载的客户端插件重载链（[`dsh-client-hmr`](../../client/hmr/README.zh.md)，在重建 watcher 改写客户端 bundle 之前保持空闲），并挂载本包的 `web-runtime` 粘合插件（配置为 `{printUrl, surfaceContext, trustedHosts}`）。该插件通过 `@daypaw/web-frontend` 的 exports 解析已构建的前端 dist，只采样一次依赖 bind 的 LAN 信任信息并将其作为 `webRuntime` 提供给浏览器信任栅栏和客户端名录，挂载 [`frontend-static`](../../host/frontend-static/README.zh.md) 回退席位所有者，在 `surfaceContext` 为 true 时注册 Harness 源码与 Web 表层提示词段落，以及 bash 可见的 `DSH_WEB_URL` 运行时变量，并在 `printUrl` 为 true 时等自身的 Loader 配置树结算后再打印 `daypaw web:` URL 行，避免兄弟行失败时公告一个已失效的应用。本组合包还持有应用命令行：普通 `web-startup` 提供方（[`src/startup.ts`](src/startup.ts)）注入 `ctx.cmdlineArgs`（[`dsh-cmdline`](../../boot/cmdline/README.zh.md)），解析 `--host`、`--port`、可重复的 `--trusted-host` 以及应用自己的 `--help`，再提供 `webStartup`。它会在发布该服务前拒绝 `--host 0.0.0.0`，因为 CLI 目前有意不支持绑定所有网络接口。由 flag 配置的行会注入该服务，并在惰性配置中直接读取它，因此参数解析完成前不会有任何东西绑定端口，`--help` 调用也不会启动服务器。
 
 ## 模型体验
 
@@ -25,4 +36,6 @@ daypaw 浏览器表层组合包：[`@deepseek-ai/dsh-web-app`](../../bundle/web-
 - **前端 dist 必须已构建**：对 dist 的 `require.resolve` 在激活时明确报错并给出构建提示；没有从源码直接服务的回退路径。
 - **`lanAddresses` 是启动期快照**：启动后的网卡变化不会重新公告；打印的 LAN URL 始终与配置的信任栅栏一致。
 - **浏览器名录是上游占位**：名录仍挂载面向开发者的上游插件行；移除产品壳不交付的行、替换为重写行归后续板块票（#56–#60），不在本脚手架范围。
-- **受管 URL 变量仍名 `DSH_WEB_URL`**：spec §4 裁决了 `DAYPAW_WEB_URL` 改名，但受管 shell 变量生活在保留的 `DSH_*` 命名空间（[`dsh-subprocess`](../../subprocess/subprocess/README.md) 剥离环境里的 `DSH_*`，[`dsh-shell-env`](../../shell/shell-env/README.md) 注册时拒绝其他前缀），改名须先放宽该上游契约。
+- **受管 URL 变量仍名 `DSH_WEB_URL`**：spec §4 裁决了 `DAYPAW_WEB_URL` 改名，但受管 shell 变量生活在保留的 `DSH_*` 命名空间（[`dsh-subprocess`](../../subprocess/subprocess/README.zh.md) 剥离环境里的 `DSH_*`，[`dsh-shell-env`](../../shell/shell-env/README.zh.md) 注册时拒绝其他前缀），改名须先放宽该上游契约。
+
+### 开发备注

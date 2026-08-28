@@ -1,6 +1,17 @@
+---
+description: "The daypaw brand theme, a fork client UI plugin with exactly one effect: stacking the brand token layer onto the reused base through ctx"
+kind: "package-reference"
+---
+
 # @daypaw/ui-brand
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The daypaw brand theme, a fork client UI plugin with exactly one effect: stacking the brand token layer onto the reused [`ui-theme`](../../client/ui-theme/README.md) base through `ctx.theme.overrideTokens`. It implements the visual-brand ruling of [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) §7 (ruling [#48](https://github.com/0xnicholas/daypaw-pro/issues/48)): warm-orange accent, warm-neutral base, 「帮手的桌面」 rather than 「运维控制台」, one fixed medium-low density — visibly distinct from the upstream dev shell at a glance.
 
@@ -34,3 +45,5 @@ None; this package neither assembles nor sends a provider request.
 - **The pre-plugin boot interval rides the base palette.** The host-injected bootstrap script sets `color-scheme` and the dark attribute before the plugin tree loads; brand token values apply once the client tree activates (the loading shimmer is neutral either way).
 - **Accent contrast is tuned, not computed.** The orange legs were picked for ≥4.5:1 on their fill/ink pairs by hand; a future palette revision should re-check both schemes if values move.
 - **Density is not user-adjustable.** Spec 05 §7 fixed one density; a preference knob would need its own ruling (and a settings row) before the `--dp-space-*` values become a swappable layer.
+
+### Dev Note

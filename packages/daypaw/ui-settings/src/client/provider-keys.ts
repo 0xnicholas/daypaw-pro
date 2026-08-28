@@ -7,8 +7,8 @@
  * credentials-store because the tooling sensitive-file guard blocks paths
  * containing "credential".)
  */
-import type { CredentialView, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientRemote, CredentialInfo } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /**
  * Derive the conventional credential reference for a provider route: this
@@ -44,7 +44,7 @@ export interface CredentialRow {
   /** The conventional credential reference this page manages for the provider. */
   ref: string
   /** Credential state for {@link ref} (an absent describe answer reads as unconfigured). */
-  credential: CredentialView
+  credential: CredentialInfo
 }
 
 /** Tab snapshot. */
@@ -56,10 +56,10 @@ export interface CredentialsState {
 }
 
 /** The credential view an absent describe answer implies. */
-const UNCONFIGURED: CredentialView = { configured: false, writable: false }
+const UNCONFIGURED: CredentialInfo = { configured: false, writable: false }
 
 /** Wire-write response shape shared by credentials.set/unset. */
-type WriteResponse = { result: { ok: true; value: object } | { ok: false; error: { message: string } } }
+type WriteResponse = { ok: true; value: unknown } | { ok: false; error: { message: string } }
 
 /** The credentials tab controller (one per apply). */
 export class CredentialsStore {
@@ -74,7 +74,10 @@ export class CredentialsStore {
   /**
    * @param api - the wire face (credentials/llm domains).
    */
-  constructor(private readonly api: Pick<IApiClient, 'credentials' | 'llm'>) {}
+  constructor(private readonly api: {
+    credentials: Pick<ClientRemote['credentials'], 'describe' | 'set' | 'unset'>
+    llm: Pick<ClientRemote['llm'], 'listProviders'>
+  }) {}
 
   /**
    * Refresh the tab snapshot: the provider directory, then one batched
@@ -86,22 +89,22 @@ export class CredentialsStore {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading'; s.error = null })
     try {
-      const providersResponse = await this.api.llm.providers({})
-      if (!providersResponse.result.ok) throw new Error(providersResponse.result.error.message)
+      const providersResponse = await this.api.llm.listProviders()
+      if (!providersResponse.ok) throw new Error(providersResponse.error.message)
       // Derive each provider's conventional reference exactly once; the rows zip back over it.
-      const keyed = providersResponse.result.value.providers.map(entry => ({ entry, ref: deriveKeyRef(entry.provider) }))
-      let credentials: Record<string, CredentialView> = {}
+      const keyed = providersResponse.value.map(entry => ({ entry, ref: deriveKeyRef(entry.id) }))
+      let credentials: Record<string, CredentialInfo> = {}
       if (keyed.length > 0) {
-        const credentialsResponse = await this.api.credentials.describe({ refs: keyed.map(({ ref }) => ref) })
-        if (!credentialsResponse.result.ok) throw new Error(credentialsResponse.result.error.message)
-        credentials = credentialsResponse.result.value.credentials
+        const credentialsResponse = await this.api.credentials.describe(keyed.map(({ ref }) => ref))
+        if (!credentialsResponse.ok) throw new Error(credentialsResponse.error.message)
+        credentials = credentialsResponse.value
       }
       if (generation !== this.generation) return
       this.store.update((s) => {
         s.status = 'ready'
         s.rows = keyed.map(({ entry, ref }) => ({
-          provider: entry.provider,
-          displayName: entry.displayName,
+          provider: entry.id,
+          displayName: entry.name,
           ref,
           credential: credentials[ref] ?? UNCONFIGURED,
         }))
@@ -123,7 +126,7 @@ export class CredentialsStore {
    * @returns the failure message, or undefined once the write and reload landed.
    */
   async set(ref: string, value: string): Promise<string | undefined> {
-    return this.write(() => this.api.credentials.set({ ref, value }))
+    return this.write(() => this.api.credentials.set(ref, value))
   }
 
   /**
@@ -132,7 +135,7 @@ export class CredentialsStore {
    * @returns the failure message, or undefined once the write and reload landed.
    */
   async unset(ref: string): Promise<string | undefined> {
-    return this.write(() => this.api.credentials.unset({ ref }))
+    return this.write(() => this.api.credentials.unset(ref))
   }
 
   /**
@@ -143,7 +146,7 @@ export class CredentialsStore {
   private async write(call: () => Promise<WriteResponse>): Promise<string | undefined> {
     try {
       const response = await call()
-      if (!response.result.ok) return response.result.error.message
+      if (!response.ok) return response.error.message
     } catch (error) {
       // The transport rejected rather than answering; the row must be able to
       // retry instead of silently keeping the old state.

@@ -1,8 +1,19 @@
+---
+description: "durable 执行引擎（ctx.durable）：run 生命周期、step 去重续跑、durable gate（ctx.waitFor）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 ledger 之上。作为 Cordis 插件"
+kind: "package-reference"
+---
+
 # @daypaw/engine
 
 [English](README.md) | 中文
 
-durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑、durable gate（`ctx.waitFor`）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 [`@daypaw/store`](../store/README.md) ledger 之上。作为 Cordis 插件加载；应用经类型化 [`@daypaw/sdk`](../sdk/README.md) facade 调用。语义：[spec 第 1 章](../../../docs/spec/01-durable-execution.md)；走骨范围：[ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md)。
+## 概述
+
+## 目录
+
+
+
+durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑、durable gate（`ctx.waitFor`）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 [`@daypaw/store`](../store/README.zh.md) ledger 之上。作为 Cordis 插件加载；应用经类型化 [`@daypaw/sdk`](../sdk/README.zh.md) facade 调用。语义：[spec 第 1 章](../../../docs/spec/01-durable-execution.md)；走骨范围：[ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md)。
 
 ## Service API
 
@@ -19,7 +30,7 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 - `steer(runId, input)` —— 向未完 run 追加一个追问段（issue #53）：runId 未知、run 已终态、或本进程已注册而未以 `steerable: true` 声明的定义均 loud throw。落账先于投递：segment 行先落账，本进程 parked body 随即唤醒；别进程由 parked 等待的 `pollMs` 轮询或下一次 boot 扫描观察到。返回从 1 起的段序号。方法携带 `@Remote` 标记，浏览器经 `durable/steer` 端点触达（`listDefinitions` 先例）。
 - `rerun(runId)` —— 重试一个终态顶层 run（issue #57）：runId 未知、run 未终态、子 run（对子 run 重试会把 attempt 链从父 run 的 step journal 上扯脱——应重试顶层 run）、或定义未在本进程注册，均 loud throw。否则经与 `run()` 启动分支共享的 `insertAndDrive()` 抽取插入一行新记录——定义身份与输入相同、`attempt = 源.attempt + 1`、`retried_from_run_id = 源.run_id`——并立即驱动，返回新 run id。方法携带 `@Remote` 标记（`durable/rerun`）。
 
-查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。三者均携带 `@Remote` 标记（`listDefinitions` 先例），浏览器板块经 gateway 以 `durable/listRuns` / `durable/runLineage` / `durable/journalTimeline` 触达，无需改动 apiproxy。其 wire 类型经本包 `types.ts` 从 [`@daypaw/store/types`](../store/README.md)（及 `seams.ts` / `core.ts`）转出，因为 Typert 分析器扫描的是声明所属包的 exports 子路径；`RunLineage` 成员为 `| null` 而非 `undefined`——JSON 丢弃 undefined 值的键，wire 值必须与声明类型一致。
+查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。三者均携带 `@Remote` 标记（`listDefinitions` 先例），浏览器板块经 gateway 以 `durable/listRuns` / `durable/runLineage` / `durable/journalTimeline` 触达，无需改动 apiproxy。其 wire 类型经本包 `types.ts` 从 [`@daypaw/store/types`](../store/README.zh.md)（及 `seams.ts` / `core.ts`）转出，因为 Typert 分析器扫描的是声明所属包的 exports 子路径；`RunLineage` 成员为 `| null` 而非 `undefined`——JSON 丢弃 undefined 值的键，wire 值必须与声明类型一致。
 
 配置（schemastery）：`path`（ledger 文件或 `:memory:`）、`pollMs`（attach 轮询间隔，默认 1s）。
 
@@ -65,3 +76,5 @@ step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间
 - **`RunOptions.meta` 不落盘** —— 走骨 `runs` 表无 meta 列；meta 只存在于进程内句柄上。
 - **运行时 invariant 伴随包是占位** —— core 保持无 Cordis 事件流的形态（无流可挂）；run/journal/promise 状态机由故障注入套件逐 append 点断言（spec 第 1 章 §9）。
 - **不独立发布** —— 引擎随 `@daypaw/sdk` tarball vendored 分发（ADR 0011）；消费方经 `@daypaw/sdk` import 其面。
+
+### 开发备注

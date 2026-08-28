@@ -1,8 +1,19 @@
+---
+description: "daypaw agent 目录页——fork 客户端 UI 插件，占 在其 workspace 注册上声明的 'inbox.agents.page' 子槽。实现 §3/§5 的目录半边：卡片栅格展示每个 agent 的业务名与描述，卡片的详情视图携带注册表标识 name@"
+kind: "package-reference"
+---
+
 # @daypaw/ui-agents
 
 [English](README.md) | 中文
 
-daypaw agent 目录页——fork 客户端 UI 插件，占 [`@daypaw/ui-inbox`](../ui-inbox/README.md) 在其 workspace 注册上声明的 `'inbox.agents.page'` 子槽。实现 [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) §3/§5 的目录半边：卡片栅格展示每个 agent 的业务名与描述，卡片的详情视图携带注册表标识 `name@version`。v1 不提供任何版本操作——标识行是信息，不是控件。
+## 概述
+
+## 目录
+
+
+
+daypaw agent 目录页——fork 客户端 UI 插件，占 [`@daypaw/ui-inbox`](../ui-inbox/README.zh.md) 在其 workspace 注册上声明的 `'inbox.agents.page'` 子槽。实现 [docs/spec/05-product-shell.md](../../../docs/spec/05-product-shell.md) §3/§5 的目录半边：卡片栅格展示每个 agent 的业务名与描述，卡片的详情视图携带注册表标识 `name@version`。v1 不提供任何版本操作——标识行是信息，不是控件。
 
 数据来自引擎的定义注册表只读视图（spec 05 §5）：插件经 connection 的通用 RPC 通道调用 Remote 端点 `durable/listDefinitions`，该端点由 API gateway 从 `@daypaw/engine` 的 `TypertRemoteService` 绑定认领（GoalService 先例——零上游 apiproxy 改动）。载荷在 wire 边界校验；畸形应答响亮地落入页内错误态，宿主原始报错措辞永不上屏。宿主保持单一事实源——store 除最近一次加载快照外不自持缓存。
 
@@ -31,3 +42,5 @@ daypaw agent 目录页——fork 客户端 UI 插件，占 [`@daypaw/ui-inbox`](
 - **目录与新任务弹窗读的是两份名册**——目录列引擎定义，弹窗选 session 组合用的 preset；二者合一等待浏览器侧 run 起跑面（定义的 zod 输入契约不过 wire）。
 - **无版本操作**——详情页的 `name@version` 仅作标识；版本选择/切换缓做（spec 05 §2：v1 不露死信息）。
 - **无注册表变更失效推送**——名册每次挂载只加载一次；首次加载后绑定的定义在下一次打开页面时才出现，注册表没有推送式失效通道。
+
+### 开发备注

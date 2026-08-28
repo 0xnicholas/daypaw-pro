@@ -1,6 +1,17 @@
+---
+description: "The daypaw shell IA skeleton (inbox workbench), a fork client UI plugin in the shape of upstream . It implements the three-column IA of "
+kind: "package-reference"
+---
+
 # @daypaw/ui-inbox
 
 English | [中文](README.zh.md)
+
+## Summary
+
+## Table of Contents
+
+
 
 The daypaw shell IA skeleton (inbox workbench), a fork client UI plugin in the shape of upstream [`@deepseek-ai/dsh-client-ui-sidebar`](../../client/ui-sidebar/README.md). It implements the three-column IA of [docs/spec/05-product-shell.md §3](../../../docs/spec/05-product-shell.md) over the wholesale-reused [`ui-layout`](../../client/ui-layout/README.md) frame, with presentation-layer vocabulary only (任务/新任务/等待你确认/进行中/已完成/设置/任务详情 — engine words never appear in the copy). Contract: the [slot system standard](../../../.agents/notes/implemented/architecture/2026-07-22-slot-type-chain-implementation.md).
 
@@ -33,3 +44,5 @@ None; this package neither assembles nor sends a provider request.
 - **The board polls; nothing pushes** — the browser refreshes the run ledger every 2 s (`RUNS_BOARD_POLL_MS` is a product constant: the WebBootEntry boot graph carries no per-plugin config channel). Spec §5's host-poll + mux-projection design waits for a cross-session projection channel — session projections are strictly per-session and cannot carry the cross-run board.
 - **等待你确认 keys on the session approval badge** — a row enters the group when its runtime session summary carries `pendingInteraction: 'approval'` (mux replay restores it on every open), so a question-shadowed approval stays off the count and a session-less workflow run can never badge (a run-scoped approval channel does not exist yet).
 - **Upstream conversation/details occupants are shadowed, not removed** — ui-conversation's roster row stays mounted (its declared seats serve the dormant placeholder ecosystem); this package wins both cells at priority -1, and removing the upstream row is a later board decision.
+
+### Dev Note

@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-`pnpm run duplication` 在干净 checkout 上每轮必红（issue #64）：`@daypaw/cli` 的 `ensureEngineLink` 内联复制了 `dsh-app-boot` 私有 `ensureSymlink` 的幂等 symlink 治愈逻辑（42 行 / 72 tokens 的 clone）。副本已经按副本的方式漂移——错误前缀（`daypaw:` vs `dsh:`）、少一条 Windows unlink 注释、EEXIST 竞态分支缺 `v8 ignore`——放任不管只会看着 clone 变大。去重需要治愈逻辑只有一个家，而每个候选家都要动上游文件：`packages/boot/app-boot/src/profile.ts` 属上游所有，且[模板播种 note](2026-08-22-daypaw-profile-template-seeding.md) 之前刻意让交付线远离上游运行时改动，以保住 ADR 0011 §1 对发布闭包的零 core touch 前提。
+`pnpm run duplication` 在干净 checkout 上每轮必红（issue #64）：`@daypaw/cli` 的 `ensureEngineLink` 内联复制了 `dsh-app-boot` 私有 `ensureSymlink` 的幂等 symlink 治愈逻辑（42 行 / 72 tokens 的 clone）。副本已经按副本的方式漂移——错误前缀（`daypaw:` vs `dsh:`）、少一条 Windows unlink 注释、EEXIST 竞态分支缺 `v8 ignore`——放任不管只会看着 clone 变大。去重需要治愈逻辑只有一个家，而每个候选家都要动上游文件：`packages/boot/app-boot/src/profile.ts` 属上游所有，且[模板播种 note](2026-08-22-daypaw-profile-template-seeding.zh.md) 之前刻意让交付线远离上游运行时改动，以保住 ADR 0011 §1 对发布闭包的零 core touch 前提。
 
 ## 决策
 

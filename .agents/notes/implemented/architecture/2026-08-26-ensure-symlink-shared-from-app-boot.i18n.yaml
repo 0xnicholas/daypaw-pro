@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-26-ensure-symlink-shared-from-app-boot.md
 2026-08-26-ensure-symlink-shared-from-app-boot.md: 9127f9b73f9f456eab46584de7fe6e2a5bd926dc
-2026-08-26-ensure-symlink-shared-from-app-boot.zh.md: ec8d7202d1aabbd2dbc9e0cf6391665cac0744c0
+2026-08-26-ensure-symlink-shared-from-app-boot.zh.md: a5a3d5ba016babd3b83945deb6ed5ea27d25f917

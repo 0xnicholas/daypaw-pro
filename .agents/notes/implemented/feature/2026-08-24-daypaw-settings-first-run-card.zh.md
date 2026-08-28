@@ -6,19 +6,19 @@ Status: implemented
 
 ## 问题
 
-Issue #59 要把[壳 IA 骨架](2026-08-24-daypaw-shell-ia-skeleton.md)的 设置 占位页变成真正的设置面（通用/凭据/模型/关于），并新增把无 key 部署引向那里的首跑黄卡。fork 层的约束——上游 `packages/client/` 不动——排除了原地扩展 ui-settings-general，且必须回答四个问题：中栏归 ui-inbox 所有时页面与黄卡注册到哪里；上游声明者（ui-settings-general 的侧栏占据者）不在组合中时，休眠的上游 `ui-settings-models` 分区如何唤醒；黄卡的完成账本是什么；以及 fork 壳还没有对话栏时输入禁用如何接线。
+Issue #59 要把[壳 IA 骨架](2026-08-24-daypaw-shell-ia-skeleton.zh.md)的 设置 占位页变成真正的设置面（通用/凭据/模型/关于），并新增把无 key 部署引向那里的首跑黄卡。fork 层的约束——上游 `packages/client/` 不动——排除了原地扩展 ui-settings-general，且必须回答四个问题：中栏归 ui-inbox 所有时页面与黄卡注册到哪里；上游声明者（ui-settings-general 的侧栏占据者）不在组合中时，休眠的上游 `ui-settings-models` 分区如何唤醒；黄卡的完成账本是什么；以及 fork 壳还没有对话栏时输入禁用如何接线。
 
 ## 决策
 
 新建 fork client UI 插件 `packages/daypaw/ui-settings`（`@daypaw/ui-settings`，private，0.0.0），并在 ui-inbox 的工作台注册上声明两个子槽（`packages/daypaw/ui-inbox/src/client/contract.ts`）：
 
-- **fork 自有的槽位分层**——`WorkspaceSwitch` 声明 `'inbox.workspace.banner'`（list，session-maybe，渲染在每个分组容器顶部）与 `'inbox.settings.page'`（single，session-maybe，作为 设置 选中项的内容），槽位空时回落到属主的占位页。ui-settings 经 `ctx.slots.inject` 占据两槽，与 ui-inbox 的激活顺序因此互不约束（骨架 note 留给同组合占据者的[槽位声明注入](../architecture/2026-08-05-slot-declaration-injection.md)路径；跨包占据者正是它的适用情形）。
+- **fork 自有的槽位分层**——`WorkspaceSwitch` 声明 `'inbox.workspace.banner'`（list，session-maybe，渲染在每个分组容器顶部）与 `'inbox.settings.page'`（single，session-maybe，作为 设置 选中项的内容），槽位空时回落到属主的占位页。ui-settings 经 `ctx.slots.inject` 占据两槽，与 ui-inbox 的激活顺序因此互不约束（骨架 note 留给同组合占据者的[槽位声明注入](../architecture/2026-08-05-slot-declaration-injection.zh.md)路径；跨包占据者正是它的适用情形）。
 - **设置页在自己的 entry 上重新声明上游 `'settings.section'` 槽**（root scope），并以 `only: 'models'` 渲染它，在没有 ui-settings-general 的情况下唤醒 ui-settings-models 分区。凭据 tab 从 ui-settings-models 重述了约定引用推导（`deriveKeyRef`）与错误文案 helper，因为 client bundle purity gate 禁止跨插件 value import；两个一行函数在 `provider-keys.ts` 重写（如此命名是因为工具链的敏感文件拦截器阻止路径含 "credential"），并由本包测试断言。
 - **黄卡本身就是完成账本**——`ApiKeyCardStore` 把默认 agent preset 的显示名（回落 id，无默认时回落 `Agent`）、host 的 provider（回落 `deepseek`）与推导引用的凭据状态相 join；凭据已配置即消失，无持久化 flag。推送的 `credentials/updated` / `connection/reset` 失效无条件重跑检查，而设置各 tab 只在已加载后刷新。检查未决（加载中或失败）时黄卡渲染 null——无法核实的 key 不得画出假警报。
 - **输入禁用是惰性接线**——可见且存在当前会话时，黄卡经 `ctx.get('conversation')?.blocks.set` 抬起一条本地化文案的禁用；fork 壳还没有对话栏，因此该服务是可选 `ctx.get`，在对话栏票落地前是 no-op 席位。
 - **一个 apply 闭包 `SettingsTabController`** 在页面（读）与黄卡（导航前预选 凭据）之间共享活动 tab，沿用骨架的 inject `hooks` 舱位模式。文案走插件自有 `daypaw-settings` locale 命名空间（zh 为 key 集权威，en 镜像）；样式只用 CSS Modules 消费 `--dsw-alias-*` 语义 token。
 
-测试遵循 [GUI 测试系统](../process/2026-07-20-gui-testing-system.md)的零机制路径：store 规格驱动可编程 wire 假件（join、写穿重载、最新生效的代次守卫）、jsdom 组件规格用真 controller 与 `bindSnapshotSelector`（tab 轨、内联编辑器流程、剪贴板诊断、黄卡可见性与禁用席位）、黄卡的 `toMatchSnapshot`，以及在真 `SlotRegistry` + `LocaleRuntime` + `TestRemote` 上的 apply 规格（占据、子槽声明、失效推送、拆卸）。包 src 达到 per-file 100% 覆盖。新增核心触点（tsconfig.base.json 的 `@daypaw/*/client` paths 映射、web-app 的 tsconfig/knip 行）已登记 [CORE_TOUCHES.md](../../../../docs/fork/CORE_TOUCHES.md)。
+测试遵循 [GUI 测试系统](../process/2026-07-20-gui-testing-system.zh.md)的零机制路径：store 规格驱动可编程 wire 假件（join、写穿重载、最新生效的代次守卫）、jsdom 组件规格用真 controller 与 `bindSnapshotSelector`（tab 轨、内联编辑器流程、剪贴板诊断、黄卡可见性与禁用席位）、黄卡的 `toMatchSnapshot`，以及在真 `SlotRegistry` + `LocaleRuntime` + `TestRemote` 上的 apply 规格（占据、子槽声明、失效推送、拆卸）。包 src 达到 per-file 100% 覆盖。新增核心触点（tsconfig.base.json 的 `@daypaw/*/client` paths 映射、web-app 的 tsconfig/knip 行）已登记 [CORE_TOUCHES.md](../../../../docs/fork/CORE_TOUCHES.md)。
 
 ## 备选方案
 
@@ -32,4 +32,4 @@ Issue #59 要把[壳 IA 骨架](2026-08-24-daypaw-shell-ia-skeleton.md)的 设�
 
 ## 暂缓
 
-主题/密度分区、输入禁用的实际效果（对话栏票），以及重述 helper 的任何复用，均为后续票范围，在包 README 的 Known Limitations 中镜像记录。组装级 web 快照 harness：[daypaw 任务对话](2026-08-24-daypaw-task-conversation.md)。
+主题/密度分区、输入禁用的实际效果（对话栏票），以及重述 helper 的任何复用，均为后续票范围，在包 README 的 Known Limitations 中镜像记录。组装级 web 快照 harness：[daypaw 任务对话](2026-08-24-daypaw-task-conversation.zh.md)。
