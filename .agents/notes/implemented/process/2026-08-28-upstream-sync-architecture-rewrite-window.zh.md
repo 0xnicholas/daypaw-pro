@@ -28,5 +28,5 @@ Status: implemented
 
 - fork UI 壳线现已骑在新上游 client 架构上；后续该区域的 sync 是增量而非移植规模。
 - #64 的 `ensureSymlink` core touch 消解（上游重写 heal 面；fork 只消费公开的 `healProfilesModuleFallback`）。
-- 已知环境性基线红（非本 sync 引入）：`packages/session/session-projection-cache/tests/cache.spec.ts` 的 disposal 用例在 node 26 下失败（纯上游 worktree 复现一致；CI 用 node 24）。
+- 已知环境性基线红（非本 sync 引入）：`packages/session/session-projection-cache/tests/cache.spec.ts`（cold-read 与 write-policy 用例）在 node 26 下偶发失败——在同步 commit 的纯上游 worktree 复现（3 跑 2 红），node 23.11 与 CI 的 node 24 下绿。`hooks/*`、`bash-sandbox/partial-landlock`、`hmr-config`、`gen-third-party-notices`、`oxlint-contract` 等 spec 在全量并发下亦偶发；单独运行与 CI 矩阵均绿。
 - 后续：生成文档 zh 更新继续走标准双语流程（`dsh-translate-docs` 需显式调用）。

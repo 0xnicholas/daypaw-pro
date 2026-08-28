@@ -28,5 +28,5 @@ Completing the 2026-08-18 → 2026-08-28 upstream sync (`daypaw-sync/2026-08-28`
 
 - The fork UI shell now rides the new upstream client architecture; future syncs in this area are incremental rather than porting-scale.
 - The #64 `ensureSymlink` core touch dissolved (upstream rewrote the heal surface; the fork consumes the public `healProfilesModuleFallback`).
-- Known environmental baseline red (not sync-introduced): `packages/session/session-projection-cache/tests/cache.spec.ts` disposal case fails under node 26 (reproduced on a clean upstream worktree; CI runs node 24).
+- Known environmental baseline red (not sync-introduced): `packages/session/session-projection-cache/tests/cache.spec.ts` (cold-read and write-policy cases) flakes under node 26 — reproduced on a clean upstream worktree at the synced commit (2 of 3 runs red) and green under node 23.11 and CI's node 24. `hooks/*`, `bash-sandbox/partial-landlock`, `hmr-config`, `gen-third-party-notices`, and `oxlint-contract` specs also flake intermittently under full-suite concurrency on node 26; all pass in isolation and in the CI matrix.
 - Follow-ups: generated-doc zh updates continue via the standard bilingual workflow (`dsh-translate-docs` requires explicit invocation).
