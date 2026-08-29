@@ -304,28 +304,7 @@ function ciSharedStaticGates(): Gate[] {
  * them as a separately reported advisory job instead of a blocking gate.
  */
 function ciDaypawHostedGates(): Gate[] {
-  return [
-    ...ciSharedStaticGates(),
-    typertContractsGate(),
-    pnpmScript('typecheck', 'typecheck:contracts-ready', { needs: ['typert-contracts'] }),
-    lintGate({ needs: ['typert-contracts'] }),
-    pnpmScript('duplication', 'duplication'),
-    ...nodeCompatSmokeGates(),
-    ...docSyncLeafGates({
-      docTypecheckNeeds: ['typert-contracts'],
-      docTypecheckScript: 'doc-typecheck:contracts-ready',
-    }),
-    pnpmScript('module-graph', 'verify-module-graph', { label: 'module graph' }),
-    pnpmScript('knip', 'knip'),
-    ciBuildGate('build', { needs: ['typecheck', 'lint', 'doc-typecheck'] }),
-    pnpmScript('publint', 'publint', { needs: ['build'] }),
-    pnpmScript('node-next-types', 'verify-node-next-types', {
-      label: 'node-next types',
-      needs: ['build'],
-    }),
-    builtPackageInvariantsGate(['build']),
-    builtBinSmokeGate(),
-  ]
+  return ciPrimaryGates().filter(gate => !['coverage', 'coverage-exempt-heavy', 'snapshot'].includes(gate.id))
 }
 
 function ciPrimaryGates(): Gate[] {
