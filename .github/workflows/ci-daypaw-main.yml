@@ -57,13 +57,11 @@ jobs:
 
       - name: Run the exhaustive serial gate aggregate
         env:
-          # Serial execution is the upstream master standby's shape for running
-          # the full aggregate on constrained hardware; parallel gates on a
-          # 4-vCPU hosted runner produce resource-contention failures.
-          DSH_COVERAGE_MAX_WORKERS: '1'
-          DSH_E2E_MAX_WORKERS: '1'
+          # Gates run one at a time so a 4-vCPU runner never juggles two lanes
+          # (the first run failed exactly there); each lane then uses its
+          # natural intra-suite parallelism, matching the upstream pull-request
+          # lane's execution shape. The upstream master standby's full serial
+          # pinning targets its weaker single-purpose VMs and instead starves
+          # timing-sensitive process tests on hosted hardware.
           DSH_GATE_CONCURRENCY: '1'
-          DSH_OXLINT_THREADS: '1'
-          DSH_PUBLINT_CONCURRENCY: '1'
-          DSH_SNAPSHOT_MAX_CONCURRENCY: '1'
         run: pnpm run check:ci:linux-primary

@@ -13,7 +13,7 @@ per-file 100% 覆盖率门从未在本 fork 的 CI 上跑过:继承的 `CI` 工�
 - ADR 0007 §1 按裁决落地:`vitest.config.ts` coverage exclude 增一条 glob `packages/daypaw/ui-*/src/**`(登记于 `docs/fork/CORE_TOUCHES.md` 的 core touch),镜像上游对 client UI 的 GUI 债豁免——jsdom 组件测试与组装 web 车道保留,per-file 门不适用;daypaw 的 host 侧包仍走门。
 - engine 的缺口补测而非豁免:crafted-row 测试新增对 `error_json` 非空的 `failed` 行的 attach,走 `settledResult` 的 `JSON.parse` 方向(此前唯一一次过该分支的输入 `error_json: null`;真实失败经 runner 结算,永不走 attach 重放)。`engine/src/core.ts` per-file 100%。
 - main 推送经新 fork 自有工作流 `.github/workflows/ci-daypaw-main.yml` 获得穷尽 CI:单 `ubuntu-latest` 作业(公开仓库——hosted 分钟免费)跑 `pnpm run check:ci:linux-primary`,即上游 master standby 同款串行聚合(typecheck、lint、duplication、per-file 覆盖率、快照、doc-sync、module graph、knip、build、publint、node-next types、built invariants、bin smoke、web snapshot),带 `DSH_TELEMETRY_DISABLED` 与按 ref 取消。
-- 车道把六个 gate 并发环境变量钉为 `1`(上游 master standby 的串行形态):该聚合在 4-vCPU hosted runner 上的首跑因资源竞争超时失败,串行化后又因缺少 standby 同样要准备的 hosted 环境(Playwright Chromium、解除用户命名空间限制的 bubblewrap)而失败,同一次运行还暴露了死车道放过的真违规——`agents-dir.ts` 的动态工厂导入赋值 `any`(`no-unsafe-assignment`);导入现按文件边界结构化类型。
+- 车道只钉 `DSH_GATE_CONCURRENCY=1`——gate 串行,4-vCPU runner 永不同时扛两条车道(首跑正败于此),每条车道保留自身的套内并行,与上游 pull-request 车道的执行形态一致;standby 的全量串行钉定面向其更弱的单用途 VM,在 hosted 硬件上饿死时序敏感的进程测试,串行化后又因缺少 standby 同样要准备的 hosted 环境(Playwright Chromium、解除用户命名空间限制的 bubblewrap)而失败,同一次运行还暴露了死车道放过的真违规——`agents-dir.ts` 的动态工厂导入赋值 `any`(`no-unsafe-assignment`);导入现按文件边界结构化类型。
 - 死掉的继承 `CI` 工作流经 GitHub UI 禁用(可逆、零 core touch——ADR 0007 §5 先例),卡死的排队 run 已取消。`CI master` 不动:本 fork 永不推送它监听的分支,无法触发。
 
 ## Alternatives considered
