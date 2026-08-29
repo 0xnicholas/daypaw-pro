@@ -16,10 +16,11 @@
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
+
+import { completeClosure, findWorkspacePackage, readManifest, writeManifest } from './daypaw-closure.ts'
 
 const root = resolve(import.meta.dirname, '..', '..')
 
@@ -40,19 +41,6 @@ const PACKAGES = [
 ] as const
 
 type PackageKey = (typeof PACKAGES)[number]['key']
-
-/** The subset of staged manifest fields this script reads and rewrites. */
-interface StagedManifest {
-  name?: string
-  version?: string
-  dependencies?: Record<string, string>
-  peerDependencies?: Record<string, string>
-  optionalDependencies?: Record<string, string>
-  peerDependenciesMeta?: Record<string, { optional?: boolean }>
-  devDependencies?: Record<string, string>
-  bundleDependencies?: string[]
-  [field: string]: unknown
-}
 
 /** Validated CLI configuration; construction owns help and parse-error exits. */
 class ReleaseCli {
@@ -289,14 +277,6 @@ async function runUntil(
   })
 }
 
-async function readManifest(path: string): Promise<StagedManifest> {
-  return JSON.parse(await readFile(path, 'utf8')) as StagedManifest
-}
-
-async function writeManifest(path: string, manifest: StagedManifest): Promise<void> {
-  await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`)
-}
-
 /** Every staged top-level package name with its version, scoped packages included. */
 async function installedPackages(staging: string): Promise<Map<string, string>> {
   const installed = new Map<string, string>()
@@ -312,56 +292,6 @@ async function installedPackages(staging: string): Promise<Map<string, string>> 
     }
   }
   return installed
-}
-
-/** Resolve the staged directory of one package as Node would from an anchor manifest. */
-function stagedPackageDir(staging: string, anchorManifest: string, name: string): string | undefined {
-  for (const parent of createRequire(anchorManifest).resolve.paths(name) ?? []) {
-    const candidate = join(parent, name)
-    // The staging tree lives inside the repository, so Node's parent-directory
-    // walk would otherwise escape into the repo's own node_modules and the
-    // completeness check would credit packages the tarball does not carry.
-    if (!candidate.startsWith(staging + sep)) continue
-    if (existsSync(join(candidate, 'package.json'))) return candidate
-  }
-  return undefined
-}
-
-/**
- * BFS over `dependencies` + `peerDependencies` from the staging root; every
- * reached package must be staged. Peers the referencing manifest marks
- * optional in `peerDependenciesMeta` may be absent (ws's bufferutil, the MCP
- * SDK's json-schema peer), as may the sdk's consumer-supplied external peers.
- * @param staging - the deploy target.
- * @param externalPeers - root peers allowed to be absent by design.
- * @returns the missing package names.
- */
-async function missingClosurePackages(staging: string, externalPeers: readonly string[]): Promise<string[]> {
-  const external = new Set(externalPeers)
-  const rootManifestPath = join(staging, 'package.json')
-  const seen = new Set<string>()
-  const missing = new Set<string>()
-  const queue = [rootManifestPath]
-  for (let anchor = queue.shift(); anchor !== undefined; anchor = queue.shift()) {
-    const manifest = await readManifest(anchor)
-    const declared = [
-      ...Object.keys(manifest.dependencies ?? {}),
-      ...Object.keys(manifest.peerDependencies ?? {}),
-    ]
-    for (const name of declared) {
-      if (seen.has(name)) continue
-      seen.add(name)
-      const dir = stagedPackageDir(staging, anchor, name)
-      if (dir === undefined) {
-        if (manifest.peerDependenciesMeta?.[name]?.optional === true) continue
-        if (anchor === rootManifestPath && external.has(name)) continue
-        missing.add(name)
-        continue
-      }
-      queue.push(join(dir, 'package.json'))
-    }
-  }
-  return [...missing].sort()
 }
 
 /** The release pipeline: build, stage, rewrite, pack, smoke, optional publish. */
@@ -415,78 +345,6 @@ class DaypawRelease {
     await cp(raw, staging, { recursive: true, dereference: true })
     await rm(raw, { recursive: true, force: true })
     return staging
-  }
-
-  /**
-   * Copy each missing workspace or registry package into the staging closure
-   * from its repository location, then re-check. Legacy deploy drops
-   * transitive and peer-only packages; anything still missing after the
-   * restore fails the release.
-   * @param staging - the edit-safe staging tree.
-   * @param sourceDir - the deploy root's repository directory.
-   * @param externalPeers - root peers allowed to be absent by design.
-   */
-  private async completeClosure(staging: string, sourceDir: string, externalPeers: readonly string[]): Promise<void> {
-    for (let round = 0; round < 6; round++) {
-      const missing = await missingClosurePackages(staging, externalPeers)
-      if (missing.length === 0) {
-        console.log(`release-daypaw: closure complete after ${round} restore round(s)`)
-        return
-      }
-      console.log(`release-daypaw: restoring ${missing.length} missing closure package(s): ${missing.join(', ')}`)
-      for (const name of missing) {
-        const source = await this.locatePackage(name, sourceDir)
-        if (source === undefined) {
-          throw new Error(`release-daypaw: closure package ${name} is missing from ${staging} and has no repository source.`)
-        }
-        const destination = join(staging, 'node_modules', name)
-        const nestedNodeModules = join(source, 'node_modules')
-        await cp(source, destination, {
-          recursive: true,
-          dereference: true,
-          filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
-        })
-      }
-    }
-    const missing = await missingClosurePackages(staging, externalPeers)
-    if (missing.length > 0) {
-      throw new Error(`release-daypaw: closure still incomplete after restore rounds: ${missing.join(', ')}.`)
-    }
-  }
-
-  /**
-   * Find a package's repository source directory: workspace package dir, the
-   * deploy source's node_modules (legacy-deploy hoist residue), or the
-   * repo-root resolution paths for external packages.
-   * @param name - the package name.
-   * @param sourceDir - the deploy root's repository directory.
-   * @returns the source directory, or undefined when unknown.
-   */
-  private async locatePackage(name: string, sourceDir: string): Promise<string | undefined> {
-    for (const base of ['packages', 'vendor', 'apps']) {
-      const found = await this.findWorkspacePackage(join(root, base), name, 3)
-      if (found !== undefined) return found
-    }
-    const hoisted = join(sourceDir, 'node_modules', name)
-    if (existsSync(join(hoisted, 'package.json'))) return hoisted
-    for (const parent of createRequire(join(root, 'package.json')).resolve.paths(name) ?? []) {
-      const candidate = join(parent, name)
-      if (existsSync(join(candidate, 'package.json'))) return candidate
-    }
-    return undefined
-  }
-
-  /** Walk a workspace base directory for the package.json declaring `name`. */
-  private async findWorkspacePackage(dir: string, name: string, depth: number): Promise<string | undefined> {
-    if (depth < 0 || !existsSync(dir)) return undefined
-    const manifestPath = join(dir, 'package.json')
-    if (existsSync(manifestPath) && (await readManifest(manifestPath)).name === name) return dir
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name.startsWith('.')) continue
-      const found = await this.findWorkspacePackage(join(dir, entry.name), name, depth - 1)
-      if (found !== undefined) return found
-    }
-    return undefined
   }
 
   /**
@@ -555,7 +413,7 @@ class DaypawRelease {
   /** Version of a workspace package absent from this host's staging (platform-optional natives). */
   private async repositoryVersion(name: string): Promise<string | undefined> {
     for (const base of ['packages', 'vendor', 'apps', 'native']) {
-      const dir = await this.findWorkspacePackage(join(root, base), name, 3)
+      const dir = await findWorkspacePackage(join(root, base), name, 3)
       if (dir !== undefined) return (await readManifest(join(dir, 'package.json'))).version
     }
     return undefined
@@ -710,7 +568,7 @@ try {
     const tarballs = new Map<PackageKey, string>()
     for (const pkg of PACKAGES) {
       const staging = await this.deploy(pkg.filter, pkg.key)
-      await this.completeClosure(staging, resolve(root, 'packages', 'daypaw', pkg.key), pkg.externalPeers)
+      await completeClosure(staging, resolve(root, 'packages', 'daypaw', pkg.key), pkg.externalPeers, root)
       await this.rewriteManifests(staging, pkg.key)
       tarballs.set(pkg.key, await this.pack(staging))
       // The tarball is the artifact; spent staging trees carry README pairs
