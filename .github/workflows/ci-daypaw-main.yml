@@ -29,7 +29,7 @@ env:
 
 jobs:
   linux-primary:
-    name: linux / exhaustive gates
+    name: linux / exhaustive serial gates
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -50,4 +50,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run the exhaustive serial gate aggregate
+        env:
+          # Serial execution is the upstream master standby's shape for running
+          # the full aggregate on constrained hardware; parallel gates on a
+          # 4-vCPU hosted runner produce resource-contention failures.
+          DSH_COVERAGE_MAX_WORKERS: '1'
+          DSH_E2E_MAX_WORKERS: '1'
+          DSH_GATE_CONCURRENCY: '1'
+          DSH_OXLINT_THREADS: '1'
+          DSH_PUBLINT_CONCURRENCY: '1'
+          DSH_SNAPSHOT_MAX_CONCURRENCY: '1'
         run: pnpm run check:ci:linux-primary

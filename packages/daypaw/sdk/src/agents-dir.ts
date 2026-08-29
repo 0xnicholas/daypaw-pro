@@ -88,7 +88,9 @@ export async function loadAgentFiles(ctx: Context, dir: string): Promise<readonl
   const loaded: LoadedDefinition[] = []
   for (const entry of entries.toSorted((left, right) => left.name.localeCompare(right.name))) {
     if (!entry.isFile() || !MODULE_EXTENSIONS.has(extname(entry.name))) continue
-    const module = await import(pathToFileURL(join(dir, entry.name)).href)
+    // User-authored factory modules are a file boundary: the import surface is
+    // typed structurally and validated at runtime below.
+    const module = await import(pathToFileURL(join(dir, entry.name)).href) as { default?: (sdk: typeof SDK) => unknown }
     const factory = module.default
     if (typeof factory !== 'function') {
       throw new Error(
