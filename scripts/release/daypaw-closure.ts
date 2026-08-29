@@ -57,10 +57,12 @@ function stagedPackageDir(staging: string, anchorManifest: string, name: string)
 
 /**
  * BFS over `dependencies` + `peerDependencies` from the staging root; every
- * reached package must be staged. Peers the referencing manifest marks
- * optional in `peerDependenciesMeta` may be absent (ws's bufferutil, the MCP
- * SDK's json-schema peer), as may the deploy root's consumer-supplied
- * external peers.
+ * package any reached manifest requires must be staged. A name may be absent
+ * only when every reached manifest declaring it allows absence: an optional
+ * `peerDependenciesMeta` peer (ws's bufferutil, the MCP SDK's json-schema
+ * peer), or a deploy-root peer in `externalPeers` (consumer-supplied).
+ * Optional-at-one-manifest and required-at-another still requires staging,
+ * so a staged optional peer's own dependencies are traversed too.
  * @param staging - the deploy target.
  * @param externalPeers - root peers allowed to be absent by design.
  * @returns the missing package names.
@@ -68,7 +70,8 @@ function stagedPackageDir(staging: string, anchorManifest: string, name: string)
 export async function missingClosurePackages(staging: string, externalPeers: readonly string[]): Promise<string[]> {
   const external = new Set(externalPeers)
   const rootManifestPath = join(staging, 'package.json')
-  const seen = new Set<string>()
+  const required = new Set<string>()
+  const traversed = new Set<string>()
   const missing = new Set<string>()
   const queue = [rootManifestPath]
   for (let anchor = queue.shift(); anchor !== undefined; anchor = queue.shift()) {
@@ -78,15 +81,16 @@ export async function missingClosurePackages(staging: string, externalPeers: rea
       ...Object.keys(manifest.peerDependencies ?? {}),
     ]
     for (const name of declared) {
-      if (seen.has(name)) continue
-      seen.add(name)
+      if (manifest.peerDependenciesMeta?.[name]?.optional !== true && !(anchor === rootManifestPath && external.has(name))) {
+        required.add(name)
+      }
+      if (traversed.has(name)) continue
       const dir = stagedPackageDir(staging, anchor, name)
       if (dir === undefined) {
-        if (manifest.peerDependenciesMeta?.[name]?.optional === true) continue
-        if (anchor === rootManifestPath && external.has(name)) continue
-        missing.add(name)
+        if (required.has(name)) missing.add(name)
         continue
       }
+      traversed.add(name)
       queue.push(join(dir, 'package.json'))
     }
   }

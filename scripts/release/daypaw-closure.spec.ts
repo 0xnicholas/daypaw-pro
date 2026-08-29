@@ -108,4 +108,37 @@ describe('missingClosurePackages', () => {
 
     await expect(missingClosurePackages(fix.staging, ['ext'])).resolves.toEqual(['hard'])
   })
+
+  it('requires a name that is optional at one manifest and hard at another', async () => {
+    const fix = fixture({ lenient: '*', strict: '*' })
+    for (const [name, meta] of [['lenient', { shared: { optional: true } }] as const, ['strict', undefined] as const]) {
+      const dir = join(fix.staging, 'node_modules', name)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify({
+        name,
+        version: '1.0.0',
+        peerDependencies: { shared: '*' },
+        ...(meta === undefined ? {} : { peerDependenciesMeta: meta }),
+      }, null, 2)}\n`)
+    }
+
+    await expect(missingClosurePackages(fix.staging, [])).resolves.toEqual(['shared'])
+  })
+
+  it('traverses a staged optional peer so its own missing dependency is reported', async () => {
+    const fix = fixture({})
+    writeFileSync(
+      join(fix.staging, 'package.json'),
+      `${JSON.stringify({
+        name: 'probe',
+        peerDependencies: { opt: '*' },
+        peerDependenciesMeta: { opt: { optional: true } },
+      }, null, 2)}\n`,
+    )
+    const opt = join(fix.staging, 'node_modules', 'opt')
+    mkdirSync(opt, { recursive: true })
+    writeFileSync(join(opt, 'package.json'), `${JSON.stringify({ name: 'opt', version: '1.0.0', dependencies: { ghost: '*' } }, null, 2)}\n`)
+
+    await expect(missingClosurePackages(fix.staging, [])).resolves.toEqual(['ghost'])
+  })
 })

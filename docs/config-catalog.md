@@ -60,7 +60,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/daypaw/web-app/src/index.ts:46`](../packages/daypaw/web-app/src/index.ts)
+Source: [`packages/daypaw/web-app/src/index.ts:47`](../packages/daypaw/web-app/src/index.ts)
 
 <a id="deepseek-aidsh-acp"></a>
 

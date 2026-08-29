@@ -59,6 +59,11 @@ function fakeHttpServer(host: '127.0.0.1' | '0.0.0.0' = '127.0.0.1'): { server: 
   return { server, seat: () => fallback }
 }
 
+/** A fake connection service: the trust fence admits everything and URL tokens are deterministic. */
+function fakeConnection(): never {
+  return { authorizeIndex: () => true, authenticatedUrl: (base: string) => `${base}/?token=t` } as never
+}
+
 /** A fake Loader whose settlement the test controls (the URL line waits on it). */
 function provideLoader(ctx: Context, settle: () => Promise<void> = async () => {}): void {
   ctx.provide('loader', { await: settle } as never)
@@ -84,9 +89,7 @@ describe('web-app runtime glue', () => {
       },
     } as never)
     provideLoader(ctx)
-    // frontend-static injects the connection trust fence for its fallback
-    // seat; the fake serves the shell pages.
-    ctx.provide('connection', { authorizeIndex: () => true } as never)
+    ctx.provide('connection', fakeConnection())
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     // Run the glue as a real plugin fiber: its nested frontend-static and
     // system-prompt fibers activate under it (direct apply leaves nested
@@ -105,7 +108,7 @@ describe('web-app runtime glue', () => {
       lanAddresses: ['192.168.1.5'],
       trustedHosts: ['192.168.1.5', 'lab.internal'],
     })
-    expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567 (LAN: http://192.168.1.5:4567)')
+    expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567/?token=t (LAN: http://192.168.1.5:4567/?token=t)')
     const assembly = await ctx.systemPrompt.assemble()
     expect(assembly.sections.find(entry => entry.name === 'harness:source')?.text).toContain('DeepSeek Harness implementation checkout')
     const section = assembly.sections.find(entry => entry.name === 'app:web-surface')
@@ -159,10 +162,11 @@ describe('web-app runtime glue', () => {
     stageDist()
     const ctx = new Context()
     ctx.provide('webServer', fakeHttpServer().server)
+    ctx.provide('connection', fakeConnection())
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     apply(ctx, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await new Promise(resolve => setTimeout(resolve, 0))
-    expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567')
+    expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567/?token=t')
     await ctx.fiber.dispose()
   })
 
@@ -172,6 +176,7 @@ describe('web-app runtime glue', () => {
     // RPC immediately after observing it.
     const settled = new Context()
     settled.provide('webServer', fakeHttpServer().server)
+    settled.provide('connection', fakeConnection())
     let release: () => void
     const settlement = new Promise<void>((resolve) => { release = resolve })
     provideLoader(settled, () => settlement)
@@ -181,7 +186,7 @@ describe('web-app runtime glue', () => {
     expect(log).not.toHaveBeenCalled()
     release!()
     await new Promise(resolve => setTimeout(resolve, 0))
-    expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567')
+    expect(log).toHaveBeenCalledWith('daypaw web: http://127.0.0.1:4567/?token=t')
     await settled.fiber.dispose()
 
     // Failed path: Loader reports the sibling failure; the app prints no URL
@@ -212,6 +217,26 @@ describe('web-app runtime glue', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(log).not.toHaveBeenCalled()
     await torn.fiber.dispose()
+
+    // Connection-torn path: the webServer survives but the connection row's
+    // fiber is disposed before settlement — tokening reads a torn-down
+    // service, so no line and no crash.
+    log.mockClear()
+    const tornConnection = new Context()
+    tornConnection.provide('webServer', fakeHttpServer().server)
+    const connectionChild = tornConnection.plugin((childCtx: Context) => {
+      childCtx.provide('connection', fakeConnection())
+    })
+    await connectionChild
+    let releaseConnection: () => void
+    const connectionSettlement = new Promise<void>((resolve) => { releaseConnection = resolve })
+    provideLoader(tornConnection, () => connectionSettlement)
+    apply(tornConnection, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
+    await connectionChild.dispose() // the connection service goes away
+    releaseConnection!()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(log).not.toHaveBeenCalled()
+    await tornConnection.fiber.dispose()
   })
 
   it('fails loud when the prompt section resolves against a portless webserver', async () => {

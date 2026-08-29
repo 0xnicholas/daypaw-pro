@@ -25,6 +25,7 @@ import z from '@deepseek-ai/schemastery'
 import { addHarnessSourceSection } from '@deepseek-ai/dsh-app-boot'
 import * as FrontendStatic from '@deepseek-ai/dsh-host-frontend-static'
 import { loadAgentFiles } from '@daypaw/sdk/agents-dir'
+import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -193,30 +194,39 @@ export function apply(ctx: Context, config: Config): void {
     })
   }
   if (config.printUrl) {
-    // The URL line is a readiness signal: supervisors (and the keyless CLI
-    // smoke) RPC as soon as they observe it, so it must not print while
-    // sibling rows (the /api route owner) are still mounting. Await Loader
-    // settlement first; a hand-built tree without a Loader prints at once.
-    const printUrl = (): void => {
-      // Reuse the exact LAN snapshot provided to the /api trust fence.
-      const lanCandidate = runtime.lanAddresses[0]
-      const port = ctx.webServer.port
-      console.log(`daypaw web: ${localWebUrl(ctx)}${lanCandidate === undefined ? '' : ` (LAN: http://${lanCandidate}:${String(port)})`}`)
-    }
-    // This row's own activation can precede a sibling failure. The app owns
-    // readiness by waiting for its Loader tree, or prints at once in a
-    // hand-built context without Loader.
-    const settled = ctx.get('loader')?.await()
-    if (settled === undefined) printUrl()
-    else {
-      void settled.then(() => {
-        // The tree can be disposed while the boot was in flight (early
-        // SIGTERM); a URL line for a dead server would only mislead, and
-        // reading the torn-down port would turn a clean shutdown into a crash.
-        if (ctx.get('webServer') !== undefined) printUrl()
-      // Loader reports a failed boot; this row only stays quiet.
-      }, () => {})
-    }
+    ctx.inject(['connection'], (connectionCtx) => {
+      // The URL line is a readiness signal: supervisors (and the keyless CLI
+      // smoke) RPC as soon as they observe it, so it must not print while
+      // sibling rows (the /api route owner) are still mounting. Await Loader
+      // settlement first; a hand-built tree without a Loader prints at once.
+      // The printed URLs carry the process launch token: the browser-auth
+      // fence rejects a bare origin, so an untokened line would dead-end.
+      const printUrl = (): void => {
+        // Reuse the exact LAN snapshot provided to the /api trust fence.
+        const lanCandidate = runtime.lanAddresses[0]
+        const port = connectionCtx.webServer.port
+        const localUrl = connectionCtx.connection.authenticatedUrl(localWebUrl(connectionCtx))
+        const lanUrl = lanCandidate === undefined
+          ? undefined
+          : connectionCtx.connection.authenticatedUrl(`http://${lanCandidate}:${String(port)}`)
+        console.log(`daypaw web: ${localUrl}${lanUrl === undefined ? '' : ` (LAN: ${lanUrl})`}`)
+      }
+      // This row's own activation can precede a sibling failure. The app owns
+      // readiness by waiting for its Loader tree, or prints at once in a
+      // hand-built context without Loader.
+      const settled = connectionCtx.get('loader')?.await()
+      if (settled === undefined) printUrl()
+      else {
+        void settled.then(() => {
+          // The tree can be disposed while the boot was in flight (early
+          // SIGTERM); a URL line for a dead server would only mislead, and
+          // reading torn-down services would turn a clean shutdown into a crash.
+          if (connectionCtx.get('webServer') !== undefined
+            && connectionCtx.get('connection') !== undefined) printUrl()
+        // Loader reports a failed boot; this row only stays quiet.
+        }, () => {})
+      }
+    })
   }
 }
 /* jscpd:ignore-end */

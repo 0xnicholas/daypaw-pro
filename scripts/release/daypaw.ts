@@ -16,6 +16,7 @@
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
@@ -393,18 +394,16 @@ class DaypawRelease {
     const rootManifest = await readManifest(rootManifestPath)
     const bundled = [...installed.keys()].sort()
     if (key === 'cli') {
-      // Everything the CLI needs is vendored; peers and dev ranges would only
-      // mislead npm at install time.
+      // Everything the CLI needs is vendored; peer ranges would only mislead
+      // npm at install time.
       delete rootManifest.peerDependencies
-      delete rootManifest.devDependencies
-    } else {
-      delete rootManifest.devDependencies
-      // Vendored closure packages become direct dependencies at their staged
-      // versions so bundleDependencies keeps them beside the facade.
-      const dependencies = rootManifest.dependencies ?? {}
-      for (const name of bundled) dependencies[name] = installed.get(name) ?? '0.0.0'
-      rootManifest.dependencies = Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b)))
     }
+    // Vendored closure packages become direct dependencies at their staged
+    // versions so bundleDependencies keeps them beside the facade: npm packs
+    // a bundled package only when its name is also a real dependency.
+    const dependencies = rootManifest.dependencies ?? {}
+    for (const [name, version] of installed) dependencies[name] = version
+    rootManifest.dependencies = Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b)))
     rootManifest.bundleDependencies = bundled
     await writeManifest(rootManifestPath, rootManifest)
     console.log(`release-daypaw: ${key}: rewrote ${installed.size} closure manifests; bundleDependencies=${bundled.length}`)
@@ -430,14 +429,15 @@ class DaypawRelease {
     return tarball
   }
 
-  /** The URL line a healthy `daypaw` boot prints once the shell server binds. */
-  private static readonly URL_LINE = /daypaw web: http:\/\/127\.0\.0\.1:(\d+)/
+  /** The URL line a healthy `daypaw` boot prints once the shell server binds; the capture group carries the launch-token query. */
+  private static readonly URL_LINE = /daypaw web: (http:\/\/127\.0\.0\.1:\d+\S*)/
 
   /**
    * Smoke the CLI tarball: clean-prefix global install, then a bare `daypaw`
    * boot (the argv the adapter defaults to the daypaw profile) from a fresh
-   * DSH_HOME must come up as the product shell — print its URL line and serve
-   * the bundled frontend dist — proving the seeded profile composes, the
+   * DSH_HOME must come up as the product shell — print its launch-token URL
+   * line, exchange the token for a browser session cookie, and serve the
+   * bundled frontend dist — proving the seeded profile composes, the
    * whole bundled plugin closure loads end to end, and the dist ships in the
    * tarball (installation builds nothing).
    * @param tarball - the packed CLI tarball.
@@ -464,9 +464,19 @@ class DaypawRelease {
       pattern: DaypawRelease.URL_LINE,
       timeoutMs: 120_000,
       probe: async (captured) => {
-        const port = DaypawRelease.URL_LINE.exec(captured)?.[1]
-        if (port === undefined) throw new Error('boot output carried no parseable URL line')
-        const page = await fetch(`http://127.0.0.1:${port}/`)
+        const launchUrl = DaypawRelease.URL_LINE.exec(captured)?.[1]
+        if (launchUrl === undefined) throw new Error('boot output carried no parseable URL line')
+        // A browser opening the printed URL exchanges the launch token for a
+        // session cookie and is redirected to the bare origin; the smoke
+        // walks the same handshake so an untokened line or broken fence fails.
+        const exchange = await fetch(launchUrl, { redirect: 'manual' })
+        const [cookie] = exchange.headers.getSetCookie()
+        if (exchange.status !== 303 || cookie === undefined) {
+          throw new Error(`token exchange got HTTP ${String(exchange.status)} with ${String(exchange.headers.getSetCookie().length)} cookie(s)`)
+        }
+        const page = await fetch(`http://127.0.0.1:${new URL(launchUrl).port}/`, {
+          headers: { cookie: cookie.split(';')[0] ?? cookie },
+        })
         if (!page.ok) throw new Error(`dist probe got HTTP ${String(page.status)}`)
         const body = await page.text()
         if (!body.includes('daypaw')) throw new Error('dist probe fetched a page that never mentions daypaw')
@@ -500,15 +510,28 @@ class DaypawRelease {
    */
   private async smokeSdk(tarball: string): Promise<void> {
     const consumer = await mkdtemp(join(tmpdir(), 'daypaw-sdk-smoke-'))
+    const zodResolution = createRequire(join(root, 'package.json')).resolve('zod/package.json')
+    const zodVersion = (JSON.parse(await readFile(zodResolution, 'utf8')) as { version?: string }).version
+    if (zodVersion === undefined) throw new Error('release-daypaw: resolved zod carries no version.')
+    // The consumer's cordis and dsh-invariants ranges come from the SDK's own
+    // peer declarations (one home for the ranges); zod is pinned to the version
+    // this release's SDK types were built against, because newer registry zod
+    // can change generic shapes inside semver-compatible ranges.
+    const peerRanges = (await readManifest(resolve(root, 'packages', 'daypaw', 'sdk', 'package.json'))).peerDependencies ?? {}
+    const consumerPeer = (name: string): string => {
+      const range = peerRanges[name]
+      if (range === undefined) throw new Error(`release-daypaw: sdk manifest carries no peer range for ${name}.`)
+      return range
+    }
     await writeFile(join(consumer, 'package.json'), `${JSON.stringify({
       name: 'daypaw-sdk-smoke',
       private: true,
       type: 'module',
       dependencies: {
         '@daypaw/sdk': `file:${tarball}`,
-        '@deepseek-ai/cordis': '~4.0.1',
-        '@deepseek-ai/dsh-invariants': '~0.1.0-rc.3',
-        'zod': '^4.4.3',
+        '@deepseek-ai/cordis': consumerPeer('@deepseek-ai/cordis'),
+        '@deepseek-ai/dsh-invariants': consumerPeer('@deepseek-ai/dsh-invariants'),
+        'zod': zodVersion,
       },
       devDependencies: {
         '@types/node': '^24.13.3',
