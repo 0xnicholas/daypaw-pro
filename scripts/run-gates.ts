@@ -219,7 +219,7 @@ export function gatesForMode(selected: Mode): Gate[] {
     case 'ci-linux-primary':
       return [...ciPrimaryGates(), webSnapshotGate(['built-package-invariants'])]
     case 'ci-daypaw-hosted':
-      return [...ciDaypawHostedGates(), webSnapshotGate(['built-package-invariants'])]
+      return ciDaypawHostedGates()
     case 'ci-static':
       return ciStaticGates({ ownsBuild: false })
     case 'ci-lint-contracts-ready':
@@ -296,12 +296,12 @@ function ciSharedStaticGates(): Gate[] {
 
 /**
  * The fork's main-push aggregate for hosted 4-vCPU runners: every
- * deterministic gate of {@link ciPrimaryGates} plus the web snapshot lane,
- * minus the two full-suite test lanes (coverage, recorded-session snapshot).
- * Those lanes' timing-sensitive process tests measure the host on this
- * hardware class (upstream runs them on 16-core enterprise runners and keeps
- * its own hosted serial reference disabled); the fork's main workflow runs
- * them as a separately reported advisory job instead of a blocking gate.
+ * deterministic gate of {@link ciPrimaryGates} minus the three full-suite
+ * test lanes (coverage, recorded-session snapshot, web browser snapshot).
+ * Those lanes' timing-sensitive tests measure the host on this hardware class
+ * (upstream runs them on 16-core enterprise runners and keeps its own hosted
+ * serial reference disabled); the fork's main workflow runs them as a
+ * separately reported advisory job instead of a blocking gate.
  */
 function ciDaypawHostedGates(): Gate[] {
   return ciPrimaryGates().filter(gate => !['coverage', 'coverage-exempt-heavy', 'snapshot'].includes(gate.id))

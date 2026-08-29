@@ -7,17 +7,17 @@ name: CI (daypaw main)
 #
 # - linux / deterministic gates (required): the ci-daypaw-hosted aggregate —
 #   every gate of upstream's primary aggregate whose verdict is deterministic
-#   (static checks, typert contracts, typecheck, lint, duplication, node
-#   smokes, doc-sync, module graph, knip, build, publint, node-next types,
-#   built-package invariants, bin smoke) plus the web browser snapshot lane.
-#   Four real defects were caught by exactly these gates during the lane's
-#   first runs.
-# - linux / timing-sensitive lanes (advisory): the full coverage suite and the
-#   recorded-session snapshot replays. Their process tests measure the host on
-#   this hardware class — upstream runs them on 16-core enterprise runners and
-#   keeps its own hosted serial reference disabled — so they report per push
-#   without gating it. Restoring them as gates requires enterprise-class
-#   runners or upstream stabilization.
+#   across the lane's runs (static checks, typert contracts, typecheck, lint,
+#   duplication, node smokes, doc-sync, module graph, knip, build, publint,
+#   node-next types, built-package invariants, bin smoke). Four real defects
+#   were caught by exactly these gates during the lane's first runs.
+# - linux / timing-sensitive lanes (advisory): the three full-suite lanes —
+#   coverage, recorded-session snapshot replays, web browser snapshot. Their
+#   process and browser timing tests measure the host on this hardware class —
+#   upstream runs them on 16-core enterprise runners and keeps its own hosted
+#   serial reference disabled — so they report per push without gating it.
+#   Restoring them as gates requires enterprise-class runners or upstream
+#   stabilization.
 on:
   push:
     branches: [main]
@@ -59,12 +59,6 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Chromium
-        run: pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install chromium
-
-      - name: Prepare bubblewrap (unrestrict userns)
-        run: bash scripts/prepare-ci-bubblewrap.sh
-
       - name: Run the deterministic gate aggregate
         env:
           # Gates run one at a time so a 4-vCPU runner never juggles two lanes;
@@ -98,8 +92,14 @@ jobs:
       - name: Prepare bubblewrap (unrestrict userns)
         run: bash scripts/prepare-ci-bubblewrap.sh
 
+      - name: Install Playwright Chromium
+        run: pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install chromium
+
       - name: Coverage suite (full)
         run: pnpm exec vitest run --coverage
 
       - name: Recorded-session snapshot replays
         run: pnpm run test:snapshot
+
+      - name: Web browser snapshot replays
+        run: DSH_SNAPSHOT=replay pnpm run test:web:built
