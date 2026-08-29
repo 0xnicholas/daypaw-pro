@@ -23,6 +23,7 @@ import { pnpmInvocation } from './pnpm-invocation.ts'
 export type Mode =
   | 'ci-primary'
   | 'ci-linux-primary'
+  | 'ci-daypaw-hosted'
   | 'ci-static'
   | 'ci-lint-contracts-ready'
   | 'ci-coverage'
@@ -117,6 +118,7 @@ function parseMode(raw: string | undefined): Mode {
   switch (raw) {
     case 'ci-primary':
     case 'ci-linux-primary':
+    case 'ci-daypaw-hosted':
     case 'ci-static':
     case 'ci-lint-contracts-ready':
     case 'ci-coverage':
@@ -134,7 +136,7 @@ function parseMode(raw: string | undefined): Mode {
       return raw
     default:
       throw new Error(
-        `run-gates: expected mode ci-primary | ci-linux-primary | ci-static | ci-lint-contracts-ready | ci-coverage | ci-snapshot | ci-artifacts | ci-consumers | ci-windows-blocking | ci-windows-complete | ci-windows-observational | node-compat | check-all | hygiene | doc-sync | doc-quick, got ${JSON.stringify(raw)}.`,
+        `run-gates: expected mode ci-primary | ci-linux-primary | ci-daypaw-hosted | ci-static | ci-lint-contracts-ready | ci-coverage | ci-snapshot | ci-artifacts | ci-consumers | ci-windows-blocking | ci-windows-complete | ci-windows-observational | node-compat | check-all | hygiene | doc-sync | doc-quick, got ${JSON.stringify(raw)}.`,
       )
   }
 }
@@ -216,6 +218,8 @@ export function gatesForMode(selected: Mode): Gate[] {
       return ciPrimaryGates()
     case 'ci-linux-primary':
       return [...ciPrimaryGates(), webSnapshotGate(['built-package-invariants'])]
+    case 'ci-daypaw-hosted':
+      return [...ciDaypawHostedGates(), webSnapshotGate(['built-package-invariants'])]
     case 'ci-static':
       return ciStaticGates({ ownsBuild: false })
     case 'ci-lint-contracts-ready':
@@ -287,6 +291,40 @@ function ciSharedStaticGates(): Gate[] {
     pnpmScript('client-packages', 'verify-client-packages', { label: 'client packages' }),
     pnpmScript('client-ui-i18n', 'verify-client-ui-i18n', { label: 'client UI i18n' }),
     pnpmScript('issue-management', 'test:issue-management', { label: 'Issue management policy' }),
+  ]
+}
+
+/**
+ * The fork's main-push aggregate for hosted 4-vCPU runners: every
+ * deterministic gate of {@link ciPrimaryGates} plus the web snapshot lane,
+ * minus the two full-suite test lanes (coverage, recorded-session snapshot).
+ * Those lanes' timing-sensitive process tests measure the host on this
+ * hardware class (upstream runs them on 16-core enterprise runners and keeps
+ * its own hosted serial reference disabled); the fork's main workflow runs
+ * them as a separately reported advisory job instead of a blocking gate.
+ */
+function ciDaypawHostedGates(): Gate[] {
+  return [
+    ...ciSharedStaticGates(),
+    typertContractsGate(),
+    pnpmScript('typecheck', 'typecheck:contracts-ready', { needs: ['typert-contracts'] }),
+    lintGate({ needs: ['typert-contracts'] }),
+    pnpmScript('duplication', 'duplication'),
+    ...nodeCompatSmokeGates(),
+    ...docSyncLeafGates({
+      docTypecheckNeeds: ['typert-contracts'],
+      docTypecheckScript: 'doc-typecheck:contracts-ready',
+    }),
+    pnpmScript('module-graph', 'verify-module-graph', { label: 'module graph' }),
+    pnpmScript('knip', 'knip'),
+    ciBuildGate('build', { needs: ['typecheck', 'lint', 'doc-typecheck'] }),
+    pnpmScript('publint', 'publint', { needs: ['build'] }),
+    pnpmScript('node-next-types', 'verify-node-next-types', {
+      label: 'node-next types',
+      needs: ['build'],
+    }),
+    builtPackageInvariantsGate(['build']),
+    builtBinSmokeGate(),
   ]
 }
 

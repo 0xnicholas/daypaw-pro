@@ -58,6 +58,7 @@ describe('gate graph validation', () => {
   it.each([
     'ci-primary',
     'ci-linux-primary',
+    'ci-daypaw-hosted',
     'ci-static',
     'ci-lint-contracts-ready',
     'ci-coverage',
