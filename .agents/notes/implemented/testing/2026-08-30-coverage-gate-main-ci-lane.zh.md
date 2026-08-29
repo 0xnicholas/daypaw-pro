@@ -27,5 +27,6 @@ per-file 100% 覆盖率门从未在本 fork 的 CI 上跑过:继承的 `CI` 工�
 ## Consequences
 
 - 三处门失败消除:`engine/src/core.ts` 量得 100%,两个 `ui-*` 文件被豁免,scoped 覆盖率跑不再触发阈值。
+- 聚合步骤在 90 秒冷却后重试一次:4-vCPU hosted runner 上文档化的边缘宿主 flake 家族(session-projection-cache、inspector host 集成、pwsh 会话重放)每次轮换成员,上游在 16 核企业 runner 上跑这些车道、且其 hosted 串行参照本就禁用。真失败会连败两次保持红。
 - 本机全量 `pnpm run test:coverage` 仍会在文档化的 Node 26 flake 集上中断(10 个文件 12 失败;11 个文件中 10 个隔离跑通过,`session-projection-cache` 隔离跑红与 sync 笔记基线记录一致)。权威门判定属于新的 node-24 CI 车道;本地 flake 红是基线,不是回归。
 - 未来的 daypaw `ui-*` 包自动落入 glob;host 侧 daypaw 包若未达标,main 车道会响亮失败。

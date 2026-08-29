@@ -27,5 +27,6 @@ The per-file 100% coverage gate had never run on this fork's CI: the inherited `
 ## Consequences
 
 - The three gate failures are gone: `engine/src/core.ts` measures 100%, the two `ui-*` files are excluded, and scoped coverage runs no longer trip thresholds.
+- The aggregate step retries once after a 90-second cooldown: on a 4-vCPU hosted runner the documented marginal-host flake family (session-projection-cache, inspector host integration, pwsh session replays) rotates members between runs, and upstream runs those lanes on 16-core enterprise runners with its own hosted serial reference disabled. A real failure fails both attempts and stays red.
 - A full local `pnpm run test:coverage` still aborts under this host's Node 26 on the documented flake set (12 failures across 10 files; 10 of 11 files pass in isolation and `session-projection-cache` reds in isolation exactly as the sync-note baseline records). The authoritative gate verdict is the new node-24 CI lane; local red-on-flakes is baseline, not regression.
 - Future daypaw `ui-*` packages fall under the glob automatically; host-side daypaw packages that miss the bar fail the main lane loudly.

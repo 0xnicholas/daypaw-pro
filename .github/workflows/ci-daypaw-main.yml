@@ -64,4 +64,9 @@ jobs:
           # pinning targets its weaker single-purpose VMs and instead starves
           # timing-sensitive process tests on hosted hardware.
           DSH_GATE_CONCURRENCY: '1'
-        run: pnpm run check:ci:linux-primary
+        # One cooldown retry for the documented marginal-host flake family
+        # (session-projection-cache, inspector host integration, pwsh session
+        # replays): upstream runs these on 16-core enterprise runners and its
+        # own hosted serial reference is disabled upstream. A real failure
+        # fails twice and stays red.
+        run: pnpm run check:ci:linux-primary || (sleep 90 && pnpm run check:ci:linux-primary)
