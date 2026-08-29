@@ -27,15 +27,16 @@ async function bench(withConversation: boolean) {
   // ThemeRuntime over a stub settings scope, the ui-theme bench shape).
   const theme = new ThemeRuntime(ctx, stubSettingsScope<ThemeSettings>().scope)
   ctx.provide('theme', theme)
-  // The plugin injects `remote` + `sessions`; namespaces ride the TestRemote
-  // constructor and forwarded events reach subscribers through its emit driver.
+  // The plugin injects `remote` + `sessions` + `connection`; namespaces ride
+  // the TestRemote constructor and the engine roster rides the fake's RPC.
   const api = new FakeHostApi()
   const remote = new TestRemote(ctx, {
-    agentPresets: api.agentPresets,
     credentials: api.credentials,
     llm: api.llm,
     session: api.session,
   })
+  void remote
+  ctx.provide('connection', { rpc: api.rpc } as never)
   ctx.provide('sessions', {
     list: createSnapshotStore<SessionListState>({
       ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
@@ -66,8 +67,8 @@ async function bench(withConversation: boolean) {
 describe('ui-settings apply', () => {
   it('declares only the services it uses', () => {
     expect(inject).toEqual([
-      'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.session', 'remote.agentPresets',
-      'sessions', 'theme',
+      'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.session',
+      'sessions', 'theme', 'connection',
     ])
   })
 
@@ -91,15 +92,15 @@ describe('ui-settings apply', () => {
     // The dictionaries answer in the browser's zh locale.
     expect(b.locale.bind('daypaw-settings')('title')).toBe('设置')
     // The boot readiness check ran without anyone opening the page.
-    expect(b.api.callsOf('agentPresets.list')).toHaveLength(1)
+    expect(b.api.callsOf('durable/listDefinitions')).toHaveLength(1)
   })
 
   it('re-runs the banner check on pushed invalidations while idle tabs stay lazy', async () => {
     const b = await bench(false)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
-    expect(b.api.callsOf('agentPresets.list')).toHaveLength(1)
+    expect(b.api.callsOf('durable/listDefinitions')).toHaveLength(1)
     b.remote.emit('credentials/reference-updated', ['DEEPSEEK_API_KEY'])
-    expect(b.api.callsOf('agentPresets.list')).toHaveLength(2)
+    expect(b.api.callsOf('durable/listDefinitions')).toHaveLength(2)
     // The credentials tab never loaded: no directory fetch rides the push.
     expect(b.api.callsOf('llm.listProviders')).toEqual([])
     // A loaded tab does refresh; the about tab stays lazy until opened.
@@ -107,7 +108,7 @@ describe('ui-settings apply', () => {
     await pageFace.credentialsStore.load()
     expect(b.api.callsOf('llm.listProviders')).toHaveLength(1)
     b.ctx.emit('connection/reset')
-    expect(b.api.callsOf('agentPresets.list')).toHaveLength(3)
+    expect(b.api.callsOf('durable/listDefinitions')).toHaveLength(3)
     expect(b.api.callsOf('llm.listProviders')).toHaveLength(2)
     expect(b.api.callsOf('session.modelCatalog')).toHaveLength(3) // the card's checks only; the about tab never opened
   })
@@ -173,7 +174,7 @@ describe('ui-settings apply', () => {
     await fiber.dispose()
     b.remote.emit('credentials/reference-updated', [])
     b.ctx.emit('connection/reset')
-    expect(b.api.callsOf('agentPresets.list')).toHaveLength(1) // the boot check only
+    expect(b.api.callsOf('durable/listDefinitions')).toHaveLength(1) // the boot check only
   })
 })
 

@@ -27,6 +27,8 @@ interface RunRow {
   run_id: string
   def_kind: string
   def_name: string
+  def_version: string
+  input_json: string
   status: string
   parent_run_id: string | null
   parent_step_key: string | null
@@ -118,6 +120,54 @@ describe('fixture durable endpoints', () => {
 
     const missing = await rpc.call('/api', 'durable/rerun', { args: { runId: 'fx-run-ghost' } })
     expect(missing).toMatchObject({ ok: false, error: { code: 'internal', message: 'no run fx-run-ghost' } })
+  })
+})
+
+describe('fixture durable startRun', () => {
+  it('starts a run with a dialog-minted id, coerces the starter text shape, and lists the session twin', async () => {
+    const { rpc } = createFixtureFaces()
+    const runId = 'fx-started-by-dialog'
+    const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
+      defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId,
+    })
+    expect(started.runId).toBe(runId)
+
+    const rows = await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})
+    const row = rows.find(candidate => candidate.run_id === runId)
+    // The free text was wrapped into the starter `{ task }` contract value.
+    expect(row).toMatchObject({ def_kind: 'agent', def_name: 'starter-assistant', def_version: '1.0.0', status: 'running' })
+    expect(row!.input_json).toBe('{"task":"write a poem"}')
+
+    // The session twin exists (sessionId ≡ runId) and carries the first turn
+    // (the input's JSON serialization as the first user message, ADR 0010).
+    const listed = await callRemote<{ items: { sessionId: string }[] }>(rpc, 'session/list', {})
+    expect(listed.items.map(item => item.sessionId)).toContain(runId)
+
+    // Start-or-attach: the same run id answers without a second row.
+    const again = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
+      defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId,
+    })
+    expect(again.runId).toBe(runId)
+    expect((await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})).filter(candidate => candidate.run_id === runId)).toHaveLength(1)
+  })
+
+  it('mints a fresh run id when the caller passes none', async () => {
+    const { rpc } = createFixtureFaces()
+    const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
+      defName: 'invoice-checker', input: { invoice: 'INV-2044' },
+    })
+    expect(started.runId).toMatch(/^fx-run-start-\d+$/)
+    const row = (await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})).find(candidate => candidate.run_id === started.runId)
+    // A json-kind input crosses as given, no text coercion.
+    expect(row!.input_json).toBe('{"invoice":"INV-2044"}')
+  })
+
+  it('rejects an unregistered definition name', async () => {
+    const { rpc } = createFixtureFaces()
+    const missing = await rpc.call('/api', 'durable/startRun', { args: { defName: 'ghost-agent', input: 'x' } })
+    expect(missing).toMatchObject({ ok: false, error: { code: 'internal', message: 'no registered definition matches ghost-agent' } })
+    const wrongVersion = await rpc.call('/api', 'durable/startRun', { args: { defName: 'starter-assistant', defVersion: '9.9.9', input: 'x' } })
+    expect(wrongVersion).toMatchObject({ ok: false, error: { code: 'internal', message: 'no registered definition matches starter-assistant@9.9.9' } })
   })
 })
 

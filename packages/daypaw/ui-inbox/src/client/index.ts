@@ -141,6 +141,7 @@ export function apply(ctx: ClientContext): void {
         hooks: { selection: selection.store, board: board.store },
         select: (next) => { selection.select(next) },
         toggleSidebar: () => { ctx.layout.toggleSidebar() },
+        refreshBoard: () => { void board.refresh() },
       }),
     }, InboxNav)
     const workspace = ctx.slots.register({

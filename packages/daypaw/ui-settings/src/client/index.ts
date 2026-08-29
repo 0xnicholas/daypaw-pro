@@ -3,13 +3,14 @@
  * 模型/关于) occupying ui-inbox's 'inbox.settings.page' seat — declaring the
  * upstream 'settings.section' child slot so the dormant ui-settings-models
  * section wakes — plus the first-run API-key banner in
- * 'inbox.workspace.banner'. Credential/host/preset facts come through the
- * Client Remote namespaces; invalidations ride the forwarded `credentials/reference-updated`
+ * 'inbox.workspace.banner'. Credential/host facts come through the Client
+ * Remote namespaces and the engine roster through the connection's generic
+ * RPC channel; invalidations ride the forwarded `credentials/reference-updated`
  * event and `connection/reset`.
  * Export discipline: packages/client/AGENTS.md.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId, ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the SlotRegistry service merge (ctx.slots).
@@ -63,8 +64,8 @@ const NS = 'daypaw-settings'
  * General tab's preference row (light/dark/system, spec 05 §7).
  */
 export const inject = [
-  'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.session', 'remote.agentPresets',
-  'sessions', 'theme',
+  'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.session',
+  'sessions', 'theme', 'connection',
 ]
 
 /**
@@ -81,10 +82,9 @@ export function apply(ctx: ClientContext): void {
   const credentials = new CredentialsStore({ credentials: remote.credentials, llm: remote.llm })
   const about = new AboutStore(remote.session, ctx.sessions)
   const card = new ApiKeyCardStore({
-    agentPresets: remote.agentPresets,
     credentials: remote.credentials,
     session: remote.session,
-  })
+  }, (ctx.get('connection') as ConnectionHandle).rpc)
   // The theme row mirror: seeded at apply, then advanced by every service
   // publish (preference switch, registry change, or an OS flip under
   // `system`).

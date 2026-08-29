@@ -23,7 +23,6 @@ import { en, zh, type DaypawAgentsKey } from './locales.ts'
 export type { AgentsPageInjected, AgentsPageProps } from './agents-page.tsx'
 export type { CatalogCard, CatalogState } from './catalog-store.ts'
 export type { CatalogApi, WireDefinition } from './definitions-api.ts'
-export { createCatalogApi } from './definitions-api.ts'
 export type { DaypawAgentsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

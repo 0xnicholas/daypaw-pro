@@ -313,10 +313,16 @@
     - id: ui-permission
       name: '@deepseek-ai/dsh-client-ui-permission-presets'
 
-    # The agent-preset row in General settings: the default preset for
-    # sessions created later. Absent a roster it renders nothing.
+    # The agent-preset surfaces retire to the upstream compatibility layer
+    # (ADR 0012 §4): shell-started tasks are engine runs and never compose a
+    # preset, so the before-the-fact surfaces (the General default-preset
+    # row, the new-session chip, the roster management section) would promise
+    # a choice the product no longer offers. Sessions already composed with a
+    # preset keep their mounted composition — disabling, not deleting, per the
+    # shared-base precedent above.
     - id: ui-agent-preset
       name: '@deepseek-ai/dsh-client-ui-agent-preset'
+      disabled: true
 
     # Plugin configuration: the host-plane sections a user owns, as expandable
     # cards. A namespace this deployment does not expose renders nothing.

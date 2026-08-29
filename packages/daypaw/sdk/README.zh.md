@@ -65,7 +65,7 @@ export default ({ defineAgent, z }) => defineAgent({
 })
 ```
 
-文件零裸导入（交付态工作区解析不到 daypaw 家族，自装则引入进程内双拷贝）；同目录相对导入仍可用。`.mjs` / `.js` / `.ts` 为模块文件，其余条目忽略；坏文件（导入失败、无 default 工厂、抛错、产物非定义）失败响亮指名文件。经 bind 注册的定义携带 `wire` 面（ADR 0012）：输入呈现（`z.string()` / `z.object({ task: z.string() })` 为 `text`，其余 `json`）与引擎 `durable/startRun` 边界在插入 run 前调用的不透明校验器。
+文件零裸导入（交付态工作区解析不到 daypaw 家族，自装则引入进程内双拷贝）；同目录相对导入仍可用。`.mjs` / `.js` / `.ts` 为模块文件，其余条目忽略；坏文件（导入失败、无 default 工厂、抛错、产物非定义）失败响亮指名文件。经 bind 注册的定义携带 `wire` 面（ADR 0012）：输入呈现（`z.string()` / `z.object({ task: z.string() })` 为 `text`，其余 `json`）与引擎 `durable/startRun` 边界在插入 run 前调用的不透明校验器。starter 形状细节由校验器持有：`{ task }` 形状收拢弹窗的裸自由文本再过 zod parse，两种 starter 形状因此递交同一份 wire 载荷。
 
 ### Agents（ADR 0010）
 

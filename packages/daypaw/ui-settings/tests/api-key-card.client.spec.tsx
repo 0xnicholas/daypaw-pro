@@ -20,7 +20,7 @@ const neverHook = (() => { throw new Error('banner must not read framework hooks
 
 function mountCard(options: { sessionId?: SessionId; configured?: boolean } = {}) {
   const api = new FakeHostApi()
-  const card = new ApiKeyCardStore(api)
+  const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
   const openSettings = vi.fn()
   const openCredentialsTab = vi.fn()
   const setInputBlock = vi.fn()

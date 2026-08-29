@@ -18,9 +18,9 @@ exports[`NewTaskDialog > matches the ready dialog snapshot 1`] = `
         class="_select_4e5d42"
       >
         <option
-          value="alpha"
+          value="starter-assistant@1.0.0"
         >
-          alpha
+          通用助手
         </option>
       </select>
     </label>

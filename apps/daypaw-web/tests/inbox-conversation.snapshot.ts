@@ -1,16 +1,19 @@
 // @vitest-environment jsdom
 // Assembled inbox-conversation snapshot: boots the fork roster's real built
 // workspace client bundles through AppWebEntry's ModuleLoader path against the
-// keyless FixtureApiClient transport (no API key, no model round), creates a
-// task through the new-task dialog, and pins the business-language
-// conversation the middle column renders for the fixture's streaming echo.
+// keyless FixtureApiClient transport (no API key, no model round), starts a
+// durable run through the new-task dialog (engine-definition picker over
+// `durable/listDefinitions`, free text for the starter `{ task }` shape,
+// `durable/startRun` with a dialog-minted run id), and pins the
+// business-language conversation the middle column renders for the run's
+// session twin (sessionId ≡ runId) against the fixture's streaming echo.
 // The per-package suites bench over src and cannot see the bundled wiring;
 // this is the assembled-output check that a dropped slot registration, a
 // broken whitelist projection, or leaked run/session/journal wording fails.
 //
-// Keyless and deterministic: the fixture is the fake server, so the preset
-// roster, the echo text, and its chunking are fixed in the fixture, not
-// harvested from a live model.
+// Keyless and deterministic: the fixture is the fake server, so the roster,
+// the echo text, and its chunking are fixed in the fixture, not harvested
+// from a live model.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -21,8 +24,9 @@ const EXPECTED = join(process.cwd(), 'apps/daypaw-web/tests/snapshots/inbox-conv
 
 installAssembledBootEnv()
 
-/** The fixture's streaming echo for the submitted task text. */
-const ECHO = '回声：write a poem。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。'
+/** The fixture's streaming echo for the submitted task input
+ * (the engine logs the input's JSON serialization as the first user message, ADR 0010). */
+const ECHO = '回声：{"task":"write a poem"}。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。'
 
 /** Product vocabulary rule: run/session/journal wording stays off the task surface. */
 const FORBIDDEN = /\b(runs?|ran|running|sessions?|journals?)\b/i
@@ -57,18 +61,23 @@ describe('assembled inbox conversation', () => {
     const newTask = await screen.findByRole('button', { name: 'New Task' }, { timeout: 10_000 })
     fireEvent.click(newTask)
     const picker = await screen.findByRole('combobox', { name: 'Agent' }, { timeout: 10_000 })
-    // The fixture roster, healthy and in order, with the deployment default preselected.
+    // The fixture registry's agent rows in registration order, business
+    // names first (display titles, then the technical-name fallback), with
+    // the first row preselected.
     await waitFor(() => { expect((picker as HTMLSelectElement).disabled).toBe(false) }, { timeout: 10_000 })
-    expect([...screen.getAllByRole('option')].map(option => option.textContent)).toEqual(['standard', 'minimal', 'my-agent'])
-    expect((picker as HTMLSelectElement).value).toBe('standard')
+    expect([...screen.getAllByRole('option')].map(option => option.textContent))
+      .toEqual(['Starter assistant', 'Weekly report assistant', 'invoice-checker'])
+    expect((picker as HTMLSelectElement).value).toBe('starter-assistant@1.0.0')
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Task' }), { target: { value: 'write a poem' } })
     fireEvent.click(screen.getByRole('button', { name: 'Start task' }))
 
-    // The dialog dismisses into the task's conversation; the fixture's echo
-    // streams in and settles (the status row leaves when the run ends).
-    // Re-query every poll: a re-render replaces the flow's DOM nodes.
-    await screen.findByText('write a poem', undefined, { timeout: 10_000 })
+    // The dialog dismisses into the run's conversation (sessionId ≡ runId;
+    // the engine logs the input's JSON serialization as the first user
+    // message, ADR 0010); the fixture's echo streams in and settles (the
+    // status row leaves when the run ends). Re-query every poll: a re-render
+    // replaces the flow's DOM nodes.
+    await screen.findAllByText('{"task":"write a poem"}', undefined, { timeout: 10_000 })
     // The detail column's progress tail echoes the same assistant text; the
     // conversation's copy is the flow's rowText node.
     const echoNodes = await screen.findAllByText(ECHO, undefined, { timeout: 10_000 })
@@ -91,5 +100,14 @@ describe('assembled inbox conversation', () => {
       writeFileSync(EXPECTED, shape)
     }
     await expect(shape).toMatchFileSnapshot(EXPECTED)
+
+    // The started run lists in the 进行中 board (the openTask board kick plus
+    // the poll deliver it without a real engine); clicking its row returns
+    // to the conversation. The twin session has no durable title, so its
+    // display title projects from the fixture workspace directory basename.
+    fireEvent.click(screen.getByRole('button', { name: /^In progress/ }))
+    const row = await screen.findByRole('button', { name: /fixture/ }, { timeout: 10_000 })
+    fireEvent.click(row)
+    await screen.findAllByText(ECHO, undefined, { timeout: 10_000 })
   })
 })

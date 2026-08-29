@@ -60,6 +60,7 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
   const openSession = vi.fn()
   const controller = new InboxSelectionController(openSession)
   const toggleSidebar = vi.fn()
+  const refreshBoard = vi.fn()
   const renderSlot: InboxNavProps['renderSlot'] = ((_key: string, _owner: object, opts?: { fallback?: unknown }) =>
     (opts?.fallback ?? null)) as never
   const view = render(
@@ -70,10 +71,10 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
       useSelection={bindSnapshotSelector(controller.store)}
       useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
       select={(next) => { controller.select(next) }}
-      toggleSidebar={toggleSidebar} renderSlot={renderSlot} t={t}
+      toggleSidebar={toggleSidebar} refreshBoard={refreshBoard} renderSlot={renderSlot} t={t}
     />,
   )
-  return { controller, openSession, toggleSidebar, view }
+  return { controller, openSession, toggleSidebar, refreshBoard, view }
 }
 
 /** A board run row fixture. */
@@ -143,8 +144,9 @@ describe('InboxNav', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('hands the dialog occupant close and openTask owners; openTask selects the task and dismisses the dialog', () => {
+  it('hands the dialog occupant close and openTask owners; openTask kicks the board, selects the task, and dismisses the dialog', () => {
     const controller = new InboxSelectionController(vi.fn())
+    const refreshBoard = vi.fn()
     const owners: Record<string, unknown>[] = []
     const renderSlot: InboxNavProps['renderSlot'] = ((_key: string, owner: object) => {
       owners.push(owner as Record<string, unknown>)
@@ -158,7 +160,7 @@ describe('InboxNav', () => {
         useSelection={bindSnapshotSelector(controller.store)}
         useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs: [] }))}
         select={(next) => { controller.select(next) }}
-        toggleSidebar={() => {}} renderSlot={renderSlot} t={t}
+        toggleSidebar={() => {}} refreshBoard={refreshBoard} renderSlot={renderSlot} t={t}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: '新任务' }))
@@ -166,6 +168,8 @@ describe('InboxNav', () => {
     const owner = owners[0] as { close: () => void; openTask: (sessionId: SessionId) => void }
     act(() => { owner.openTask('s1' as SessionId) })
     expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 's1' })
+    // The just-started run refetches without waiting the poll cadence.
+    expect(refreshBoard).toHaveBeenCalledOnce()
     // The dialog dismissed with the navigation.
     expect(screen.queryByRole('dialog')).toBeNull()
     // Reopen, then the plain close owner dismisses without selecting.

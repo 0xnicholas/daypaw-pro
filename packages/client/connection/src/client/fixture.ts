@@ -2028,6 +2028,9 @@ const fixtureJournal: FxJournalRow[] = [
 /** Rerun serial: fresh deterministic ids and timestamps newer than every seeded row. */
 let nextFixtureRerun = 1
 
+/** Serial for shell-started fixture runs (ids and ledger timestamps). */
+let nextFixtureStart = 1
+
 /**
  * Append the rerun row `durable/rerun` promises: a fresh running row chaining
  * the source's definition, input, and attempt (engine rerun parallel).
@@ -2195,13 +2198,22 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   let fixtureDefaultPreset = 'standard'
   /**
    * The daypaw fork's engine definition registry view (spec 05 §5), served at
-   * the Remote endpoint `durable/listDefinitions`. One entry carries display
-   * metadata and one does not, so the catalog's technical-name fallback is
+   * the Remote endpoints `durable/listDefinitions` and validated by
+   * `durable/startRun`. The starter agent leads (the CLI seeds it first-run)
+   * with the starter `{ task }` text shape; one other entry carries display
+   * metadata and one does not, so the dialog's technical-name fallback is
    * exercisable. Static: the fixture has no definition registration surface.
    */
-  const fixtureDefinitions = [
-    { kind: 'agent', name: 'weekly-report', version: '1.2.0', display: { title: 'Weekly report assistant', description: 'Collects the week\'s updates from each team and drafts the report.' } },
-    { kind: 'agent', name: 'invoice-checker', version: '0.3.1' },
+  const fixtureDefinitions: readonly {
+    readonly kind: 'agent' | 'workflow'
+    readonly name: string
+    readonly version: string
+    readonly inputKind: 'text' | 'json' | null
+    readonly display?: { readonly title: string; readonly description: string }
+  }[] = [
+    { kind: 'agent', name: 'starter-assistant', version: '1.0.0', inputKind: 'text', display: { title: 'Starter assistant', description: 'The general-purpose assistant seeded at first setup; steerable and yours to edit.' } },
+    { kind: 'agent', name: 'weekly-report', version: '1.2.0', inputKind: 'json', display: { title: 'Weekly report assistant', description: 'Collects the week\'s updates from each team and drafts the report.' } },
+    { kind: 'agent', name: 'invoice-checker', version: '0.3.1', inputKind: 'json' },
   ]
   const nextTurn = new Map<SessionId, number>([[sid('fx-alpha'), 76]])
   let nextSession = 1
@@ -3749,6 +3761,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           _request?: unknown
           status?: FxRunRow['status']
           runId?: string
+          defName?: string
+          defVersion?: string
+          input?: unknown
         }>
       }).args
       const sessionId = args.agentId
@@ -3780,6 +3795,79 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         case 'goals/clear': return Promise.resolve(goalRemotes.clear(sessionId, args.ref as FxGoalRef))
         // daypaw fork endpoint: the engine's definition registry read view.
         case 'durable/listDefinitions': return Promise.resolve({ ok: true, value: fixtureDefinitions })
+        // daypaw fork endpoint: shell-started runs (ruling #65). Mirrors the
+        // engine's startRun: resolve the registry identity (exact version, or
+        // the name's unique entry), coerce the free-text input for the
+        // starter `{ task }` shape, start-or-attach by run id, insert the run
+        // row, and drive the session twin's first turn — the engine creates
+        // the session (sessionId ≡ runId) on first drive and logs the input's
+        // JSON serialization as the first user message (ADR 0010).
+        case 'durable/startRun': {
+          const defName = args.defName
+          const defVersion = args.defVersion
+          const candidates = fixtureDefinitions.filter(def => def.name === defName)
+          const def = defVersion === undefined
+            ? candidates.length === 1 ? candidates[0] : undefined
+            : candidates.find(candidate => candidate.version === defVersion)
+          if (def === undefined) {
+            const listing = candidates.map(candidate => `${candidate.kind}/${candidate.name}/${candidate.version}`).join(', ')
+            return Promise.resolve({
+              ok: false,
+              error: {
+                code: 'internal',
+                message: defVersion === undefined
+                  ? candidates.length === 0
+                    ? `no registered definition matches ${defName}`
+                    : `definition ${defName} is ambiguous across ${listing}; pass an exact version`
+                  : `no registered definition matches ${defName}@${defVersion}`,
+                details: {},
+              },
+            })
+          }
+          const requestedRunId = args.runId
+          const runId = typeof requestedRunId === 'string' && requestedRunId !== '' ? requestedRunId : `fx-run-start-${nextFixtureStart++}`
+          // Start-or-attach: an existing run id answers without touching state.
+          if (fixtureRuns.some(row => row.run_id === runId)) {
+            return Promise.resolve({ ok: true, value: { runId } })
+          }
+          const input = def.inputKind === 'text' && typeof args.input === 'string' ? { task: args.input } : args.input
+          const createdAt = FX_RUN_EPOCH + 5 * FX_HOUR + nextFixtureStart * 60_000
+          fixtureRuns.push({
+            run_id: runId,
+            def_kind: def.kind,
+            def_name: def.name,
+            def_version: def.version,
+            input_json: JSON.stringify(input),
+            status: 'running',
+            waiting_gate: null,
+            parent_run_id: null,
+            parent_step_key: null,
+            attempt: 1,
+            retried_from_run_id: null,
+            output_json: null,
+            error_json: null,
+            cancel_cause: null,
+            claimed_by: null,
+            claimed_at: null,
+            created_at: createdAt,
+            updated_at: createdAt,
+            finished_at: null,
+          })
+          const twin: FixtureSessionSummary = {
+            sessionId: runId as SessionId, updatedAt: Date.now(), running: false, blank: true, cwd: '/tmp/fixture',
+          }
+          sessions.push(twin)
+          modelSelections.set(twin.sessionId, { provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+          logs.set(twin.sessionId, [])
+          emitRemote('api-session/added', [twin])
+          void sessionApi.prompt({
+            requestId: randomUuid(),
+            sessionId: twin.sessionId,
+            mode: 'queue',
+            content: [{ type: 'text', text: JSON.stringify(input) }],
+          })
+          return Promise.resolve({ ok: true, value: { runId } })
+        }
         // daypaw fork endpoints: the engine's run ledger query surface (rows
         // keep the ledger's snake_case shape; the browser polls unfiltered).
         case 'durable/listRuns': {

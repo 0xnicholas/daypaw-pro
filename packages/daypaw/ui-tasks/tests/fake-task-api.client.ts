@@ -1,7 +1,5 @@
-/** Test-local programmable wire face: the agentPresets namespace + session create the new-task dialog consumes. */
-import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { NewTaskApi } from '../src/client/new-task-store.ts'
+/** Test-local programmable wire face: the durable endpoints the new-task dialog consumes. */
+import type { WireAgentDefinition, WireStartRunRequest, NewTaskApi } from '../src/client/new-task-api.ts'
 
 /** Local structural Remote result envelope. */
 type Result<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string; details: unknown } }
@@ -24,55 +22,50 @@ export function fail<T>(message: string): Result<T> {
   return { ok: false, error: { code: 'internal', message, details: {} } }
 }
 
-/** One preset wire row. */
-export interface FakePreset {
-  id: string
-  trust: 'system' | 'user'
-  isDefault: boolean
-  name?: string
-  broken?: string
+/** One raw registry entry the endpoint may serve (the dialog keeps agents only). */
+export interface FakeDefinition extends WireAgentDefinition {
+  /** Definition family; the dialog offers agents only. */
+  readonly kind: 'agent' | 'workflow'
 }
 
 /**
- * One preset row with the fields the dialog never reads defaulted.
- * @param id - preset id.
- * @param extra - field overrides (name/broken/isDefault…).
+ * One definition row with the fields the dialog never reads defaulted.
+ * @param name - definition name.
+ * @param extra - field overrides (version/display/inputKind/kind).
  * @returns the wire row.
  */
-export function preset(id: string, extra: Partial<FakePreset> = {}): FakePreset {
-  return { id, trust: 'system', isDefault: false, ...extra }
+export function definition(name: string, extra: Partial<FakeDefinition> = {}): FakeDefinition {
+  return { kind: 'agent', name, version: '1', inputKind: 'text', ...extra }
 }
 
-type PresetsNamespace = Pick<ClientRemote['agentPresets'], 'list' | 'select'>
-
 /**
- * Programmable fake covering the dialog's wire domains. Namespace members are
- * the real generated slices; programmable handlers return local structural
- * values with the envelope bridged by assertion (the settings FakeHostApi
- * precedent).
+ * Programmable fake covering the dialog's wire endpoints. Handlers return
+ * local structural values with the envelope bridged by assertion (the
+ * settings FakeHostApi precedent).
  */
 export class FakeTaskApi implements NewTaskApi {
   /** Chronological call record: [method, payload]. */
   readonly calls: { method: string; payload: unknown }[] = []
 
-  onPresetList: () => Promise<Result<{ presets: readonly FakePreset[]; authorable: boolean }>> =
-    () => Promise.resolve(ok({ presets: [], authorable: false }))
-  onCreateSession: () => Promise<Result<SessionId>> =
-    () => Promise.resolve(ok('fx-new' as SessionId))
-  onSelect: (sessionId: string, agentPreset: string) => Promise<Result<unknown>> =
-    (_sessionId, agentPreset) => Promise.resolve(ok({ agentPreset }))
+  onListDefinitions: () => Promise<Result<readonly FakeDefinition[]>> =
+    () => Promise.resolve(ok([]))
 
-  readonly agentPresets: PresetsNamespace = {
-    list: (() => this.record('agentPresets.list', undefined, this.onPresetList())) as PresetsNamespace['list'],
-    select: ((sessionId: string, agentPreset: string) =>
-      this.record('agentPresets.select', { sessionId, agentPreset }, this.onSelect(sessionId, agentPreset))) as PresetsNamespace['select'],
+  onStartRun: (request: WireStartRunRequest) => Promise<Result<{ runId: string }>> =
+    request => Promise.resolve(ok({ runId: request.runId }))
+
+  async listDefinitions(): Promise<readonly WireAgentDefinition[]> {
+    this.calls.push({ method: 'durable/listDefinitions', payload: undefined })
+    const result = await this.onListDefinitions()
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value.filter(entry => entry.kind === 'agent')
   }
 
-  readonly createSession: () => Promise<SessionId> =
-    () => this.record('session.create', undefined, this.onCreateSession()).then((result) => {
-      if (!result.ok) throw new Error(result.error.message)
-      return result.value
-    })
+  async startRun(request: WireStartRunRequest): Promise<{ runId: string }> {
+    this.calls.push({ method: 'durable/startRun', payload: request })
+    const result = await this.onStartRun(request)
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value
+  }
 
   /**
    * Every payload recorded for one method, in call order.
@@ -81,10 +74,5 @@ export class FakeTaskApi implements NewTaskApi {
    */
   callsOf(method: string): unknown[] {
     return this.calls.filter(call => call.method === method).map(call => call.payload)
-  }
-
-  private record<T>(method: string, payload: unknown, response: Promise<T>): Promise<T> {
-    this.calls.push({ method, payload })
-    return response
   }
 }

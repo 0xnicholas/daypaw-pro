@@ -1,3 +1,4 @@
 title=Agents
+card=Starter assistantThe general-purpose assistant seeded at first setup; steerable and yours to edit.
 card=Weekly report assistantCollects the week's updates from each team and drafts the report.
 card=invoice-checker

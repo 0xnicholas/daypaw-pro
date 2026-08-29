@@ -1,9 +1,12 @@
 /**
  * New-task dialog body (the 'inbox.new-task.dialog' occupant): agent picker
- * over the healthy preset roster, the task text area, and the submit row.
- * The Modal chrome (title, mask, Escape) stays with InboxNav; on success the
- * owner's openTask navigates and dismisses. The roster loads on first open
- * and submit stays disabled until it is ready.
+ * over the engine registry's roster (business names, first row preselected)
+ * and the input surface the picked agent's `inputKind` rules (ruling #65 §7):
+ * a free-text area for the starter text shapes, a JSON area with inline
+ * syntax validation for every other shape. The Modal chrome (title, mask,
+ * Escape) stays with InboxNav; on success the owner's openTask navigates and
+ * dismisses. The roster loads on first open and submit stays disabled until
+ * it is ready and the draft is usable.
  */
 import { useEffect } from 'react'
 import clsx from 'clsx'
@@ -39,17 +42,26 @@ export type NewTaskDialogProps =
  */
 export function NewTaskDialog({ openTask, useNewTask, store, t }: NewTaskDialogProps) {
   const state = useNewTask(s => s)
-  // First-open roster load; a later re-open reuses the ready snapshot.
+  // First-open roster load; a later re-open reuses the ready snapshot and
+  // retries after a load failure (the roster error is not a wedge).
   useEffect(() => {
-    if (state.status === 'idle') void store.load()
+    if (state.status === 'idle' || state.status === 'error') void store.load()
   }, [state.status, store])
+
+  const selectedKind = state.agents.find(agent => agent.id === state.selected)?.inputKind ?? 'text'
+  const jsonKind = selectedKind !== 'text'
+  const parsedJson = jsonKind ? store.parseJsonDraft() : undefined
+  const jsonInvalid = jsonKind && parsedJson instanceof SyntaxError
+  const draftUsable = jsonKind
+    ? state.json.trim() !== '' && !jsonInvalid
+    : state.text.trim() !== ''
 
   const submit = (): void => {
     void store.submit().then((sessionId) => {
       if (sessionId !== undefined) openTask(sessionId)
     })
   }
-  const canSubmit = state.status === 'ready' && state.text.trim() !== '' && !state.submitting
+  const canSubmit = state.status === 'ready' && state.selected !== undefined && draftUsable && !state.submitting
 
   return (
     <div className={css.root}>
@@ -67,17 +79,34 @@ export function NewTaskDialog({ openTask, useNewTask, store, t }: NewTaskDialogP
             : state.agents.map(agent => <option key={agent.id} value={agent.id}>{agent.label}</option>)}
         </select>
       </label>
-      <label className={css.field}>
-        <span className={css.label}>{t('dialog.text.label')}</span>
-        <textarea
-          className={css.textarea}
-          aria-label={t('dialog.text.label')}
-          placeholder={t('dialog.text.placeholder')}
-          disabled={state.submitting}
-          value={state.text}
-          onChange={(event) => { store.setText(event.target.value) }}
-        />
-      </label>
+      {jsonKind
+        ? (
+          <label className={css.field}>
+            <span className={css.label}>{t('dialog.json.label')}</span>
+            <textarea
+              className={css.textarea}
+              aria-label={t('dialog.json.label')}
+              placeholder={t('dialog.json.placeholder')}
+              disabled={state.submitting}
+              value={state.json}
+              onChange={(event) => { store.setJson(event.target.value) }}
+            />
+            {state.json.trim() !== '' && jsonInvalid && <p className={css.error}>{t('dialog.json.invalid')}</p>}
+          </label>
+        )
+        : (
+          <label className={css.field}>
+            <span className={css.label}>{t('dialog.text.label')}</span>
+            <textarea
+              className={css.textarea}
+              aria-label={t('dialog.text.label')}
+              placeholder={t('dialog.text.placeholder')}
+              disabled={state.submitting}
+              value={state.text}
+              onChange={(event) => { store.setText(event.target.value) }}
+            />
+          </label>
+        )}
       {state.status === 'error' && <p className={css.error}>{t('dialog.load-failed')}</p>}
       {state.submitFailed && <p className={css.error}>{t('dialog.create-failed')}</p>}
       <div className={css.actions}>

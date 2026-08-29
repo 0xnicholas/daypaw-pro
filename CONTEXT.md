@@ -57,7 +57,7 @@ CLI 首跑幂等播种 starter agent 到工作区 `daypaw/agents/starter-assista
 
 ### preset 兼容层（Preset Compatibility Layer）
 
-dsh agent preset 机制在 daypaw 壳内的终局定位：上游机制保留（仅影响旧会话），新任务弹窗与 agent 目录只读引擎定义注册表（ADR 0012「引擎定义即名册」）；双名册 Known Limitation（#60）随之解除。
+dsh agent preset 机制在 daypaw 壳内的终局定位：上游机制保留（仅影响旧会话——存量 preset 会话照常可开，组合在会话创建时已装载），新任务弹窗与 agent 目录只读引擎定义注册表（ADR 0012「引擎定义即名册」）；壳内 `ui-agent-preset` 面（设置行、新会话 chip、名册管理节）随 patch 禁用，首跑黄卡命名源改读名册首 agent；双名册 Known Limitation（#60）随之解除。
 
 ## 编排（Durable Engine 域）
 

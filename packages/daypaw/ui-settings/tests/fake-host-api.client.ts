@@ -1,5 +1,6 @@
 /** Test-local programmable wire face: the Client Remote namespaces the settings page and first-run banner read or write. */
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 
 /** Test-held settlement: the case decides when an RPC lands (generation-guard material). */
 export interface Deferred<T> {
@@ -43,13 +44,12 @@ export function fail<T>(message: string): Result<T> {
   return { ok: false, error: { code: 'internal', message, details: {} } }
 }
 
-/** One preset row the roster carries. */
-export interface FakePresetRow {
-  id: string
-  trust: 'system' | 'user'
-  isDefault: boolean
-  name?: string
-  broken?: string
+/** One engine-registry row the roster endpoint serves. */
+export interface FakeDefinitionRow {
+  kind: 'agent' | 'workflow'
+  name: string
+  version?: string
+  display?: { title: string }
 }
 
 /** One provider directory row. */
@@ -72,25 +72,24 @@ export interface FakeModelCatalog {
   failures: readonly { id: string; name: string; message: string }[]
 }
 
-type PresetsNamespace = Pick<ClientRemote['agentPresets'], 'list' | 'select'>
 type CredentialsNamespace = Pick<ClientRemote['credentials'], 'describe' | 'set' | 'unset'>
 type LlmNamespace = Pick<ClientRemote['llm'], 'listProviders'>
 type SessionNamespace = Pick<ClientRemote['session'], 'modelCatalog'>
 
 /**
- * Programmable fake covering the agentPresets/credentials/llm/session Remote
- * namespaces the settings stores consume. Namespace members are typed as the
- * real generated slices (assignability is the point under test); each routes
- * through a programmable handler returning a local structural value, with the
- * envelope bridged by assertion — the generated result types are nominal over
- * identical shapes.
+ * Programmable fake covering the credentials/llm/session Remote namespaces
+ * and the engine-roster RPC the settings stores consume. Namespace members
+ * are typed as the real generated slices (assignability is the point under
+ * test); each routes through a programmable handler returning a local
+ * structural value, with the envelope bridged by assertion — the generated
+ * result types are nominal over identical shapes.
  */
 export class FakeHostApi {
   /** Chronological call record: [method, payload]. */
   readonly calls: { method: string; payload: unknown }[] = []
 
-  onPresetList: () => Promise<Result<{ presets: readonly FakePresetRow[]; authorable: boolean }>> =
-    () => Promise.resolve(ok({ presets: [], authorable: false }))
+  onListDefinitions: () => Promise<Result<readonly FakeDefinitionRow[]>> =
+    () => Promise.resolve(ok([]))
   onModelCatalog: () => Promise<Result<FakeModelCatalog>> =
     () => Promise.resolve(ok({ default: { provider: 'deepseek', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [] }))
   onDescribeCredentials: (refs: readonly string[]) => Promise<Result<Record<string, FakeCredentialInfo>>> =
@@ -102,10 +101,14 @@ export class FakeHostApi {
   onListProviders: () => Promise<Result<readonly FakeProviderInfo[]>> =
     () => Promise.resolve(ok([]))
 
-  readonly agentPresets: PresetsNamespace = {
-    list: (() => this.record('agentPresets.list', undefined, this.onPresetList())) as PresetsNamespace['list'],
-    select: ((sessionId: string) =>
-      this.record('agentPresets.select', { sessionId }, Promise.resolve(ok({})))) as PresetsNamespace['select'],
+  /** The connection's generic RPC channel over the engine-roster endpoint. */
+  readonly rpc: Pick<ClientConnectionRpc, 'call'> = {
+    call: (_channel, endpoint, _payload) => {
+      if (endpoint === 'durable/listDefinitions') {
+        return this.record('durable/listDefinitions', undefined, this.onListDefinitions()) as ReturnType<ClientConnectionRpc['call']>
+      }
+      return Promise.resolve(fail(`unexpected ${endpoint}`)) as ReturnType<ClientConnectionRpc['call']>
+    },
   }
 
   readonly credentials: CredentialsNamespace = {

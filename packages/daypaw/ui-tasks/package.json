@@ -1,6 +1,6 @@
 {
   "name": "@daypaw/ui-tasks",
-  "description": "daypaw task surfaces over the ui-inbox slots: new-task dialog (agent picker + first prompt), group task list, and the business-language conversation view",
+  "description": "daypaw task surfaces over the ui-inbox slots: new-task dialog (engine-definition picker + durable startRun), group task list, and the business-language conversation view",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -27,7 +27,7 @@
       "inject": [
         "@daypaw/approval-history",
         "@daypaw/ui-inbox",
-        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-api-session-controller",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-chat",

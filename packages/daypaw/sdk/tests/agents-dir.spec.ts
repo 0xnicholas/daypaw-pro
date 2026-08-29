@@ -191,6 +191,35 @@ describe('loadAgentFiles', () => {
     await expect(ctx.durable.startRun({ defName: 'checked-flow', input: { code: 7 } })).rejects.toThrow()
   })
 
+  it('accepts the bare free text for the { task } starter shape across the wire', async () => {
+    const ctx = await boot()
+    const dir = await agentsDir({
+      'tasked.mjs': `export default ({ defineWorkflow, z }) => defineWorkflow({
+  name: 'tasked-flow', version: '1',
+  input: z.object({ task: z.string() }), output: z.object({ ok: z.boolean() }),
+  body: async (ctx, input) => ({ ok: input.task.length > 0 }),
+})
+`,
+      'plain.mjs': `export default ({ defineWorkflow, z }) => defineWorkflow({
+  name: 'plain-flow', version: '1',
+  input: z.string(), output: z.object({ ok: z.boolean() }),
+  body: async (ctx, input) => ({ ok: input.length > 0 }),
+})
+`,
+    })
+    await loadAgentFiles(ctx, dir)
+    // Ruling #65 §7: the dialog hands one free-text string for either starter
+    // shape; the wire face owns the wrap, and the ledger row records the
+    // parsed contract value the body will receive.
+    const tasked = await ctx.durable.startRun({ defName: 'tasked-flow', input: 'write a poem' })
+    const taskedRow = (await ctx.durable.listRuns()).find(run => run.run_id === tasked.runId)
+    expect(taskedRow?.input_json).toBe('{"task":"write a poem"}')
+    const plain = await ctx.durable.startRun({ defName: 'plain-flow', input: 'write a poem' })
+    const plainRow = (await ctx.durable.listRuns()).find(run => run.run_id === plain.runId)
+    expect(plainRow?.input_json).toBe('"write a poem"')
+    await expect(ctx.durable.startRun({ defName: 'tasked-flow', input: { task: 7 } })).rejects.toThrow()
+  })
+
   it('fails loud when the directory path is a regular file', async () => {
     const ctx = await boot()
     root ??= await mkdtemp(join(tmpdir(), 'daypaw-sdk-agents-'))

@@ -6,7 +6,6 @@ import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/c
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '../src/client/index.ts'
 import { apply as applyNodeHalf } from '../src/index.ts'
 import { NewTaskDialog, type NewTaskDialogInjected } from '../src/client/new-task-dialog.tsx'
@@ -14,7 +13,6 @@ import { TaskList } from '../src/client/task-list.tsx'
 import { ConversationView, type ConversationViewInjected } from '../src/client/conversation-view.tsx'
 import { DetailBody } from '../src/client/detail-body.tsx'
 import { FakeTaskApi } from './fake-task-api.client.ts'
-
 // The locale service reads its initial locale from the browser; these specs
 // assert the shipped Chinese copy, so they state the browser they assume.
 async function bench() {
@@ -24,7 +22,15 @@ async function bench() {
   locale.setLocale('zh')
   ctx.provide('locale', locale)
   const api = new FakeTaskApi()
-  new TestRemote(ctx, { agentPresets: api.agentPresets })
+  // The dialog's wire face rides the connection's generic RPC channel.
+  const rpc = (channel: string, endpoint: string, payload: unknown) => {
+    expect(channel).toBe('/api')
+    const args = (payload as { args: unknown }).args
+    if (endpoint === 'durable/listDefinitions') return api.listDefinitions().then(value => ({ ok: true as const, value }))
+    if (endpoint === 'durable/startRun') return api.startRun(args as never).then(value => ({ ok: true as const, value }))
+    return Promise.resolve({ ok: false as const, error: { code: 'internal', message: `unexpected ${endpoint}`, details: {} } })
+  }
+  ctx.provide('connection', { rpc } as never)
   const list: SnapshotStore<SessionListState> = createSnapshotStore<SessionListState>({
     ids: [], byId: {}, current: undefined, phase: 'ready',
     subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
@@ -69,7 +75,7 @@ async function bench() {
 
 describe('ui-tasks apply', () => {
   it('declares only the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'sessions', 'remote', 'remote.agentPresets'])
+    expect(inject).toEqual(['slots', 'locale', 'sessions', 'connection'])
   })
 
   it('the node half provides no host-side behavior', () => {

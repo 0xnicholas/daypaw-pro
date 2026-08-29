@@ -39,7 +39,6 @@ None; this package neither assembles nor sends a provider request.
 
 ## Known Limitations and Deferred Work
 
-- **The catalog and the new-task dialog read different rosters** — the catalog lists engine definitions while the dialog picks the preset a session composes from; unifying them waits on the browser-side run-start surface (the definition's zod input contract does not cross the wire).
 - **No version operations** — the detail view shows `name@version` as identity only; version selection or switching is deferred (spec 05 §2: no dead affordances in v1).
 - **No registry-change invalidation** — the roster loads once per mount; definitions bound after the first load appear on the next page open, and there is no pushed invalidation channel for the registry.
 

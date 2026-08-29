@@ -39,6 +39,8 @@ export interface InboxNavInjected {
   select: (next: InboxSelection) => void
   /** Toggle the sidebar column through the layout service. */
   toggleSidebar: () => void
+  /** Kick an out-of-band board refetch (a just-started task's run lists without waiting the poll cadence). */
+  refreshBoard: () => void
 }
 
 /** Full component props: layout owner share + child render share + injected face + locale seat. */
@@ -65,7 +67,7 @@ const GROUP_LABEL: Record<InboxGroup, InboxKey> = {
  */
 export function InboxNav({
   collapsed, useSelection, useBoard, useSessions, useSessionPendingInteraction,
-  select, toggleSidebar, renderSlot, t,
+  select, toggleSidebar, refreshBoard, renderSlot, t,
 }: InboxNavProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
@@ -76,6 +78,9 @@ export function InboxNav({
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const openTask = (sessionId: SessionId): void => {
+    // A task opened straight from the new-task dialog just entered the
+    // ledger; refetch so it lists immediately instead of on the next tick.
+    refreshBoard()
     setDialogOpen(false)
     select({ kind: 'task', sessionId })
   }

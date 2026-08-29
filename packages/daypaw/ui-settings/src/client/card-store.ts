@@ -1,20 +1,22 @@
 /**
- * First-run API-key banner store: resolves the display name (the default
- * agent preset's `name`, falling back to its id) and the provider the host
+ * First-run API-key banner store: resolves the display name (the engine
+ * roster's first agent's business name — the agent a shell-started task
+ * runs; the generic name on an empty roster) and the provider the host
  * defaults to (`session/modelCatalog`'s default selection, falling back to
- * deepseek), then checks
- * whether that provider's conventional credential reference is configured.
- * The banner IS the completion ledger: configured = done, so there is no
- * persisted flag — a `credentials/reference-updated` push re-runs the check.
+ * deepseek), then checks whether that provider's conventional credential
+ * reference is configured. The banner IS the completion ledger: configured =
+ * done, so there is no persisted flag — a `credentials/reference-updated`
+ * push re-runs the check.
  */
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { deriveKeyRef } from './provider-keys.ts'
 
 /** The provider route assumed while the host description names none. */
 export const FALLBACK_PROVIDER = 'deepseek'
 
-/** The card's display name while the deployment has no default preset. */
+/** The card's display name while the roster carries no agent. */
 export const FALLBACK_AGENT_NAME = 'Agent'
 
 /** Banner snapshot. */
@@ -38,33 +40,43 @@ export class ApiKeyCardStore {
   private generation = 0
 
   /**
-   * @param api - the wire face (agentPresets/host/credentials domains).
+   * @param api - the wire face (credentials/host domains).
+   * @param rpc - the connection's RPC caller (durable/listDefinitions).
    */
   constructor(private readonly api: {
-    agentPresets: Pick<ClientRemote['agentPresets'], 'list'>
     credentials: Pick<ClientRemote['credentials'], 'describe'>
     session: Pick<ClientRemote['session'], 'modelCatalog'>
-  }) {}
+  }, private readonly rpc: Pick<ClientConnectionRpc, 'call'>) {}
 
   /**
-   * Run the readiness check: default preset name + host provider, then the
-   * credential state of the derived reference. Unlike the settings tabs this
-   * check re-runs unconditionally on invalidation — the banner appearing the
-   * moment a key goes missing is its job.
+   * Run the readiness check: the roster's first agent name + host provider,
+   * then the credential state of the derived reference. Unlike the settings
+   * tabs this check re-runs unconditionally on invalidation — the banner
+   * appearing the moment a key goes missing is its job.
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading' })
     try {
-      const [presetsResponse, catalogResponse] = await Promise.all([
-        this.api.agentPresets.list(),
+      const [rosterResult, catalogResponse] = await Promise.all([
+        this.rpc.call('/api', 'durable/listDefinitions', { args: {} }),
         this.api.session.modelCatalog(),
       ])
-      if (!presetsResponse.ok) throw new Error(presetsResponse.error.message)
+      if (!rosterResult.ok) throw new Error(rosterResult.error.message)
       if (!catalogResponse.ok) throw new Error(catalogResponse.error.message)
-      const defaultPreset = presetsResponse.value.presets.find(preset => preset.isDefault)
-      const name = defaultPreset === undefined ? FALLBACK_AGENT_NAME : (defaultPreset.name ?? defaultPreset.id)
+      const roster = rosterResult.value as unknown[]
+      if (!Array.isArray(roster)) throw new Error('ui-settings: durable/listDefinitions answered a non-array')
+      const firstAgent = roster.find(entry =>
+        typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>)['kind'] === 'agent')
+      const entry = firstAgent as { name?: unknown; display?: { title?: unknown } } | undefined
+      const title = entry?.display?.title
+      // Row-level tolerance, unlike the dialog's fail-loud roster parse: a
+      // malformed display field must not hide the key-readiness banner, so
+      // the name degrades to the generic label and the check continues.
+      const name = typeof title === 'string' ? title
+        : typeof entry?.name === 'string' ? entry.name
+          : FALLBACK_AGENT_NAME
       const provider = catalogResponse.value.default.provider
       const ref = deriveKeyRef(provider)
       const credentialsResponse = await this.api.credentials.describe([ref])

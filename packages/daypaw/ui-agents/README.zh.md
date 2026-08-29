@@ -39,7 +39,6 @@ daypaw agent 目录页——fork 客户端 UI 插件，占 [`@daypaw/ui-inbox`](
 
 ## Known Limitations and Deferred Work
 
-- **目录与新任务弹窗读的是两份名册**——目录列引擎定义，弹窗选 session 组合用的 preset；二者合一等待浏览器侧 run 起跑面（定义的 zod 输入契约不过 wire）。
 - **无版本操作**——详情页的 `name@version` 仅作标识；版本选择/切换缓做（spec 05 §2：v1 不露死信息）。
 - **无注册表变更失效推送**——名册每次挂载只加载一次；首次加载后绑定的定义在下一次打开页面时才出现，注册表没有推送式失效通道。
 

@@ -46,7 +46,7 @@ IA 定案 = **变体 C 收件箱工作台**，三栏：
 **复用边界**（39 包，[#37](https://github.com/0xnicholas/daypaw-pro/issues/37) 盘点 + #36 裁决）：
 
 - **整包复用（13）**：connection、runtime、modules、web、web-react、ui-slots、locale、schema-form、ui-settings、ui-theme、ui-primitives、ui-attachment、hmr——协议/对象层 + boot 内核 + 服务基座 + 纯组件基料，无一携带开发者向文案；数据管道零重写，工程量集中在 IA 与组件。
-- **wholesale 重写（15）**：会话表现簇与 IA/品牌/诊断面（ui-conversation、ui-tool、ui-workflow-run、ui-trajectory、ui-sidebar、ui-workspace、ui-directory-picker-browse/-native、ui-subagent、ui-goal、ui-plan、ui-agent-preset、ui-settings-models、ui-settings-plugins、ui-settings-plugin-inventory），业务语言版从 runtime 的 ConversationNode 装配机供数重画；其中 ui-trajectory、ui-settings-plugins、ui-settings-plugin-inventory 实为不随壳交付。
+- **wholesale 重写（15）**：会话表现簇与 IA/品牌/诊断面（ui-conversation、ui-tool、ui-workflow-run、ui-trajectory、ui-sidebar、ui-workspace、ui-directory-picker-browse/-native、ui-subagent、ui-goal、ui-plan、ui-agent-preset、ui-settings-models、ui-settings-plugins、ui-settings-plugin-inventory），业务语言版从 runtime 的 ConversationNode 装配机供数重画；其中 ui-trajectory、ui-settings-plugins、ui-settings-plugin-inventory 实为不随壳交付，ui-agent-preset 自 ADR 0012 起随 preset 退兼容层一并不随壳交付（§5）。
 - **灰色 11 包逐包裁决**：
 
 | 包 | 裁决 | 备注 |
@@ -86,7 +86,7 @@ packages/daypaw/
 - **`defineAgent` 展示字段**：下限 = 业务名 + 描述，与注册表只读视图配套；集合细目落定 = `title` + `description`（spec 02 §1.2），未声明时呈现层回落到技术 `name`。
 - **steer 通道**（用户裁决；[#53](https://github.com/0xnicholas/daypaw-pro/issues/53)）：SDK/引擎加 steer，run 从单段变多段。呈现语义：对话中追问进行中的 run 追加进同一任务的对话流，不产生新任务；产出物以 run 终态 `output_json` 为准（§4 `ui-deliverables` 的识别依据），中间段不单独形成产出物区。
 
-壳发起面（ADR 0012，票 [#66](https://github.com/0xnicholas/daypaw-pro/issues/66) 落地引擎/交付侧，壳侧 UI 归 [#67](https://github.com/0xnicholas/daypaw-pro/issues/67)）：**`durable/startRun`** start-or-attach（runId 由弹窗生成、重试安全；版本缺省 = 唯一注册版本，多版本要求显式）；注册源 = cwd `daypaw/agents/` 注入式工厂目录装载（`@daypaw/web-app` `agentsDir` 配置，缺目录 = 空名册，坏文件 boot 失败响亮）；CLI 首跑幂等播种 starter agent。`listDefinitions` 视图新增 `inputKind`（`text`/`json`/null）：弹窗据此选自由文本或降级 JSON 框。终局裁决：引擎定义即名册（弹窗 + 目录页只读 `listDefinitions`），preset 退上游兼容层（仅影响旧会话），#60 双名册 Known Limitation 解除。
+壳发起面（ADR 0012，票 [#66](https://github.com/0xnicholas/daypaw-pro/issues/66) 引擎/交付侧 + [#67](https://github.com/0xnicholas/daypaw-pro/issues/67) 壳侧，均已落地）：**`durable/startRun`** start-or-attach（runId 由弹窗铸造，提交失败保留至重试成功——同 id 重试接回原 run 不重复建；版本缺省 = 唯一注册版本，多版本要求显式）；注册源 = cwd `daypaw/agents/` 注入式工厂目录装载（`@daypaw/web-app` `agentsDir` 配置，缺目录 = 空名册，坏文件 boot 失败响亮）；CLI 首跑幂等播种 starter agent。`listDefinitions` 视图新增 `inputKind`（`text`/`json`/null）：弹窗选择器只列 agent 行（display 业务名，未声明回落技术 name），据此选自由文本（两种 starter 形状，裸字符串过 wire，`{ task }` 收拢在 SDK wire face）或降级 JSON 框（内联语法校验）；提交后等 session 孪生（sessionId≡runId）入 sessions 列表再开对话，openTask 顺带踢一记 board 刷新。终局裁决：引擎定义即名册（弹窗 + 目录页只读 `listDefinitions`），preset 退上游兼容层（仅影响旧会话：存量 preset 会话照常可开，`ui-agent-preset` 壳内 patch 禁用），#60 双名册 Known Limitation 解除；首跑黄卡命名源 = 名册首 agent。
 
 host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjections`/mux 投影**（attach 路径 `pollMs` 为现成先例）。
 

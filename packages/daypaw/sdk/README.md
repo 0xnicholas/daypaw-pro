@@ -65,7 +65,7 @@ export default ({ defineAgent, z }) => defineAgent({
 })
 ```
 
-Files carry no bare imports (a delivered workspace cannot resolve them, and self-installing would duplicate the SDK copy in-process); same-directory relative imports stay available. `.mjs` / `.js` / `.ts` are module files, everything else is ignored; a present file that imports badly, exports no factory, throws, or produces a non-definition fails loud naming the file. Bind-installed definitions carry a `wire` face (ADR 0012): the input presentation (`text` for `z.string()` / `z.object({ task: z.string() })`, `json` otherwise) plus the opaque validator the engine's `durable/startRun` boundary calls before inserting a run.
+Files carry no bare imports (a delivered workspace cannot resolve them, and self-installing would duplicate the SDK copy in-process); same-directory relative imports stay available. `.mjs` / `.js` / `.ts` are module files, everything else is ignored; a present file that imports badly, exports no factory, throws, or produces a non-definition fails loud naming the file. Bind-installed definitions carry a `wire` face (ADR 0012): the input presentation (`text` for `z.string()` / `z.object({ task: z.string() })`, `json` otherwise) plus the opaque validator the engine's `durable/startRun` boundary calls before inserting a run. The validator owns the starter shape detail: for the `{ task }` shape it accepts the dialog's bare free-text string and wraps it before the zod parse, so both starter shapes hand the same wire payload.
 
 ### Agents (ADR 0010)
 

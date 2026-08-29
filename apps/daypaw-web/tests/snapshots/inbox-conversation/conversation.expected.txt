@@ -1,4 +1,4 @@
 status=none
-user=write a poem
-assistant=回声：write a poem。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。
+user={"task":"write a poem"}
+assistant=回声：{"task":"write a poem"}。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。
 followup=Follow-ups are coming soon disabled=true

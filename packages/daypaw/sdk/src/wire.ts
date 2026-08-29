@@ -11,18 +11,25 @@ import type { ZodType } from 'zod'
 import type { EngineWireFace, Json } from '@daypaw/engine'
 
 /**
- * Whether one input contract is a starter text shape (ruling #65 §7):
- * `z.string()`, or `z.object({ task: z.string() })`. Dialogs render those as
- * a free-text field; every other shape renders as a JSON box.
- * @param schema - a definition's input contract.
- * @returns whether the shape is one of the two starter text shapes.
+ * Which starter text shape one input contract is (ruling #65 §7):
+ * `z.string()`, `z.object({ task: z.string() })`, or neither. Dialogs render
+ * both starter shapes as one free-text field and hand the bare string; the
+ * `{ task }` shape differs only in the value the contract expects, which the
+ * wire face owns — the dialog never learns the shape.
  */
-function isTextInput(schema: ZodType): boolean {
-  if (schema instanceof z.ZodString) return true
-  if (!(schema instanceof z.ZodObject)) return false
+type TextInput = 'plain' | 'task'
+
+/**
+ * Classify one input contract's starter text shape.
+ * @param schema - a definition's input contract.
+ * @returns the starter shape, or undefined for every other shape.
+ */
+function textShapeOf(schema: ZodType): TextInput | undefined {
+  if (schema instanceof z.ZodString) return 'plain'
+  if (!(schema instanceof z.ZodObject)) return undefined
   const shape = schema.shape as Record<string, ZodType>
   const keys = Object.keys(shape)
-  return keys.length === 1 && keys[0] === 'task' && shape.task instanceof z.ZodString
+  return keys.length === 1 && keys[0] === 'task' && shape.task instanceof z.ZodString ? 'task' : undefined
 }
 
 /**
@@ -31,8 +38,9 @@ function isTextInput(schema: ZodType): boolean {
  * @returns the wire face stamped onto the engine definition record.
  */
 export function wireFace(input: ZodType): EngineWireFace {
+  const textShape = textShapeOf(input)
   return {
-    inputKind: isTextInput(input) ? 'text' : 'json',
-    parseInput: value => input.parse(value) as Json,
+    inputKind: textShape === undefined ? 'json' : 'text',
+    parseInput: value => input.parse(textShape === 'task' && typeof value === 'string' ? { task: value } : value) as Json,
   }
 }
