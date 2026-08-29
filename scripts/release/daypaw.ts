@@ -14,7 +14,7 @@
  */
 
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -24,6 +24,22 @@ import { parseArgs } from 'node:util'
 import { completeClosure, findWorkspacePackage, readManifest, writeManifest } from './daypaw-closure.ts'
 
 const root = resolve(import.meta.dirname, '..', '..')
+
+/**
+ * The zod registry range in staged manifests pins to the workspace-resolved
+ * version: zod changes generic shapes inside semver-compatible ranges (the
+ * 4.5 line), and a bundled package's loose range would re-resolve a drifting
+ * copy beside the one the closure was built and typed against. Re-pinning is
+ * a deliberate sync-time decision.
+ * @param repoRoot - the repository root, for resolving the workspace zod.
+ * @returns the name-to-exact-version pin map.
+ */
+function externalPeerPins(repoRoot: string): Readonly<Record<string, string>> {
+  const zodResolution = createRequire(join(repoRoot, 'package.json')).resolve('zod/package.json')
+  const zodVersion = (JSON.parse(readFileSync(zodResolution, 'utf8')) as { version?: string }).version
+  if (zodVersion === undefined) throw new Error('release-daypaw: resolved zod carries no version.')
+  return { zod: zodVersion }
+}
 
 /** Pack and smoke artifacts land here; the directory is gitignored. */
 const OUT_DIR = resolve(root, 'dist-daypaw')
@@ -362,12 +378,29 @@ class DaypawRelease {
     // sourced from the SDK's own manifest so there is one home for the ranges.
     const sdkSource = await readManifest(resolve(root, 'packages', 'daypaw', 'sdk', 'package.json'))
     const externalPeerRanges = sdkSource.peerDependencies ?? {}
+    const pins = externalPeerPins(root)
     const rewriteSpecs = async (manifestPath: string): Promise<void> => {
       const manifest = await readManifest(manifestPath)
       for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies'] as const) {
         const deps = manifest[field]
         if (deps === undefined) continue
         for (const [name, spec] of Object.entries(deps)) {
+          // The consumer-supplied zod is a peer everywhere in the SDK closure:
+          // a bundled package declaring it as a dependency gets its own nested
+          // zod install, a second identity whose types no longer unify with
+          // the consumer's. Peers resolve against the consumer's copy.
+          if (field === 'dependencies' && key === 'sdk' && pins[name] !== undefined) {
+            const peers = manifest.peerDependencies ?? {}
+            manifest.peerDependencies = { ...peers, [name]: pins[name] }
+            manifest.dependencies = Object.fromEntries(Object.entries(deps).filter(([entry]) => entry !== name))
+            continue
+          }
+          // Registry ranges on drift-prone peers pin to the tested npm
+          // versions, so a customer install never re-resolves them.
+          if (field === 'dependencies' && pins[name] !== undefined) {
+            deps[name] = pins[name]
+            continue
+          }
           if (!spec.startsWith('workspace:')) continue
           // Peer ranges on the consumer-supplied singletons name upstream's
           // published npm releases, not an exact (possibly unpublished)
@@ -392,7 +425,15 @@ class DaypawRelease {
     await rewriteSpecs(rootManifestPath)
 
     const rootManifest = await readManifest(rootManifestPath)
-    const bundled = [...installed.keys()].sort()
+    // zod ships unbundled even when staged (the consumer supplies it, per the
+    // ADR 0011 addendum): a bundled copy beside the consumer's install is a
+    // second zod identity whose identical-looking types no longer unify. The
+    // cordis/invariants singletons keep their staged workspace copies bundled —
+    // the facade's declarations type against those, and the 2026-08-29 release
+    // proved this shape against a registry consumer.
+    const bundled = key === 'cli'
+      ? [...installed.keys()].sort()
+      : [...installed.keys()].filter(name => name !== 'zod').sort()
     if (key === 'cli') {
       // Everything the CLI needs is vendored; peer ranges would only mislead
       // npm at install time.
@@ -400,9 +441,11 @@ class DaypawRelease {
     }
     // Vendored closure packages become direct dependencies at their staged
     // versions so bundleDependencies keeps them beside the facade: npm packs
-    // a bundled package only when its name is also a real dependency.
+    // a bundled package only when its name is also a real dependency. The
+    // SDK's consumer-supplied peers stay out of dependencies entirely — the
+    // consumer installs them from the published peer ranges.
     const dependencies = rootManifest.dependencies ?? {}
-    for (const [name, version] of installed) dependencies[name] = version
+    for (const name of bundled) dependencies[name] = installed.get(name) ?? ''
     rootManifest.dependencies = Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b)))
     rootManifest.bundleDependencies = bundled
     await writeManifest(rootManifestPath, rootManifest)
@@ -510,28 +553,19 @@ class DaypawRelease {
    */
   private async smokeSdk(tarball: string): Promise<void> {
     const consumer = await mkdtemp(join(tmpdir(), 'daypaw-sdk-smoke-'))
-    const zodResolution = createRequire(join(root, 'package.json')).resolve('zod/package.json')
-    const zodVersion = (JSON.parse(await readFile(zodResolution, 'utf8')) as { version?: string }).version
-    if (zodVersion === undefined) throw new Error('release-daypaw: resolved zod carries no version.')
-    // The consumer's cordis and dsh-invariants ranges come from the SDK's own
-    // peer declarations (one home for the ranges); zod is pinned to the version
-    // this release's SDK types were built against, because newer registry zod
-    // can change generic shapes inside semver-compatible ranges.
-    const peerRanges = (await readManifest(resolve(root, 'packages', 'daypaw', 'sdk', 'package.json'))).peerDependencies ?? {}
-    const consumerPeer = (name: string): string => {
-      const range = peerRanges[name]
-      if (range === undefined) throw new Error(`release-daypaw: sdk manifest carries no peer range for ${name}.`)
-      return range
-    }
+    // The consumer installs the facade's published peer ranges (the
+    // customer shape) with zod pinned to the version the closure was built
+    // and typed against.
+    const pins = externalPeerPins(root)
     await writeFile(join(consumer, 'package.json'), `${JSON.stringify({
       name: 'daypaw-sdk-smoke',
       private: true,
       type: 'module',
       dependencies: {
         '@daypaw/sdk': `file:${tarball}`,
-        '@deepseek-ai/cordis': consumerPeer('@deepseek-ai/cordis'),
-        '@deepseek-ai/dsh-invariants': consumerPeer('@deepseek-ai/dsh-invariants'),
-        'zod': zodVersion,
+        '@deepseek-ai/cordis': '~4.0.1',
+        '@deepseek-ai/dsh-invariants': '~0.1.0-rc.3',
+        'zod': pins.zod ?? '',
       },
       devDependencies: {
         '@types/node': '^24.13.3',

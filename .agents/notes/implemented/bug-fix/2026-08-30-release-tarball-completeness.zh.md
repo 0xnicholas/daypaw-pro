@@ -12,7 +12,7 @@ Status: implemented
 
 - `rewriteManifests` 对 CLI 与 SDK 共用同一段逻辑,把每个捆绑名按其已暂存版本钉入 `dependencies`(SDK 分支原本如此,循环现已共用)。npm 11 只在名字同时是真实依赖时才打包 `bundleDependencies` 项——用 scratch 门面验证:仅 `bundleDependencies` 打出 1 个文件,加上 `dependencies` 项才打包子包。sync 使 `dsh-settings`/`dsh-credentials` 成为捆绑插件的传递需求(被 import 而非门面依赖),缺钉因此才暴露。
 - `missingClosurePackages` 改为按需求跟踪而非首次目击:一个名字只有当每个声明它的已到达 manifest 都允许缺席(可选 `peerDependenciesMeta` peer,或部署根外部 peer)时才可缺席;在一处可选、在另一处必需的名字视为必需。`dsh-jobs` 在 `dsh-api-session-controller` 处可选、在 `dsh-jobs-local` 处是硬 peer;旧的 `seen` 集短路让最弱约束获胜,恢复从未将其暂存。已暂存的可选包同样被遍历,其自身依赖因此受检。
-- SDK 冒烟消费者把 zod 钉到仓库解析出的版本,而非 `^4.4.3`。zod 在 semver 兼容区间内改泛型形状,浮动的冒烟区间会因与 diff 无关的 registry 漂移而失败;SDK 的 zod 契约是被测试的版本,发布的 peer 区间继续承诺区间。
+- SDK tarball 中的 zod 只作为消费方自供 peer:门面既不捆绑也不依赖它,每个被捆绑 manifest 把它声明为 peer(捆绑包把它声明为依赖会得到私有的嵌套 zod 安装——第二身份,结构相同的类型不再合一,这正是 zod 4.5.3/4.5.4 当日发布后冒烟断裂的机制),暂存 manifest 中易漂移的 registry 区间钉到仓库解析的 zod,消费方安装不会再解析出分歧副本。cordis 与 invariants 单例保留其捆绑的工作区副本——门面的声明以它们定型——与 2026-08-29 registry 消费者运行证明过的形状一致。
 
 ## Alternatives considered
 
