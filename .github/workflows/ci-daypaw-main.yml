@@ -49,6 +49,12 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
+      - name: Install Playwright Chromium
+        run: pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install chromium
+
+      - name: Prepare bubblewrap (unrestrict userns)
+        run: bash scripts/prepare-ci-bubblewrap.sh
+
       - name: Run the exhaustive serial gate aggregate
         env:
           # Serial execution is the upstream master standby's shape for running

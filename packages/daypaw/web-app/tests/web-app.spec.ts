@@ -270,7 +270,7 @@ describe('web-app runtime glue', () => {
 describe('web-app agents roster wiring', () => {
   it('loads workspace agents once the durable engine appears', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'daypaw-web-agents-'))
-    dist = dir
+    stageDist()
     writeFileSync(join(dir, 'flow.mjs'), [
       'export default ({ defineWorkflow, z }) => defineWorkflow({',
       "  name: 'wired-flow', version: '1',",
@@ -305,9 +305,8 @@ describe('web-app agents roster wiring', () => {
   })
 
   it('defaults agentsDir to daypaw/agents and logs nothing for the legal empty roster', async () => {
-    // A nonexistent default directory under a temp cwd stays empty and quiet.
-    const emptyRoot = mkdtempSync(join(tmpdir(), 'daypaw-web-empty-'))
-    dist = emptyRoot
+    // A nonexistent default directory stays empty and quiet.
+    stageDist()
     const lines: string[] = []
     const log = vi.spyOn(console, 'log').mockImplementation((line: string) => { lines.push(line) })
     try {
@@ -330,7 +329,7 @@ describe('web-app agents roster wiring', () => {
 
   it('fails the load fiber loud when an agents file is broken', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'daypaw-web-broken-'))
-    dist = dir
+    stageDist()
     writeFileSync(join(dir, 'broken.mjs'), 'export default 7\n')
     const ctx = new Context()
     ctx.provide('webServer', fakeHttpServer().server)
