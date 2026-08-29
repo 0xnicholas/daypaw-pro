@@ -321,8 +321,11 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
     process.env.DSH_TEST_SECRET = 'must-not-leak'
     try {
       const { ctx, root, agent } = await harness('danger-full-access', {
-        idleSilenceMs: 300,
-        handoffGraceMs: 300,
+        // Cold pwsh on a shared hosted CI runner spends its profile bootstrap
+        // silent for longer than the default silence bound; stdin-read
+        // evidence needs the wider window before idle inference wins.
+        idleSilenceMs: 2_000,
+        handoffGraceMs: 2_000,
         timeoutMs: 8_000,
       }, 'pwsh')
       const created = await ctx.terminals.spawn(agent, { type: 'shell', name: 'main', cwd: root })

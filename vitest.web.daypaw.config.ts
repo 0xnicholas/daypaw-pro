@@ -17,7 +17,10 @@ export default defineConfig({
   test: {
     execArgv: vitestExecArgv,
     include: [
-      'apps/daypaw-web/tests/**/*.snapshot.ts',
+      // The .snapshot.ts suffix is reserved repo-wide for recorded-session
+      // adapters (scripts/session-snapshot-corpus.corpus.ts); this lane's
+      // golden replays are owner-local expected outputs and use .golden.ts.
+      'apps/daypaw-web/tests/**/*.golden.ts',
     ],
     // Browser boot is slow; files share one browser, run serial.
     testTimeout: 180_000,

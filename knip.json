@@ -528,7 +528,7 @@
     "packages/examples/daypaw-skeleton": {
       "entry": [
         "tests/**/*.spec.ts",
-        "tests/**/*.snapshot.ts"
+        "tests/**/*.golden.ts"
       ],
       "project": [
         "src/**/*.ts",
@@ -716,7 +716,7 @@
     // does not duplicate (they stay upstream-owned).
     "apps/daypaw-web": {
       "entry": [
-        "tests/**/*.snapshot.ts",
+        "tests/**/*.golden.ts",
         "src/node-module-stub.ts"
       ],
       "project": [

@@ -38,7 +38,7 @@ node --import tsx/esm examples/daypaw-skeleton/src/agent-main.ts \
   --run-id agent-demo-1
 ```
 
-[tests/agent.snapshot.ts](tests/agent.snapshot.ts) 钉住模型可见面：持久化 session log 与提交的期望输出对 diff（persona prompt 段、注入的 `submit` schema、输入消息）；第二个场景在轮中 SIGKILL 宿主、重启，并钉住复活后模型看到的合成续跑 steer。
+[tests/agent.golden.ts](tests/agent.golden.ts) 钉住模型可见面：持久化 session log 与提交的期望输出对 diff（persona prompt 段、注入的 `submit` schema、输入消息）；第二个场景在轮中 SIGKILL 宿主、重启，并钉住复活后模型看到的合成续跑 steer。
 
 第三个场景经 `--mode steer` 走 steer 通道（issue #53），直接驱动一个独立的 steerable 定义：[tests/sigkill.spec.ts](tests/sigkill.spec.ts) 让 run 在无 submit 的轮次后停泊，SIGKILL 宿主，再以 `--steer` 段在同一 runId 下复活并完成；快照套件则钉住同一份同时承载初始输入与被 steer 追问的 session log。
 
