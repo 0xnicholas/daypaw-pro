@@ -1,0 +1,53 @@
+name: CI (daypaw main)
+
+# The inherited CI lanes cannot run in this fork: the pull_request workflow's
+# runner labels exist only in the upstream organization, and CI master watches
+# the upstream default branch. This fork-owned lane gives main pushes the same
+# exhaustive serial aggregate the upstream master standby runs —
+# check:ci:linux-primary (highlights: typecheck, lint, duplication,
+# per-file 100% coverage, snapshots, doc-sync, module graph, knip, build,
+# publint, node-next types, built-package invariants, bin smoke, web
+# snapshot; the full gate list lives in scripts/run-gates.ts).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A superseded main push is cancelled so a fresh head never queues behind a
+  # stale one; manual dispatches join the same per-ref group.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  # CI runs must never report to the production telemetry endpoint.
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  linux-primary:
+    name: linux / exhaustive gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the exhaustive serial gate aggregate
+        run: pnpm run check:ci:linux-primary

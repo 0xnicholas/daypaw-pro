@@ -305,7 +305,7 @@ describe('fault injection at journal append points', () => {
     delete f.overrides.selectRun
   })
 
-  it('settles attaches from crafted terminal rows, including null payloads', async () => {
+  it('settles attaches from crafted terminal rows, including null and crafted payloads', async () => {
     const f = await fixture()
     const core = f.makeCore()
     const def = workflowDef(async () => 'x')
@@ -317,6 +317,13 @@ describe('fault injection at journal append points', () => {
     const failed = core.run(def, null, { runId: 'crafted-1' })
     await expect(failed.result).rejects.toSatisfy((error: unknown) => (error as { code?: string }).code === 'RUN_FAILED')
     expect(failed.status()).toEqual({ state: 'failed', error: undefined })
+    f.overrides.selectRun = (() => ({ ...base, status: 'failed', error_json: JSON.stringify({ code: 'APP_BOOM', message: 'crafted failure' }) }))
+    const detailed = core.run(def, null, { runId: 'crafted-1' })
+    await expect(detailed.result).rejects.toSatisfy((error: unknown) => {
+      const run = error as { code?: string; detail?: unknown }
+      return run.code === 'RUN_FAILED' && (run.detail as { code?: string }).code === 'APP_BOOM'
+    })
+    expect(detailed.status()).toEqual({ state: 'failed', error: { code: 'APP_BOOM', message: 'crafted failure' } })
     f.overrides.selectRun = (() => ({ ...base, status: 'cancelled' }))
     const cancelled = core.run(def, null, { runId: 'crafted-1' })
     await expect(cancelled.result).rejects.toSatisfy((error: unknown) => (error as { code?: string }).code === 'RUN_CANCELLED')

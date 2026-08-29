@@ -243,6 +243,11 @@ export default defineConfig({
         'packages/client/ui-layout/src/*',
         'packages/client/web/src/*',
         'packages/host/webserver/src/*',
+        // The fork's daypaw UI plugins carry the same GUI-debt stance as the
+        // client UI above: jsdom component tests plus the assembled web lane,
+        // no per-file gate (fork ADR 0007 §1; registered in
+        // docs/fork/CORE_TOUCHES.md).
+        'packages/daypaw/ui-*/src/**',
         // The browser-worker runtime and its image packer: the executing
         // composition is a real dedicated Worker driven by the web browser lane
         // (apps/web/tests/preview-boot.e2e.ts), which unit-process V8 coverage
