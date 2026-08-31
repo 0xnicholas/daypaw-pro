@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-steer-revival-plugin-injected-user-messages.md
+2026-08-31-steer-revival-plugin-injected-user-messages.md: be32c5fa67237b5f4e8b9a5c3cfe9580667ac72e
+2026-08-31-steer-revival-plugin-injected-user-messages.zh.md: 80af3a84bdf43fe3cf79a4a88a90b254e8a78c32

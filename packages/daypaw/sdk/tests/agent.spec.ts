@@ -718,6 +718,43 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
   })
 
+  it('delivers a pending segment on revival even when the host injected plugin-sourced context (ticket #73)', { timeout }, async () => {
+    const first = await loadComposition([textResponse('no structured answer')])
+    const bound1 = await bindAgent(reviewerDef(4, true), first.ctx)
+    const crashed = await bound1.run({ code: 'x' }, { runId: 'agent-steer-injected-1' })
+    crashed.result.catch(() => {})
+    await until(() => first.adapter.requests.length === 1)
+    await until(() => readJournal(first.ledgerPath, 'agent-steer-injected-1')
+      .some(step => step.step_key === 'dsh-step:1:1' && step.status === 'completed'))
+    // The product-shell shape under test: a producer injects a plugin-sourced
+    // context snapshot into the parked session (the runtime-context projector
+    // does exactly this on hosts with dynamic prompt sections).
+    first.ctx.sessions.get(SessionId('agent-steer-injected-1'))?.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Current runtime context. This snapshot supersedes earlier runtime-context snapshots.' }],
+      source: {
+        kind: 'plugin',
+        plugin: 'dsh/agent-loop/runtime-context',
+        form: 'snapshot',
+        sections: [{ name: 'sandbox:policy', text: 'sandbox: policy snapshot' }],
+      },
+    }), { surfaceOp: 'append' })
+    contexts = contexts.filter(item => item !== first.ctx)
+    await first.ctx.fiber.dispose()
+
+    const second = await loadComposition(
+      [toolCallResponse('c9', 'submit', { answer: 6 }), textResponse('done')],
+      { ledgerPath: first.ledgerPath, sessionsRoot: first.sessionsRoot },
+    )
+    await second.ctx.durable.steer('agent-steer-injected-1', { code: 'while dead' })
+    const bound2 = await bindAgent(reviewerDef(4, true), second.ctx)
+    const revived = await bound2.run({ code: 'x' }, { runId: 'agent-steer-injected-1' })
+    await expect(revived.result).resolves.toEqual({ answer: 6 })
+    const texts = userTexts(second.adapter)
+    expect(texts.some(text => text === JSON.stringify({ code: 'while dead' }))).toBe(true)
+    expect(texts.some(text => text.includes('host process restarted'))).toBe(false)
+    await expect(crashed.result).rejects.toThrow('ENGINE_DISPOSED')
+  })
+
   it('wakes a steerable run crashed mid-turn with the synthetic resume steer', { timeout }, async () => {
     const first = await loadComposition(['hang'])
     const bound1 = await bindAgent(reviewerDef(4, true), first.ctx)

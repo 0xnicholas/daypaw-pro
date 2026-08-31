@@ -279,18 +279,22 @@ function countTurns(events: readonly SessionEvent[]): number {
   return turns
 }
 
-/** Text of a single-text-block user message; other content shapes never match the wake constants. */
+/** Text of a single-text-block user-sourced message; other content shapes and producer sources never match the wake constants. */
 function userMessageText(event: SessionEvent): string | undefined {
   if (event.type !== 'user/message') return undefined
+  if (event.data.source.kind !== 'user') return undefined
   const [only] = event.data.content
   return event.data.content.length === 1 && only?.type === 'text' ? only.text : undefined
 }
 
 /**
  * Count steered segments already delivered into the durable log, for ordinal
- * dedup across re-drives: user messages are the initial input, RESUME wakes,
- * and steered segments in delivery order. Ordinal (not content) matching
- * keeps two identical follow-ups distinct.
+ * dedup across re-drives: user-sourced messages are the initial input, RESUME
+ * wakes, and steered segments in delivery order. Producer-injected context
+ * (runtime-context snapshots, relays, recalls — `source.kind` other than
+ * `user`) never counts, so a host that injects context cannot inflate the
+ * delivered ordinal and strand or skip pending segments on revival. Ordinal
+ * (not content) matching keeps two identical follow-ups distinct.
  */
 function countDeliveredSteers(events: readonly SessionEvent[]): number {
   let userInputs = 0
