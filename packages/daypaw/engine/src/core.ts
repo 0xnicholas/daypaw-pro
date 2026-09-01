@@ -718,7 +718,7 @@ export class DurableEngineCore {
         id: runId,
         result,
         status: () => this.statusOf(runId),
-        cancel: cause => this.cancelRun(runId, cause),
+        cancel: cause => this.cancel(runId, cause),
       },
       // Replaced with the real driving promise below, after registration:
       // the body's synchronous prefix must only ever observe a registered,
@@ -1116,8 +1116,26 @@ export class DurableEngineCore {
       new Error(`run ${runId} reached terminal state ${row?.status ?? 'unknown'} before completion`))
   }
 
+  /**
+   * Request cancellation of an unfinished run (ticket #74): the terminal
+   * `cancelled` row is written first, pending gates settle cancelled, and a
+   * driver in this process aborts. A terminal run already satisfies the
+   * request's postcondition, so cancel is idempotent on it (the handle-level
+   * precedent) — but a driver can still linger past a terminal row (a fault
+   * between the terminal write and the abort), so the abort always runs; an
+   * unknown run fails loud.
+   * @param runId - run identity.
+   * @param cause - human-readable cancel cause.
+   */
   // oxlint-disable-next-line typescript/require-await -- async keeps a store throw a rejection, not a synchronous throw
-  private async cancelRun(runId: string, cause?: string): Promise<void> {
+  async cancel(runId: string, cause?: string): Promise<void> {
+    this.assertNotDisposed()
+    const row = this.store.selectRun(runId)
+    if (row === undefined) throw new Error(`durable engine: cancel targets unknown run ${runId}`)
+    if (isTerminal(row.status)) {
+      this.drivers.get(runId)?.abort(cause)
+      return
+    }
     this.store.finalizeRun(runId, {
       status: 'cancelled',
       outputJson: undefined,
@@ -1228,7 +1246,7 @@ export class DurableEngineCore {
         id: runId,
         result,
         status: () => this.statusOf(runId),
-        cancel: cause => this.cancelRun(runId, cause),
+        cancel: cause => this.cancel(runId, cause),
       },
       stop: (error: EngineRunError) => {
         clearInterval(timer)

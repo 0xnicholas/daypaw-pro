@@ -80,7 +80,7 @@ const reviewer = defineAgent({
   output: z.object({ score: z.number() }),   // also the injected submit tool's args schema
   prompt: [{ name: 'persona', order: 10, text: 'You review code and report a score.' }],
   tools: [],                                  // dsh ToolDefinitions, zero adapter
-  model: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 4096 },
+  model: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 4096, reasoningEffort: 'low' },
   maxTurns: 4,                                // turn budget across revivals; required
   display: { title: 'Code reviewer', description: 'Reviews code and reports a score.' },
 })

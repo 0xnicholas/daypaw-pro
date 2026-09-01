@@ -113,6 +113,8 @@ export interface ModelRoute {
   readonly provider: string
   readonly model: string
   readonly maxTokens?: number
+  /** 适配器归属的推理档（ticket #74）；未声明保持 provider 配置/默认行为。 */
+  readonly reasoningEffort?: 'off' | 'low' | 'high' | 'max'
 }
 
 export interface DefineAgentOptions<I extends ZodType, O extends ZodType> {
@@ -197,6 +199,7 @@ steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无
 | `ctx.waitFor`（已实现）/ `ctx.sleep`（按需落地） | `promises` 行 pending + `runs`→`waiting`/`waiting_gate`；`timers` 行 `wake_at` | `status()` = `{state:'waiting', gate}` |
 | `handle.cancel(cause)` | UPDATE `runs`→`cancelled`+`cancel_cause` → driver AbortSignal | `result` reject `RunCancelledError` |
 | `handle.steer(input)`（steerable 定义，issue #53） | INSERT `journal` `kind='segment'`（`steer:<seq>`，插入即 `completed`）→ 本进程 parked driver 直推唤醒 / 跨进程 `pollMs` 轮询兜底 | parked run 的 `status()` 保持 `{state:'running'}` |
+| `durable/cancel`（Remote，ticket #74） | 终态 `cancelled` 行 + `cancel_cause` 先落，pending gate 结算 cancelled，本进程 driver abort；终态 run 幂等（滞留 driver 仍 abort），未知 runId loud | — |
 | steerable run 段边界消费 | 段输入作为 user message 进入同一 session（`agent.steer`），一次唤醒跑一个 turn 到 quiescence | — |
 | step 失败（v1 无 retry 面） | `journal` `failed` + `runs`→`failed`+`error_json` | `result` reject `RunFailedError` |
 | 成功收尾 | output schema 校验后写 `output_json`，`runs`→`done` | `result` resolve 类型化结果 |

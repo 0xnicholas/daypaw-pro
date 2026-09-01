@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-31-model-route-effort-and-durable-cancel.md
+2026-08-31-model-route-effort-and-durable-cancel.md: 8c2450f9746dee76b7384aace5b22c8087c0e4f2
+2026-08-31-model-route-effort-and-durable-cancel.zh.md: 53f95cac3a8d24e66b8ed618ce69efb83849d994

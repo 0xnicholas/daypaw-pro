@@ -229,6 +229,22 @@ export default class DurableEngine extends TypertRemoteService {
     return (await this.coreOrFail()).rerun(runId).id
   }
 
+  /**
+   * Request cancellation of an unfinished run (ticket #74): the terminal
+   * `cancelled` row with the cause is written first, pending gates settle
+   * cancelled, and a driver in this process aborts. Served to the browser as
+   * the Remote endpoint `durable/cancel` (the `steer` precedent). Idempotent
+   * on terminal runs — a run that already ended satisfies the request, and a
+   * lingering driver still aborts — and loud on unknown runs. See
+   * {@link DurableEngineCore.cancel}.
+   * @param runId - run identity.
+   * @param cause - human-readable cancel cause.
+   */
+  @Remote('cancel')
+  async cancel(runId: string, cause?: string): Promise<void> {
+    await (await this.coreOrFail()).cancel(runId, cause)
+  }
+
   private async coreOrFail(): Promise<DurableEngineCore> {
     try {
       return await this.ready

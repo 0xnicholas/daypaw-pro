@@ -10,8 +10,8 @@ import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
-import type { StreamChunk } from '@deepseek-ai/dsh-llm'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import type { LlmModelReasoningInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
+import { ReasoningEffortId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
@@ -91,7 +91,11 @@ function userTexts(adapter: MockAdapter): string[] {
  * temp ledger plus the dsh agent stack with a JSONL persistence backend, and
  * a scripted MockAdapter on the `mock` provider route.
  */
-async function loadComposition(script: ScriptEntry[], paths?: { ledgerPath: string; sessionsRoot: string }): Promise<Composition> {
+async function loadComposition(
+  script: ScriptEntry[],
+  paths?: { ledgerPath: string; sessionsRoot: string },
+  adapterReasoning?: LlmModelReasoningInfo,
+): Promise<Composition> {
   root ??= await mkdtemp(join(tmpdir(), 'daypaw-sdk-agent-'))
   const ledgerPath = paths?.ledgerPath ?? join(root, `ledger-${contexts.length}.db`)
   const sessionsRoot = paths?.sessionsRoot ?? join(root, 'sessions')
@@ -139,7 +143,7 @@ async function loadComposition(script: ScriptEntry[], paths?: { ledgerPath: stri
     config: { path: pathToFileURL(configPath).href },
   })
   await ctx.loader.await()
-  const adapter = new MockAdapter(script)
+  const adapter = new MockAdapter(script, adapterReasoning)
   ctx.llm.registerAdapter(['mock'], adapter)
   return { ctx, adapter, ledgerPath, sessionsRoot }
 }
@@ -210,6 +214,23 @@ describe('bindAgent over a real dsh composition', () => {
       .toThrow(/display\.title and display\.description must be non-blank/)
     expect(() => defineAgent({ ...base, display: { title: 'x', description: '  ' } }))
       .toThrow(/display\.title and display\.description must be non-blank/)
+  })
+
+  it('applies a declared reasoning effort to every request of the run (ticket #74)', { timeout }, async () => {
+    const { ctx, adapter } = await loadComposition([
+      toolCallResponse('c1', 'submit', { answer: 42 }),
+      textResponse('done'),
+    ], undefined, {
+      efforts: [{ id: ReasoningEffortId('low'), name: 'Low' }, { id: ReasoningEffortId('high'), name: 'High' }],
+    } satisfies LlmModelReasoningInfo)
+    const bound = await bindAgent({
+      ...reviewerDef(),
+      model: { provider: 'mock', model: 'mock', reasoningEffort: ReasoningEffortId('low') },
+    }, ctx)
+    await expect(bound.run({ code: 'x' }, { runId: 'agent-effort-1' }).then(handle => handle.result))
+      .resolves.toEqual({ answer: 42 })
+    expect(adapter.requests).toHaveLength(2)
+    expect(adapter.requests.map(request => request.reasoningEffort)).toEqual(['low', 'low'])
   })
 
   it('drives create → submit → done, journaling every dsh step', { timeout }, async () => {

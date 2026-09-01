@@ -14,6 +14,7 @@ import type { ZodType } from 'zod'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentHandle, AgentOptions, AgentSetup } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
@@ -45,6 +46,13 @@ export interface ModelRoute {
   readonly model: string
   /** Per-request output-token ceiling. */
   readonly maxTokens?: number
+  /**
+   * Adapter-owned reasoning effort for the route; undeclared keeps the
+   * provider's configured/default behavior (ticket #74). A definition on a
+   * default-`high` provider whose runs must leave budget for visible output
+   * declares a lower effort here instead of relying on deployment config.
+   */
+  readonly reasoningEffort?: ReasoningEffortId
 }
 
 /** Options declaring one agent definition. */
@@ -200,7 +208,11 @@ function buildSubmitTool(def: AgentDefinition, capture: SubmitCapture): ToolDefi
 function setupFor(def: AgentDefinition, capture: SubmitCapture): AgentSetup {
   return (agentCtx) => {
     installModelSelection(agentCtx, {
-      current: { provider: def.model.provider, model: def.model.model },
+      current: {
+        provider: def.model.provider,
+        model: def.model.model,
+        ...(def.model.reasoningEffort === undefined ? {} : { reasoningEffort: def.model.reasoningEffort }),
+      },
       assembled: undefined,
     })
     for (const segment of def.prompt) {
