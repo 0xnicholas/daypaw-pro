@@ -3761,9 +3761,6 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           _request?: unknown
           status?: FxRunRow['status']
           runId?: string
-          defName?: string
-          defVersion?: string
-          input?: unknown
         }>
       }).args
       const sessionId = args.agentId
@@ -3803,8 +3800,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         // the session (sessionId ≡ runId) on first drive and logs the input's
         // JSON serialization as the first user message (ADR 0010).
         case 'durable/startRun': {
-          const defName = args.defName
-          const defVersion = args.defVersion
+          const request = args.request as { defName?: string; defVersion?: string; input?: unknown; runId?: string }
+          const defName = request.defName
+          const defVersion = request.defVersion
           const candidates = fixtureDefinitions.filter(def => def.name === defName)
           const def = defVersion === undefined
             ? candidates.length === 1 ? candidates[0] : undefined
@@ -3824,13 +3822,13 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
               },
             })
           }
-          const requestedRunId = args.runId
+          const requestedRunId = request.runId
           const runId = typeof requestedRunId === 'string' && requestedRunId !== '' ? requestedRunId : `fx-run-start-${nextFixtureStart++}`
           // Start-or-attach: an existing run id answers without touching state.
           if (fixtureRuns.some(row => row.run_id === runId)) {
             return Promise.resolve({ ok: true, value: { runId } })
           }
-          const input = def.inputKind === 'text' && typeof args.input === 'string' ? { task: args.input } : args.input
+          const input = def.inputKind === 'text' && typeof request.input === 'string' ? { task: request.input } : request.input
           const createdAt = FX_RUN_EPOCH + 5 * FX_HOUR + nextFixtureStart * 60_000
           fixtureRuns.push({
             run_id: runId,

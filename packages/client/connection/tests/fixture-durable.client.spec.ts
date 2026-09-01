@@ -128,7 +128,7 @@ describe('fixture durable startRun', () => {
     const { rpc } = createFixtureFaces()
     const runId = 'fx-started-by-dialog'
     const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
-      defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId,
+      request: { defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId },
     })
     expect(started.runId).toBe(runId)
 
@@ -145,7 +145,7 @@ describe('fixture durable startRun', () => {
 
     // Start-or-attach: the same run id answers without a second row.
     const again = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
-      defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId,
+      request: { defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId },
     })
     expect(again.runId).toBe(runId)
     expect((await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})).filter(candidate => candidate.run_id === runId)).toHaveLength(1)
@@ -154,7 +154,7 @@ describe('fixture durable startRun', () => {
   it('mints a fresh run id when the caller passes none', async () => {
     const { rpc } = createFixtureFaces()
     const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
-      defName: 'invoice-checker', input: { invoice: 'INV-2044' },
+      request: { defName: 'invoice-checker', input: { invoice: 'INV-2044' } },
     })
     expect(started.runId).toMatch(/^fx-run-start-\d+$/)
     const row = (await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})).find(candidate => candidate.run_id === started.runId)
@@ -164,9 +164,9 @@ describe('fixture durable startRun', () => {
 
   it('rejects an unregistered definition name', async () => {
     const { rpc } = createFixtureFaces()
-    const missing = await rpc.call('/api', 'durable/startRun', { args: { defName: 'ghost-agent', input: 'x' } })
+    const missing = await rpc.call('/api', 'durable/startRun', { args: { request: { defName: 'ghost-agent', input: 'x' } } })
     expect(missing).toMatchObject({ ok: false, error: { code: 'internal', message: 'no registered definition matches ghost-agent' } })
-    const wrongVersion = await rpc.call('/api', 'durable/startRun', { args: { defName: 'starter-assistant', defVersion: '9.9.9', input: 'x' } })
+    const wrongVersion = await rpc.call('/api', 'durable/startRun', { args: { request: { defName: 'starter-assistant', defVersion: '9.9.9', input: 'x' } } })
     expect(wrongVersion).toMatchObject({ ok: false, error: { code: 'internal', message: 'no registered definition matches starter-assistant@9.9.9' } })
   })
 })

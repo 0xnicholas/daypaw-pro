@@ -27,7 +27,7 @@ async function bench() {
     expect(channel).toBe('/api')
     const args = (payload as { args: unknown }).args
     if (endpoint === 'durable/listDefinitions') return api.listDefinitions().then(value => ({ ok: true as const, value }))
-    if (endpoint === 'durable/startRun') return api.startRun(args as never).then(value => ({ ok: true as const, value }))
+    if (endpoint === 'durable/startRun') return api.startRun((args as { request: never }).request).then(value => ({ ok: true as const, value }))
     return Promise.resolve({ ok: false as const, error: { code: 'internal', message: `unexpected ${endpoint}`, details: {} } })
   }
   ctx.provide('connection', { rpc } as never)

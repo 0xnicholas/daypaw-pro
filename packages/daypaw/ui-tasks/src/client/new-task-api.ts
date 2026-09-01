@@ -112,7 +112,7 @@ export function createNewTaskApi(rpc: Pick<ClientConnectionRpc, 'call'>): NewTas
       return agents
     },
     async startRun(request) {
-      const value = await callEndpoint(rpc, 'durable/startRun', { args: request })
+      const value = await callEndpoint(rpc, 'durable/startRun', { args: { request } })
       if (typeof value !== 'object' || value === null) throw new Error('ui-tasks: durable/startRun answered no run id')
       const runId = (value as Record<string, unknown>)['runId']
       if (typeof runId !== 'string') throw new Error('ui-tasks: durable/startRun answered no run id')

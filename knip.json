@@ -746,12 +746,9 @@
     // package stays referenced: resolveDistIndex() require.resolves its dist.
     "packages/daypaw/web-app": {
       "ignoreDependencies": [
-        "@daypaw/approval-history",
         "@daypaw/ui-agents",
         "@daypaw/ui-brand",
-        "@daypaw/ui-inbox",
         "@daypaw/ui-settings",
-        "@daypaw/ui-tasks",
         "@deepseek-ai/.+"
       ]
     },

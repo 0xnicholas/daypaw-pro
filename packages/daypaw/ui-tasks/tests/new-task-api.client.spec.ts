@@ -57,7 +57,7 @@ describe('createNewTaskApi startRun', () => {
     const { rpc, calls } = fakeRpc(() => ({ ok: true, value: { runId: 'r-answered' } }))
     const started = await createNewTaskApi(rpc).startRun({ defName: 'a', defVersion: '1', input: 'x', runId: 'r-minted' })
     expect(started).toEqual({ runId: 'r-answered' })
-    expect(calls).toEqual([{ endpoint: 'durable/startRun', payload: { args: { defName: 'a', defVersion: '1', input: 'x', runId: 'r-minted' } } }])
+    expect(calls).toEqual([{ endpoint: 'durable/startRun', payload: { args: { request: { defName: 'a', defVersion: '1', input: 'x', runId: 'r-minted' } } } }])
   })
 
   it('fails loud when the endpoint answers a business failure', async () => {
