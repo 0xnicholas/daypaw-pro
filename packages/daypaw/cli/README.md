@@ -41,7 +41,7 @@ None — the package never touches live request prefixes.
 
 - **Host-platform closure** — the tarball bundles the closure as deployed on the build host; platform-specific natives outside that host resolve from npm at install time, and platforms without a published native fallback are untested.
 - **One-shot headless runs are not this CLI's surface** (spec 05 §4) — the shell is the product; drive durable runs from a program through `@daypaw/sdk`, or boot an upstream headless profile with an explicit `--profile`.
-- **Seeding is CLI-only** — the `daypaw` profile template lives in this package, not in the upstream launcher's `PROFILE_TEMPLATES`, so a source-state `pnpm dsh --profile daypaw` does not auto-initialize; compose source-state from [examples/daypaw-skeleton](../../../packages/examples/daypaw-skeleton/README.md) instead.
+- **Seeding is CLI-only** — the `daypaw` profile template lives in this package, not in the upstream launcher's `PROFILE_TEMPLATES`, so a source-state `pnpm dsh --profile daypaw` does not auto-initialize; compose source-state from [examples/daypaw-skeleton](../../../packages/examples/daypaw-skeleton/README.md) instead. Booting the product shell from a source checkout goes through this package's own bin once `lib/` exists: `pnpm dev:daypaw` ([scripts/dev-daypaw.sh](../../../scripts/dev-daypaw.sh)) resolves the model key (flag > env > root `.env`), picks a free port, and prints the launch-token URL line.
 - **No cross-version in-flight run continuity** — per ADR 0011 §2, upgrades require a drained ledger or a fresh one.
 - **Publish path untested without `NPM_TOKEN`** — the release workflow's publish job needs the secret configured; the pack path is the gated one.
 

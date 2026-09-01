@@ -41,7 +41,7 @@ manifest 即 deploy root，其 `dependencies` 精确决定哪些 workspace 包�
 
 - **宿主机平台闭包**——tarball 打包的是构建宿主机上 deploy 出的闭包；宿主之外的平台特定 native 依赖在安装时从 npm 解析，无已发布 native 兜底的平台未测试。
 - **单发 headless 不是本 CLI 的面**（spec 05 §4）——壳即产品；程序化 durable 运行走 `@daypaw/sdk`，或显式 `--profile` 启动上游 headless profile。
-- **播种仅限 CLI**——`daypaw` profile 模板在本包内，不在上游 launcher 的 `PROFILE_TEMPLATES` 里，源码态 `pnpm dsh --profile daypaw` 不会自初始化；源码态组合请改用 [examples/daypaw-skeleton](../../../packages/examples/daypaw-skeleton/README.zh.md)。
+- **播种仅限 CLI**——`daypaw` profile 模板在本包内，不在上游 launcher 的 `PROFILE_TEMPLATES` 里，源码态 `pnpm dsh --profile daypaw` 不会自初始化；源码态组合请改用 [examples/daypaw-skeleton](../../../packages/examples/daypaw-skeleton/README.zh.md)。源码态产品壳启动走本包自己的 bin（需 `lib/` 已构建）：`pnpm dev:daypaw`（[scripts/dev-daypaw.sh](../../../scripts/dev-daypaw.sh)）解析模型 key（参数 > 环境变量 > 根 `.env`）、择空闲端口、打印启动令牌 URL 行。
 - **不承诺跨版本续跑在飞 run**——按 ADR 0011 §2，升级须先 drain ledger 或弃库重跑。
 - **无 `NPM_TOKEN` 时发布路径未验证**——release workflow 的 publish job 依赖该 secret；受门验证的是 pack 路径。
 
