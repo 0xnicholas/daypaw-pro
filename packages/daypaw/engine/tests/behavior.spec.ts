@@ -200,6 +200,19 @@ describe('durable engine service', () => {
     expect(handle.status()).toEqual({ state: 'cancelled', cause: 'stop-it' })
   })
 
+  it('cancel is loud on unknown runs and idempotent on terminal ones (ticket #74)', async () => {
+    const path = await tmpPath('daypaw-engine-cancel-face-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    await expect(engine.cancel('ghost')).rejects.toThrow('durable engine: cancel targets unknown run ghost')
+    const def = workflowDef(async () => 7, 'cancel-face')
+    await engine.register(def)
+    await expect(engine.run(def, null, { runId: 'cancel-face-1' }).then(handle => handle.result)).resolves.toBe(7)
+    await expect(engine.cancel('cancel-face-1', 'late')).resolves.toBeUndefined()
+    const [row] = readRuns(path)
+    expect(row?.status).toBe('done')
+  })
+
   it('honors a pre-aborted caller signal as an immediate cancellation', async () => {
     const path = await tmpPath('daypaw-engine-signal-')
     const { ctx, engine } = await boot(path)
