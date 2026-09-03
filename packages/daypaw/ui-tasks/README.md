@@ -42,7 +42,7 @@ None; this package neither assembles nor sends a provider request.
 
 ## Known Limitations and Deferred Work
 
-- **追问 steers only unfinished runs** — a settled or run-less task keeps the seat closed (任务已结束); a json-kind definition rejects free text at the boundary and surfaces the inline failure.
+- **追问 steers only unfinished runs** — a settled or run-less task keeps the seat closed (任务已结束); a json-kind definition or one without a wire face rejects free text at the boundary and surfaces the inline failure.
 - **The conversation failure marker has no inline retry** — a terminal turn error renders 出错了 with no recovery affordance there; failed runs retry from the detail pane's header (ui-inbox).
 - **Workflow-run selections leave session-bound sections empty** — a workflow run has no session, so under the stale-seat guard its 进度 falls back to the journal step timeline and 审批历史 renders its empty state.
 

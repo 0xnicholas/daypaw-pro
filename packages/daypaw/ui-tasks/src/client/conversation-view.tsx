@@ -23,6 +23,7 @@ import type {} from '@daypaw/ui-inbox/client'
 // Type-only: pulls ui-chat's session-standard merge (useChat).
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
+import { isUnfinishedWireRun } from '@daypaw/ui-inbox/client'
 import { ApprovalCard, type PendingApprovalWait } from './approval-card.tsx'
 import { projectBusinessRows } from './chat-projection.ts'
 import css from './conversation-view.module.css'
@@ -70,7 +71,7 @@ export function ConversationView({
   // The run's ledger row rules the seat, never the session's agent running
   // bit: a steerable run parked at a segment boundary reads `running` on the
   // ledger while its agent sits idle between turns.
-  const unfinished = runStatus === 'running' || runStatus === 'waiting'
+  const unfinished = runStatus !== undefined && isUnfinishedWireRun(runStatus)
 
   const submitFollowup = (event: FormEvent): void => {
     event.preventDefault()

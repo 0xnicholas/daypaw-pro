@@ -14,6 +14,17 @@ import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/cli
 /** Durable run status as it crosses the wire (`runs.status`). */
 export type WireRunStatus = 'running' | 'waiting' | 'done' | 'failed' | 'cancelled'
 
+/**
+ * Whether a wire run status is unfinished — the one partition every
+ * client-side plane agrees on (the board's running/done grouping, the
+ * conversation seat's follow-up liveness).
+ * @param status - the wire run status to test.
+ * @returns whether the run may still consume a steer segment.
+ */
+export function isUnfinishedWireRun(status: WireRunStatus): boolean {
+  return status === 'running' || status === 'waiting'
+}
+
 /** Durable run kind as it crosses the wire (`runs.def_kind`). */
 export type WireRunDefKind = 'workflow' | 'agent'
 

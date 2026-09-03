@@ -22,6 +22,7 @@ import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/c
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { TaskRow } from './contract.ts'
 import type { WireRun } from './runs-api.ts'
+import { isUnfinishedWireRun } from './runs-api.ts'
 import type { InboxGroup } from './selection.ts'
 
 /** Per-group counts and rows, one projection pass. */
@@ -34,7 +35,7 @@ export interface InboxBoard {
 
 /** The status group a run lands in when no approval pends. */
 function runGroup(run: WireRun): 'running' | 'done' {
-  return run.status === 'running' || run.status === 'waiting' ? 'running' : 'done'
+  return isUnfinishedWireRun(run.status) ? 'running' : 'done'
 }
 
 /** The effective pending interaction a session currently carries, if any. */

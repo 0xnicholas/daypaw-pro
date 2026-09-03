@@ -42,7 +42,7 @@ daypaw 的任务面，fork 的 client UI 插件，占据 [`@daypaw/ui-inbox`](..
 
 ## Known Limitations and Deferred Work
 
-- **追问只 steer 未完 run**——终态或无 run 任务收起席位（任务已结束）；json 类定义在边界拒绝自由文本并显示内联失败。
+- **追问只 steer 未完 run**——终态或无 run 任务收起席位（任务已结束）；json 类定义或无 wire face 的定义在边界拒绝自由文本并显示内联失败。
 - **对话的失败标记没有内联重试**——终态 turn 错误渲染「出错了」，该处无恢复入口；失败 run 的重试在详情栏头部（ui-inbox）。
 - **选中 workflow run 时绑定 session 的区块为空**——workflow run 没有 session，陈旧席位守卫下其「进度」回落到 journal step 时间线，「审批历史」渲染空态。
 

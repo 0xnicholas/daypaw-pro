@@ -187,7 +187,12 @@ export class ClientSessions implements ISessions {
    * reports the same number.
    */
   readonly searchResultLimit = SESSION_SEARCH_RESULT_LIMIT
-  /** List snapshot store (list RPC + host stream increments; re-pulled on reconnect) — the useSessions standard feed, current included. */
+  /**
+   * List snapshot store (list RPC + host stream increments; re-pulled on
+   * reconnect and after a removal frame, which reconciles a
+   * persisted-but-disposed session back in) — the useSessions standard
+   * feed, current included.
+   */
   readonly list: SnapshotStore<SessionListState>
   /** The object-layer instance cluster and frame dispatch entry. */
   private readonly manager: SessionManager

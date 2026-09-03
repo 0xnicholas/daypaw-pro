@@ -41,6 +41,7 @@ export type {
   TaskRow,
 } from './contract.ts'
 export type { RunsApi, WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from './runs-api.ts'
+export { isUnfinishedWireRun } from './runs-api.ts'
 export type { RunsBoardState, TaskDetailState } from './runs-store.ts'
 import type { InboxNavInjected } from './InboxNav.tsx'
 import { InboxNav } from './InboxNav.tsx'
