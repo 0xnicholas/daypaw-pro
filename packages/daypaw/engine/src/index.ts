@@ -204,15 +204,46 @@ export default class DurableEngine extends TypertRemoteService {
    * durable before delivery — a body parked in this process wakes
    * immediately, elsewhere the parked poll or the next boot scan observes the
    * segment row. Served to the browser as the Remote endpoint
-   * `durable/steer` (the `listDefinitions` precedent). See
+   * `durable/steer` (the `listDefinitions` precedent). The input records as
+   * given: in-process callers pass contract-validated values, and a run this
+   * process cannot resolve a definition for still records (the consumption
+   * side re-validates — the cross-writer defense). See
    * {@link DurableEngineCore.steer}.
    * @param runId - run identity.
-   * @param input - JSON-serializable follow-up input; validated by the SDK face.
+   * @param input - contract-validated follow-up input (the SDK face owns validation).
    * @returns the assigned segment sequence (1-based).
    */
   @Remote('steer')
   async steer(runId: string, input: Json): Promise<number> {
     return (await this.coreOrFail()).steer(runId, input)
+  }
+
+  /**
+   * Append a free-text follow-up segment to an unfinished steerable run
+   * (ticket #94): the browser follow-up seat's channel. Resolves the run's
+   * definition and validates the text through its wire face — the same
+   * starter-text rule {@link startRun} applies, so the seat sends the bare
+   * text the dialog sends and the recorded segment carries the input the
+   * consuming body expects. Fails loud when the run is unknown, its
+   * definition is not registered, or the wire contract rejects the text
+   * (a json-kind definition takes no free-text follow-up); nothing records
+   * on failure. Served to the browser as the Remote endpoint
+   * `durable/steerText` (the `steer` precedent).
+   * @param runId - run identity.
+   * @param text - free-text follow-up; the definition's wire face owns the starter shape.
+   * @returns the assigned segment sequence (1-based).
+   */
+  @Remote('steerText')
+  async steerText(runId: string, text: string): Promise<number> {
+    const core = await this.coreOrFail()
+    const row = core.runLineage(runId).run
+    // An unknown run delegates for the core's own loud failure.
+    if (row === null) return core.steer(runId, text)
+    const def = core.resolveDefinition(row.def_name, row.def_version)
+    if (def.wire === undefined) {
+      throw new Error(`durable engine: steerText requires a wire face, and ${row.def_name}@${row.def_version} carries none`)
+    }
+    return core.steer(runId, def.wire.parseInput(text))
   }
 
   /**

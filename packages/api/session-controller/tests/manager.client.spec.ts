@@ -270,6 +270,36 @@ describe('Host Remote event routing', () => {
     expect(session.getSnapshot().removed).toBe(true)
     expect(manager.get(S1)).toBe(session) // resident-instance rule survives removal
   })
+
+  it('re-pulls after a removal so a persisted twin re-lists instead of dropping until reconnect (ticket #94)', async () => {
+    const api = new FakeApiClient()
+    // The host still serves the disposed session from persistence (an engine
+    // task's twin after its run settles).
+    api.onList = () => Promise.resolve(ok({ items: [summary(S1)] as never[] }))
+    const manager = new SessionManager(fakeRemote(api))
+    await manager.refreshList()
+    expect(manager.getListSnapshot().items.map(item => item.sessionId)).toEqual([S1])
+
+    manager.handleSessionRemoved(S1)
+    // The removal applies immediately, then the reconciling re-pull lands.
+    expect(manager.getListSnapshot().items).toHaveLength(0)
+    await vi.waitFor(() => {
+      expect(manager.getListSnapshot().items.map(item => item.sessionId)).toEqual([S1])
+    })
+    expect(manager.getListSnapshot().items[0]?.running).toBe(false)
+  })
+
+  it('a removal the pull confirms stays removed (deleted sessions do not resurrect)', async () => {
+    const api = new FakeApiClient()
+    const manager = new SessionManager(fakeRemote(api))
+    manager.handleSessionAdded(summary(S1, { blank: true }))
+    api.onList = () => Promise.resolve(ok({ items: [] as never[] }))
+    manager.handleSessionRemoved(S1)
+    await vi.waitFor(() => {
+      expect(manager.getListSnapshot().state).toBe('idle')
+    })
+    expect(manager.getListSnapshot().items).toEqual([])
+  })
 })
 
 describe('subagent catalogs', () => {

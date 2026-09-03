@@ -62,6 +62,18 @@ export interface TaskRow {
   }
 }
 
+/** Owner share of the conversation occupant. */
+export interface InboxConversationOwnerProps {
+  /**
+   * The task's durable run status (sessionId ≡ runId, the board store's
+   * ledger row), or undefined when the selected session has no run (a
+   * run-less session). The follow-up seat's liveness keys off this, never
+   * the session's agent running bit: an agent run parked at a steer segment
+   * boundary keeps its ledger row `running` while its agent sits idle.
+   */
+  readonly runStatus: WireRunStatus | undefined
+}
+
 /** Owner share of the task-list occupant. */
 export interface InboxTasksOwnerProps {
   /** The group's projected rows. */
@@ -73,6 +85,7 @@ export interface InboxTasksOwnerProps {
   /** Select one session-less workflow-run row (its detail lives in the right column). */
   openRun: (runId: string) => void
 }
+
 
 /**
  * What the detail body occupant draws, keyed off the workbench selection
@@ -135,10 +148,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /**
      * The selected task's conversation: the single occupant draws the
      * business-language flow for the current session (the session-maybe
-     * inject parameter). An absent occupant falls back to the owner's
+     * inject parameter) with the owner-passed run status ruling the
+     * follow-up seat. An absent occupant falls back to the owner's
      * placeholder.
      */
-    'inbox.workspace.conversation': { kind: 'single'; scope: 'session' }
+    'inbox.workspace.conversation': { kind: 'single'; scope: 'session'; owner: InboxConversationOwnerProps }
     /**
      * The Agents catalog page: the single occupant draws the whole catalog
      * surface (cards + detail) inside the middle column. An absent occupant

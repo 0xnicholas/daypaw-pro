@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * ConversationView: the business-language whitelist projection, the running status
- * row, the error marker, the approval card, the disabled follow-up seat.
+ * row, the error marker, the approval card, the live follow-up steer seat.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -70,6 +70,8 @@ function mountView(
     runningCalls?: readonly RunningToolCall[]
     titles?: Record<string, string>
     sendNote?: ConversationViewProps['sendNote']
+    runStatus?: ConversationViewProps['runStatus']
+    steer?: ConversationViewProps['steer']
   } = {},
 ) {
   const session = {
@@ -97,7 +99,10 @@ function mountView(
       useInput={neverHook} inputActions={undefined as never}
       useChat={useChat}
       useSessionPendingInteraction={useSessionPendingInteraction}
-      useSessions={useSessions} useWorkspaces={neverHook}      sendNote={options.sendNote ?? (() => Promise.resolve())} t={t}
+      useSessions={useSessions} useWorkspaces={neverHook}
+      sendNote={options.sendNote ?? (() => Promise.resolve())}
+      steer={options.steer ?? (() => Promise.resolve())}
+      runStatus={options.runStatus} t={t}
     />,
   )
   return view
@@ -150,13 +155,45 @@ describe('ConversationView', () => {
     expect(screen.queryByText(/provider exploded/)).toBeNull()
   })
 
-  it('renders the empty state and keeps the follow-up seat disabled', () => {
+  it('renders the empty state and keeps the follow-up seat closed without a live run', () => {
     mountView({})
     expect(screen.getByText('暂无对话内容')).toBeTruthy()
-    const followup = screen.getByRole('textbox', { name: '追问即将上线' })
+    const followup = screen.getByRole('textbox', { name: '追问…' })
     expect(followup).toHaveProperty('disabled', true)
-    fireEvent.change(followup, { target: { value: '现在还不能追问' } })
-    expect(screen.getByText('暂无对话内容')).toBeTruthy()
+    expect(followup).toHaveProperty('placeholder', '任务已结束')
+  })
+
+  it('steers the run from the follow-up seat while the ledger row is unfinished (issue #94)', async () => {
+    const steer = vi.fn(() => Promise.resolve())
+    const runStatus = 'running' as const
+    mountView({ chat: chatWith([userNode('写一首诗')]), runStatus, steer })
+    const followup = screen.getByRole('textbox', { name: '追问…' })
+    expect(followup).toHaveProperty('disabled', false)
+    fireEvent.change(followup, { target: { value: '再短一点' } })
+    fireEvent.submit(followup.closest('form')!)
+    await waitFor(() => { expect(steer).toHaveBeenCalledWith('s1' as SessionId, '再短一点') })
+    // A landed steer clears the draft.
+    await waitFor(() => { expect(followup).toHaveProperty('value', '') })
+    expect(screen.queryByText('追问失败，请重试')).toBeNull()
+  })
+
+  it('keeps the draft and shows the inline failure when the steer wire call fails', async () => {
+    const steer = vi.fn(() => Promise.reject(new Error('wire down')))
+    mountView({ chat: chatWith([userNode('写一首诗')]), runStatus: 'running', steer })
+    const followup = screen.getByRole('textbox', { name: '追问…' })
+    fireEvent.change(followup, { target: { value: '再短一点' } })
+    fireEvent.submit(followup.closest('form')!)
+    await waitFor(() => { expect(screen.getByText('追问失败，请重试')).toBeTruthy() })
+    expect(followup).toHaveProperty('value', '再短一点')
+  })
+
+  it('keeps the seat closed while a steer is in flight', () => {
+    const steer = vi.fn(() => new Promise<void>(() => {}))
+    mountView({ chat: chatWith([userNode('写一首诗')]), runStatus: 'running', steer })
+    const followup = screen.getByRole('textbox', { name: '追问…' })
+    fireEvent.change(followup, { target: { value: '再短一点' } })
+    fireEvent.submit(followup.closest('form')!)
+    expect(followup).toHaveProperty('disabled', true)
   })
 
   it('skips whitelisted nodes whose content carries no text', () => {

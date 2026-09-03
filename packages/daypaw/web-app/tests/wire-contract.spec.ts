@@ -10,6 +10,7 @@ import { Context } from '@deepseek-ai/cordis'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import TypertGatewayService, { TypertGatewayError } from '@deepseek-ai/dsh-api-gateway'
 import { DurableEngine } from '@daypaw/sdk'
+import type { Json } from '@daypaw/engine'
 import { createNewTaskApi } from '@daypaw/ui-tasks/src/client/new-task-api.ts'
 
 /** One unary RPC result, structurally the dialog face's caller dependency. */
@@ -153,6 +154,96 @@ describe('new-task dialog against the live durable gateway', () => {
     const row = (await ctx.durable.listRuns()).find(run => run.run_id === started.runId)
     expect(row?.status).toBe('cancelled')
     expect(row?.cancel_cause).toBe('user abort')
+  })
+
+  it('steers a running text-kind agent through the gateway with the wire face applied (ticket #94)', async () => {
+    const ctx = await boot()
+    await ctx.durable.register({
+      kind: 'agent',
+      name: 'contract-steerable',
+      version: '1',
+      display: { title: 'Contract steerable', description: 'Parks for steer segments.' },
+      steerable: true,
+      body: async (step) => {
+        await step.awaitSteer(0)
+        return step.steers()
+      },
+      wire: {
+        inputKind: 'text',
+        parseInput: (value: unknown) => {
+          if (typeof value !== 'string') throw new Error('input must be a task string')
+          return { task: value }
+        },
+      },
+    })
+    const started = await createNewTaskApi(gatewayRpc(ctx)).startRun({
+      defName: 'contract-steerable',
+      defVersion: '1',
+      input: 'count to five',
+      runId: 'contract-steer-2',
+    })
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const row = (await ctx.durable.listRuns()).find(run => run.run_id === started.runId)
+      if (row?.status === 'running') break
+      await new Promise(resolve => setTimeout(resolve, 20))
+    }
+    // The browser follow-up seat sends the bare text through steerText; the
+    // boundary applies the definition's wire face, so the recorded segment
+    // carries the starter shape.
+    await expect(ctx.typertGateway.invoke({
+      namespace: 'durable',
+      method: 'steerText',
+      args: { runId: started.runId, text: 'stop at three' },
+    })).resolves.toBe(1)
+    const segments = (await ctx.durable.journalTimeline(started.runId))
+      .filter(entry => entry.kind === 'segment')
+    expect(segments.map(entry => entry.value_json)).toEqual(['{"task":"stop at three"}'])
+  })
+
+  it('rejects a steer whose input fails the wire contract at the boundary (ticket #94)', async () => {
+    const ctx = await boot()
+    await ctx.durable.register({
+      kind: 'agent',
+      name: 'contract-json-only',
+      version: '1',
+      display: { title: 'Contract json-only', description: 'Takes structured input only.' },
+      steerable: true,
+      body: async (step) => {
+        await step.awaitSteer(0)
+        return step.steers()
+      },
+      wire: {
+        inputKind: 'json',
+        parseInput: (value: unknown) => {
+          if (typeof value !== 'object' || value === null || !('rows' in value)) {
+            throw new Error('input must be a rows object')
+          }
+          return value as Json
+        },
+      },
+    })
+    const started = await createNewTaskApi(gatewayRpc(ctx)).startRun({
+      defName: 'contract-json-only',
+      defVersion: '1',
+      input: { rows: 1 },
+      runId: 'contract-steer-3',
+    })
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const row = (await ctx.durable.listRuns()).find(run => run.run_id === started.runId)
+      if (row?.status === 'running') break
+      await new Promise(resolve => setTimeout(resolve, 20))
+    }
+    // A free-text follow-up on a json-kind definition fails the wire contract
+    // at the boundary: nothing is recorded, so the run cannot fail later on a
+    // consumption-side validation.
+    await expect(ctx.typertGateway.invoke({
+      namespace: 'durable',
+      method: 'steerText',
+      args: { runId: started.runId, text: 'just a nudge' },
+    })).rejects.toThrow('input must be a rows object')
+    const segments = (await ctx.durable.journalTimeline(started.runId))
+      .filter(entry => entry.kind === 'segment')
+    expect(segments).toHaveLength(0)
   })
 
   it('rejects the request fields spread flat into args: the descriptor names the parameter', async () => {

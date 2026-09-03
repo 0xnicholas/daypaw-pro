@@ -764,6 +764,12 @@ export class SessionManager {
         this.sessions.get(childId)?.handleSubagentParentAvailable(false)
       }
     }
+    // A live-session disposal is not a durable deletion: the removed frame
+    // drops the row here, but the host may still serve it from persistence
+    // (an engine task's session twin detaches when its run settles, ticket
+    // #94), so one re-pull reconciles the list against that truth. A
+    // genuinely deleted session stays absent in the response.
+    void this.refreshList()
   }
 
   /**

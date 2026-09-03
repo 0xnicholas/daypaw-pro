@@ -52,7 +52,11 @@ function listState(): SessionListState {
   }
 }
 
-function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode, runs: readonly WireRun[] = []) {
+function mountWorkspace(
+  renderChild?: (call: RenderedCall) => React.ReactNode,
+  runs: readonly WireRun[] = [],
+  sessionId?: SessionId,
+) {
   const controller = new InboxSelectionController(vi.fn())
   const calls: RenderedCall[] = []
   const renderSlot: WorkspaceSwitchProps['renderSlot'] = ((key: string, owner: object, opts?: { fallback?: unknown }) => {
@@ -62,7 +66,7 @@ function mountWorkspace(renderChild?: (call: RenderedCall) => React.ReactNode, r
   }) as never
   render(
     <WorkspaceSwitch
-      sessionId={undefined}
+      sessionId={sessionId}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
@@ -169,7 +173,7 @@ describe('WorkspaceSwitch', () => {
   })
 
   it('renders the conversation slot for a task selection, falling back to the placeholder when empty', () => {
-    const { controller, calls } = mountWorkspace()
+    const { controller, calls } = mountWorkspace(undefined, [], 'a' as SessionId)
     act(() => { controller.select({ kind: 'task', sessionId: 'a' as SessionId }) })
     expect(screen.getByText('对话即将上线')).toBeTruthy()
     expect(calls.some(call => call.key === 'inbox.workspace.conversation')).toBe(true)
@@ -177,13 +181,32 @@ describe('WorkspaceSwitch', () => {
     expect(screen.queryByRole('heading')).toBeNull()
   })
 
-  it('hands the conversation occupant an empty owner share', () => {
+  it('keeps a task selection without a live session binding on the placeholder, never the strict slot (ticket #94)', () => {
     const { controller, calls } = mountWorkspace(call =>
       call.key === 'inbox.workspace.conversation' ? <div>conversation-seat</div> : null)
+    // The masked-gap shape: the session-maybe binding is undefined (the twin's
+    // removal reconcile window) while the workbench selection still says task.
+    act(() => { controller.select({ kind: 'task', sessionId: 'a' as SessionId }) })
+    expect(screen.getByText('对话即将上线')).toBeTruthy()
+    expect(calls.filter(call => call.key === 'inbox.workspace.conversation')).toHaveLength(0)
+  })
+
+  it('hands the conversation occupant the ledger run status keyed by the session identity', () => {
+    const runs: WireRun[] = [
+      { runId: 'a', defKind: 'agent', defName: 'fix-tests', status: 'waiting', parentRunId: null, outputJson: null, updatedAt: 400 },
+      { runId: 'w1', defKind: 'workflow', defName: 'close-the-books', status: 'running', parentRunId: null, outputJson: null, updatedAt: 500 },
+    ]
+    const { controller, calls } = mountWorkspace(call =>
+      call.key === 'inbox.workspace.conversation' ? <div>conversation-seat</div> : null, runs, 'a' as SessionId)
     act(() => { controller.select({ kind: 'task', sessionId: 'a' as SessionId }) })
     expect(screen.getByText('conversation-seat')).toBeTruthy()
     const conversation = calls.find(call => call.key === 'inbox.workspace.conversation')!
-    expect(conversation.owner).toEqual({})
+    // sessionId ≡ runId for agent tasks; a workflow run id never matches a
+    // session identity, and a run-less session yields undefined.
+    expect(conversation.owner).toEqual({ runStatus: 'waiting' })
+    act(() => { controller.select({ kind: 'task', sessionId: 'no-run' as SessionId }) })
+    const runLess = calls.filter(call => call.key === 'inbox.workspace.conversation').at(-1)!
+    expect(runLess.owner).toEqual({ runStatus: undefined })
   })
 
   it('lists run rows in the group containers: a workflow run rows without a session, an agent run dedupes its twin', () => {

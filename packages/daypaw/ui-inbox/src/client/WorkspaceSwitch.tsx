@@ -23,6 +23,7 @@ import type {} from './contract.ts'
 import type { InboxGroup, InboxSelection } from './selection.ts'
 import { projectInboxBoard } from './task-projection.ts'
 import type { RunsBoardState } from './runs-store.ts'
+import type { WireRunStatus } from './runs-api.ts'
 import type { InboxKey } from './locales.ts'
 import css from './WorkspaceSwitch.module.css'
 
@@ -68,7 +69,7 @@ const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
  * @returns the workspace element tree.
  */
 export function WorkspaceSwitch({
-  useSelection, useBoard, useSessions, useSessionPendingInteraction,
+  useSelection, useBoard, useSessions, useSessionPendingInteraction, sessionId,
   select, renderSlot, t,
 }: WorkspaceSwitchProps) {
   const selection = useSelection(s => s)
@@ -76,6 +77,12 @@ export function WorkspaceSwitch({
   const pending = useSessionPendingInteraction(s => s)
   const runs = useBoard(s => s.runs)
   const openTask = (sessionId: SessionId): void => { select({ kind: 'task', sessionId }) }
+  // The conversation seat's run-status owner share: the ledger row keyed by
+  // the session identity (agent runs: sessionId ≡ runId), undefined for a
+  // run-less session. Read from the board's latest poll, so a task settling
+  // re-renders the seat's follow-up input into its finished state.
+  const runStatusOf = (sessionId: SessionId): WireRunStatus | undefined =>
+    runs.find(run => run.defKind === 'agent' && run.runId === sessionId)?.status
 
   if (selection.kind === 'agents') {
     return (
@@ -108,9 +115,20 @@ export function WorkspaceSwitch({
     )
   }
   if (selection.kind === 'task') {
+    // The conversation child seat is strict-session: a task selection whose
+    // session left the list (the reconcile window after an engine twin's
+    // removal) must render the placeholder, never the strict slot — an
+    // outlet without a scope binding crashes its seat until a remount.
+    if (sessionId === undefined) {
+      return (
+        <div className={css.root}>
+          <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>
+        </div>
+      )
+    }
     return (
       <div className={css.root}>
-        {renderSlot('inbox.workspace.conversation', {}, {
+        {renderSlot('inbox.workspace.conversation', { runStatus: runStatusOf(selection.sessionId) }, {
           fallback: <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>,
         })}
       </div>

@@ -78,6 +78,15 @@ export function apply(ctx: ClientContext): void {
     if (!prompted.ok) throw new Error(prompted.error.message)
   }
 
+  // The follow-up seat's steer: the engine's free-text Remote endpoint over
+  // the connection's generic RPC channel (the dialog's startRun precedent);
+  // sessionId ≡ runId for agent tasks, and the boundary applies the
+  // definition's wire face to the bare text (issue #94).
+  const steer = async (sessionId: SessionId, text: string): Promise<void> => {
+    const result = await connection.rpc.call('/api', 'durable/steerText', { args: { runId: sessionId, text } })
+    if (!result.ok) throw new Error(result.error.message)
+  }
+
   ctx.slots.inject('inbox.new-task.dialog', () => ctx.slots.register({
     name: 'inbox.new-task.dialog',
     locale: NS,
@@ -93,7 +102,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.workspace.conversation', () => ctx.slots.register({
     name: 'inbox.workspace.conversation',
     locale: NS,
-    inject: (): ConversationViewInjected => ({ sendNote }),
+    inject: (): ConversationViewInjected => ({ sendNote, steer }),
   }, ConversationView))
   ctx.slots.inject('inbox.detail.body', () => ctx.slots.register({
     name: 'inbox.detail.body',

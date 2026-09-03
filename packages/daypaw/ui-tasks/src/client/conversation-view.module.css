@@ -1,6 +1,6 @@
 /* Task conversation view: the business-language flow over the workspace base
-   fill (owner-provided), a top running-status row, and the disabled follow-up
-   input seat at the foot. */
+   fill (owner-provided), a top running-status row, and the follow-up seat
+   (live while the run is unfinished) at the foot. */
 
 .root {
   display: flex;
@@ -80,4 +80,11 @@
 
 .followup > * {
   width: 100%;
+}
+
+.followupError {
+  margin: var(--dp-space-2) 0 0;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 12px;
+  line-height: 16px;
 }

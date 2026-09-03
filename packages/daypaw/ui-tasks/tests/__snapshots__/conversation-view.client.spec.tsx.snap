@@ -37,21 +37,21 @@ exports[`ConversationView > matches the mixed-flow snapshot 1`] = `
         出错了
       </div>
     </div>
-    <div
+    <form
       class="_followup_79f15d"
     >
       <span
         class="_wrap_759a2d"
       >
         <input
-          aria-label="追问即将上线"
+          aria-label="追问…"
           class="_input_759a2d"
           disabled=""
-          placeholder="追问即将上线"
+          placeholder="任务已结束"
           value=""
         />
       </span>
-    </div>
+    </form>
   </div>
 </div>
 `;
