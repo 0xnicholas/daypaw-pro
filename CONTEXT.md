@@ -1,6 +1,6 @@
 # CONTEXT.md — daypaw-pro 领域词汇表
 
-> 纯词汇表：术语与边界，不含实现细节。架构决策见 `docs/adr/`，进行中的规划见 wayfinder maps（issue #1、#20、#35），架构现状总结报告见 `docs/reports/`。
+> 纯词汇表：术语与边界，不含实现细节。架构决策见 `docs/adr/`，进行中的规划见 wayfinder maps（issue #1、#95；已收官 #20、#35、#77），架构现状总结报告见 `docs/reports/`。
 
 ## 词汇
 

@@ -1,10 +1,10 @@
 # 第 5 章：产品壳（Product Shell）
 
-> 状态：**完整章**（map #35 收官章——路线、IA、词汇、交付、后端缺口、权限、品牌全部裁决完毕，可移交实施）。决策依据（全部为 issue resolution，无对应 ADR）：[map #35](https://github.com/0xnicholas/daypaw-pro/issues/35)（域图与范围）、[#36](https://github.com/0xnicholas/daypaw-pro/issues/36)（路线 B 与复用边界）、[#39](https://github.com/0xnicholas/daypaw-pro/issues/39)（IA）、[#40](https://github.com/0xnicholas/daypaw-pro/issues/40)（词汇映射）、[#41](https://github.com/0xnicholas/daypaw-pro/issues/41)（交付集成）、[#44](https://github.com/0xnicholas/daypaw-pro/issues/44)（后端缺口闭合）、[#45](https://github.com/0xnicholas/daypaw-pro/issues/45)（设置 IA 与首跑）、[#46](https://github.com/0xnicholas/daypaw-pro/issues/46)（权限模型）、[#48](https://github.com/0xnicholas/daypaw-pro/issues/48)（视觉品牌）。交付分层与版本契约的上位约束：[ADR 0011](../adr/0011-customer-self-run-delivery.md)。章节状态索引见 [README](README.md)。
+> 状态：**完整章**（map #35 收官章——路线、IA、词汇、交付、后端缺口、权限、品牌全部裁决完毕，可移交实施；定位经 [map #95](https://github.com/0xnicholas/daypaw-pro/issues/95) 重审为双模式分层，见 [ADR 0013](../adr/0013-positioning-review-dual-mode.md)，修订已并入 §1/§3/§4/§6/§8）。决策依据：[map #35](https://github.com/0xnicholas/daypaw-pro/issues/35)（域图与范围）、[#36](https://github.com/0xnicholas/daypaw-pro/issues/36)（路线 B 与复用边界）、[#39](https://github.com/0xnicholas/daypaw-pro/issues/39)（IA）、[#40](https://github.com/0xnicholas/daypaw-pro/issues/40)（词汇映射）、[#41](https://github.com/0xnicholas/daypaw-pro/issues/41)（交付集成）、[#44](https://github.com/0xnicholas/daypaw-pro/issues/44)（后端缺口闭合）、[#45](https://github.com/0xnicholas/daypaw-pro/issues/45)（设置 IA 与首跑）、[#46](https://github.com/0xnicholas/daypaw-pro/issues/46)（权限模型）、[#48](https://github.com/0xnicholas/daypaw-pro/issues/48)（视觉品牌）；定位重审：[#95](https://github.com/0xnicholas/daypaw-pro/issues/95)（双模式分层）、[#98](https://github.com/0xnicholas/daypaw-pro/issues/98)（轻对话）、[#99](https://github.com/0xnicholas/daypaw-pro/issues/99)（定位裁决）、[#100](https://github.com/0xnicholas/daypaw-pro/issues/100)（能力面与单壳分层）。交付分层与版本契约的上位约束：[ADR 0011](../adr/0011-customer-self-run-delivery.md)。章节状态索引见 [README](README.md)。
 
 ## 1. 定位与范围
 
-产品壳 = 面向非技术业务用户的完整产品前端（不是开发者工具，也不是支柱③ Agent Manager 的复活）：用户用 agent 干活——发任务、看进度、批审批、管理 agent 目录与设置。四个产品板块：**agent 对话、任务进度、审批待办、agent 目录与设置**（IA 落位见 §3——对话即中栏工作区）。交付形态 = 随 `@daypaw/cli` 自含 npm 包自跑（[ADR 0011](../adr/0011-customer-self-run-delivery.md) 两层分层的 CLI 层）；ADR 0011 本身不含 web UI 承诺，本章是该承诺的落点。范围外（map #35 out-of-scope）：Manager 的运营观测面（trace/timeline/fleet 深度工具）、EVO 界面、多租户托管部署与认证体系。
+**双模式分层**（[ADR 0013](../adr/0013-positioning-review-dual-mode.md)，定位重审 [#99](https://github.com/0xnicholas/daypaw-pro/issues/99)）：daypaw = 「持久执行 + agent 的日常驾驶舱」——技术用户（自用 + 技术客户）使用全能力面（专业视图、工具套件）；业务语言壳为默认皮肤与对外交付形态，客户构成混合/过渡（技术型为主、向业务侧长）。用户用 agent 干活——发任务或直接对话、看进度、批审批、管理 agent 目录与设置。产品板块维持四个：**agent 对话、任务进度、审批待办、agent 目录与设置**（IA 落位见 §3）。交付形态 = 随 `@daypaw/cli` 自含 npm 包自跑（[ADR 0011](../adr/0011-customer-self-run-delivery.md) 两层分层的 CLI 层）；ADR 0011 本身不含 web UI 承诺，本章是该承诺的落点。范围外：新建 Manager 运营观测面（ADR 0009 远期子项目；单壳分层的专业视图只消费现有上游面，见 §3）、EVO 界面、多租户托管部署与认证体系。
 
 ## 2. 词汇映射（裁决 [#40](https://github.com/0xnicholas/daypaw-pro/issues/40)）
 
@@ -27,8 +27,8 @@
 
 IA 定案 = **变体 C 收件箱工作台**，三栏：
 
-- **左栏（导航）**：最显眼元素 = 大「+ 新任务」按钮（点击弹 agent 选择面板）；其下收件箱式分组「等待你确认 / 进行中 / 已完成」（含计数）；底部次要导航 = Agents、设置。
-- **中栏（工作区）**：当前选中项的工作区——进行中的任务显示对话流，待确认任务的审批卡置顶。
+- **左栏（导航）**：最显眼元素 = 大「+ 新任务」按钮（点击弹 agent 选择面板）；其旁「直接和助手聊」轻对话入口（普通会话不经引擎 run，[#98](https://github.com/0xnicholas/daypaw-pro/issues/98) 接回——任务与对话并列入口）；其下收件箱式分组「等待你确认 / 进行中 / 已完成」（含计数）；底部次要导航 = Agents、设置。
+- **中栏（工作区）**：当前选中项的工作区——进行中的任务显示对话流，待确认任务的审批卡置顶。**单壳分层**（[#100](https://github.com/0xnicholas/daypaw-pro/issues/100)）：无全局模式开关，专业面按需展开——trajectory 事件账本作检查器 tab（上游 view-ring 一席）、verbatim 工具卡即专业展开层，业务默认语言不变。
 - **右栏（详情）**：选中任务的详情——进度、子任务内嵌（spawn 子任务单列一节）、产出物、审批历史。
 
 四板块落位：审批待办 = 收件箱顶部分组（跨任务聚合，不是独立主导航项）；任务进度 = 收件箱的进行中/已完成分组；agent 目录 = 次要导航页 + 新任务弹窗；设置 = 次要导航页。板块联动：审批卡同意/拒绝 → 任务从「等待你确认」回到「进行中」；点收件箱条目 → 中栏切到该任务对话；对话内产生的审批实时进收件箱顶部分组。三栏骨架由 `ui-layout` 整包复用供给（§4）。
@@ -56,8 +56,8 @@ IA 定案 = **变体 C 收件箱工作台**，三栏：
 | ui-input-trigger | 整包保留 | 同上 |
 | ui-skill | 整包保留 | 同上 |
 | ui-model-selection | 整包沿用 dsh 形态 | 与「非技术业务用户」画像的张力挂 §8 对账 |
-| ui-user-questions | 重写 | 审批 = 跨任务待办收件箱 + 对话内即时卡双呈现；pending 重放等机械由复用侧 connection/apiproxy 供给，后端零新面 |
-| ui-deliverables | 进 v1，重写 | run 详情产出物区；识别依据从工具 render intent 换成 run `output_json` |
+| ui-user-questions | 原样复用 | 定位重审 [#100](https://github.com/0xnicholas/daypaw-pro/issues/100) 取消 #36 重写裁决（形态中性，原样即专业面）；业务皮肤化挂账待客户反馈 |
+| ui-deliverables | 进 v1，原样复用 | 同上（#36 重写取消） |
 | ui-jobs | 不进 v1 | dsh 进程内 jobs ≠ durable run；壳词汇只认 run |
 | ui-message-feedback | 不进 v1 | EVO 远期；宿主侧关联层已接，捡回零成本 |
 | ui-settings-general | 收口 | ledger 机械留、壳体重画，见 §3 |
@@ -96,6 +96,7 @@ host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjec
 
 - **用户形态 = 单操作者无身份**：谁打开浏览器谁就是操作者，无登录、无身份、无归因；与自跑 LAN 信任栅栏及上游 `/api` 既有假设一致，零新面。
 - **人设不切**：设置页单面（§3），运营向项（模型选择、凭据/provider 配置）平铺不藏不分层；v1 假设操作者 = 部署者本人（或小团队技术最熟者）。未来真人设需求出现时，「我的偏好」是单面页的自然子集，不返工。
+- **能力底座全开**（[ADR 0013](../adr/0013-positioning-review-dual-mode.md)；执行票 [#103](https://github.com/0xnicholas/daypaw-pro/issues/103)）：模型侧工具行（bash/fs/web/subagent/jobs/goal/workflow…）整组启用；工具开放后的唯一防线 = 下述保守审批默认，须实测审批闭环（此前工具全禁使审批面无触发源、长期空转）。
 - **`ui-permission-presets` 不进 v1**：权限预设切换 UI 不随壳交付。壳固定保守默认策略 = 敏感操作（文件写入/命令执行等）必审批，与审批待办板块（§3 收件箱 + 对话内卡，§2 同意/拒绝文案）闭环；策略可调性待运营面成型或真实客户要求再立案。
 
 推论：v1 壳内不存在「权限」概念的用户可见面；**安全模型 = 审批待办板块本身**。共享实例/多用户与认证体系绑定，属 map out-of-scope（§8）。
@@ -116,5 +117,6 @@ host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjec
 - **通知**：任务完成、审批待办的站外触达未裁决；v1 壳内触达 = 收件箱分组计数 + 对话内审批卡。
 - **多用户 / 认证**：共享实例形态与认证体系绑定，随托管部署留未来（map out-of-scope，§6）。
 - **审批策略可调性**：固定保守默认之外的策略面待立案（§6）。
-- **`ui-model-selection` 用户叙事对账**：dsh 完整形态与「非技术业务用户」画像的张力，写用户叙事时复核（#36 挂账）。
+- **语言化窄面**（ADR 0013 挂账、使用驱动）：工具卡业务原子视图（`tool.call.toolview` 槽逐工具做）、设置高级区残差（`settings.section` 槽放开 + 本地配置动作）。
+- **技术型客户的具体需求与交付形态**：定位重审 #95 遗留雾区，待面清单落地后的真实使用回访。
 - **`ctx.waitFor` 落地后的语义升级**：「等待人审批的 run」业务呈现随原语落地升级（§5，引擎票 #47）。
