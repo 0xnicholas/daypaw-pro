@@ -47,3 +47,5 @@ None; this package neither assembles nor sends a provider request.
 - **Workflow-run selections leave session-bound sections empty** — a workflow run has no session, so under the stale-seat guard its 进度 falls back to the journal step timeline and 审批历史 renders its empty state.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The plugin is pure presentation: its only state is the apply-closure new-task store asserted directly by this package's apply/component specs; it emits no Cordis events and owns no durable or cross-plugin mutable state.

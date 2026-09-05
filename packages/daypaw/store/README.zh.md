@@ -56,3 +56,5 @@ daypaw 引擎 ledger 的共享 SQLite 契约。本包拥有物理布局——sch
 - **不独立发布** —— 本包随 `@daypaw/sdk` tarball vendored 分发（ADR 0011）。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。本包只有数据形状（常量、行类型、open/migrate）；全部状态机归 engine 包所有，并在其故障注入套件中断言。

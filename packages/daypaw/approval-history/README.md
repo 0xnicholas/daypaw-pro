@@ -46,3 +46,5 @@ None — the projection is never part of a live request prefix.
 - **No per-call granularity** — one entry per ask; an ask spanning multiple tool calls (no `callId`) is a single row, and the `callId` of a specific call is recoverable only from the log itself.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The projection fold is pure and its wire payload is schema-validated by the projection registry at every emission; the approval-decided-follows-asked relation belongs to dsh-user-approval's event stream, and this package produces no independent observations of its own.

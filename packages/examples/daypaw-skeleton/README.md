@@ -89,3 +89,5 @@ None: the demo adds no request-prefix content.
 - **Host is a demo** — argument parsing and the effects log exist for the SIGKILL suite; real hosts compose their own Cordis application with the same plugin row.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The demo owns no independent event stream or mutable data; the SIGKILL and snapshot suites cover its durable behavior.

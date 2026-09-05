@@ -81,7 +81,8 @@ None — the ledger is never part of a live request prefix.
 - **No cross-process liveness** — a claim held by another *live* process is stealable at boot scan (dead-claim reassignment needs no heartbeats by design, ADR 0002 §2); two concurrently-driving processes on one ledger are outside v1's operating envelope.
 - **Attach never drives** — a run found unfinished and not driven here is polled; revival happens in processes whose boot scan runs after the definition registers.
 - **`RunOptions.meta` is not persisted** — the skeleton's `runs` table has no meta column; meta lives on the in-process handle only.
-- **Runtime invariant companion is a placeholder** — the core deliberately keeps no Cordis event stream to hook; the run/journal/promise state machines are asserted by the fault-injection suite at every append point (spec ch.1 §9).
 - **Not independently published** — the engine ships vendored inside the `@daypaw/sdk` tarball (ADR 0011); consumers import its faces through `@daypaw/sdk`.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The core is deliberately Cordis-free — no event stream exists to hook (backend-gaps ruling, gap 2) — and the run/journal/promise state machines are asserted by the fault-injection suite at every append point (spec ch.1 §9).

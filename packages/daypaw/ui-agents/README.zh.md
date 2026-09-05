@@ -43,3 +43,5 @@ daypaw agent 目录页——fork 客户端 UI 插件，占 [`@daypaw/ui-inbox`](
 - **无注册表变更失效推送**——名册每次挂载只加载一次；首次加载后绑定的定义在下一次打开页面时才出现，注册表没有推送式失效通道。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。本插件是纯表现层：唯一状态是 apply 闭包内的目录 store，由本包 apply/component spec 直接断言；不 emit Cordis 事件，也不持有 durable 或跨插件可变状态。

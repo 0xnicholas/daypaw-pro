@@ -39,3 +39,5 @@ The prompt section sits near the system prompt's head and is stable for the life
 - **The managed URL variable keeps the `DSH_WEB_URL` name** — spec §4 rules a `DAYPAW_WEB_URL` rename, but managed shell variables live in the reserved `DSH_*` namespace ([`dsh-subprocess`](../../subprocess/subprocess/README.md) strips ambient `DSH_*` and [`dsh-shell-env`](../../shell/shell-env/README.md) rejects other prefixes at registration), so the rename requires widening that upstream contract first.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. Every contribution (frontend-static child plugin, prompt section, bashEnv registration) is registry-disposed with the fiber, and each owning registry's package carries that relation's invariant; the package holds no mutable state of its own.

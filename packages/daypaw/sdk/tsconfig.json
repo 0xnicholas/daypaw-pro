@@ -9,7 +9,6 @@
   ],
   "references": [
     { "path": "../../../vendor/cordis" },
-    { "path": "../../../packages/runtime-diagnostics/invariants" },
     { "path": "../../../packages/core/agent" },
     { "path": "../../../packages/core/session" },
     { "path": "../../../packages/core/system-prompt" },

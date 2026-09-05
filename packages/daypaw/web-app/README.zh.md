@@ -39,3 +39,5 @@ daypaw 浏览器表层组合包：[`@deepseek-ai/dsh-web-app`](../../bundle/web-
 - **受管 URL 变量仍名 `DSH_WEB_URL`**：spec §4 裁决了 `DAYPAW_WEB_URL` 改名，但受管 shell 变量生活在保留的 `DSH_*` 命名空间（[`dsh-subprocess`](../../subprocess/subprocess/README.zh.md) 剥离环境里的 `DSH_*`，[`dsh-shell-env`](../../shell/shell-env/README.zh.md) 注册时拒绝其他前缀），改名须先放宽该上游契约。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。每项贡献（frontend-static 子插件、prompt 节、bashEnv 注册）都随 fiber 由所属注册表拆卸，各关系的 invariant 由注册表所在包承载；本包自身无可变状态可查。

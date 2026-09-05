@@ -46,3 +46,5 @@ None; this package neither assembles nor sends a provider request.
 - **Upstream conversation/details occupants are shadowed, not removed** — ui-conversation's roster row stays mounted (its declared seats serve the dormant placeholder ecosystem); this package wins both cells at priority -1, and removing the upstream row is a later board decision.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The plugin is pure presentation: its selection and run stores are asserted directly by this package's apply/component specs, it emits no Cordis events, and the engine ledger it polls remains the fact source.

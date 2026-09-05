@@ -1,3 +1,3 @@
 import { clientBundle } from '../../client/tsdown.client.ts'
 
-export default clientBundle('@daypaw/ui-settings', ['lib/types/index.js', 'lib/types/invariant.js'])
+export default clientBundle('@daypaw/ui-settings', ['lib/types/index.js'])

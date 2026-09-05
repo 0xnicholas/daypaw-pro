@@ -43,3 +43,5 @@ None; this package neither assembles nor sends a provider request.
 - **No registry-change invalidation** — the roster loads once per mount; definitions bound after the first load appear on the next page open, and there is no pushed invalidation channel for the registry.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The plugin is pure presentation: its only state is the apply-closure catalog store asserted directly by this package's apply/component specs; it emits no Cordis events and owns no durable or cross-plugin mutable state.

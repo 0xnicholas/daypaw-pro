@@ -56,3 +56,5 @@ None — the ledger is never part of a live request prefix.
 - **Not independently published** — the store ships vendored inside the `@daypaw/sdk` tarball (ADR 0011).
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The package is data-shape only (constants, row types, open/migrate); the engine package owns every state machine and asserts them in its fault-injection suite.

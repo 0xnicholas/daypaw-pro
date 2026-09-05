@@ -46,3 +46,5 @@ daypaw 壳 IA 骨架（收件箱工作台），fork 的 client UI 插件，包�
 - **上游 conversation/details 占据者是遮蔽而非移除**——ui-conversation 的 roster 行保持挂载（其声明的席位服务休眠占位生态）；本包以优先级 -1 赢得两个单元格，移除上游行是后续板块决策。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。本插件是纯表现层：选择与 run store 由本包 apply/component spec 直接断言；不 emit Cordis 事件；其轮询的 engine ledger 始终是事实源。

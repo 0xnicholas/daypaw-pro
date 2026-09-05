@@ -81,7 +81,8 @@ step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间
 - **无跨进程存活检测** —— boot 扫描可夺走另一*活体*进程的认领（死认领重指派按设计无需心跳，ADR 0002 §2）；两进程并发驱动同一 ledger 在 v1 操作包络之外。
 - **attach 永不驱动** —— 发现未完且本进程未驱动的 run 只轮询；复活发生在定义登记后跑过 boot 扫描的进程里。
 - **`RunOptions.meta` 不落盘** —— 走骨 `runs` 表无 meta 列；meta 只存在于进程内句柄上。
-- **运行时 invariant 伴随包是占位** —— core 保持无 Cordis 事件流的形态（无流可挂）；run/journal/promise 状态机由故障注入套件逐 append 点断言（spec 第 1 章 §9）。
 - **不独立发布** —— 引擎随 `@daypaw/sdk` tarball vendored 分发（ADR 0011）；消费方经 `@daypaw/sdk` import 其面。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。core 刻意保持无 Cordis 形态——没有可挂的事件流（backend-gaps 裁决 gap-2）；run/journal/promise 状态机由故障注入套件逐 append 点断言（spec 第 1 章 §9）。

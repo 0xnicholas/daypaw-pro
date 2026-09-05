@@ -47,3 +47,5 @@ daypaw 的任务面，fork 的 client UI 插件，占据 [`@daypaw/ui-inbox`](..
 - **选中 workflow run 时绑定 session 的区块为空**——workflow run 没有 session，陈旧席位守卫下其「进度」回落到 journal step 时间线，「审批历史」渲染空态。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。本插件是纯表现层：唯一状态是 apply 闭包内的新任务 store，由本包 apply/component spec 直接断言；不 emit Cordis 事件，也不持有 durable 或跨插件可变状态。

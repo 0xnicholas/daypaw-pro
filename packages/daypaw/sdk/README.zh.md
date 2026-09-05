@@ -18,11 +18,11 @@ daypaw durable 引擎的类型化 facade：`defineWorkflow` 声明代码编排 r
 ## 安装
 
 ```sh
-npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 @deepseek-ai/dsh-invariants@~0.1.0-rc.3 zod@^4.4.3
+npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 zod@^4.4.3
 npm i -D @types/node
 ```
 
-tarball 自包含：`@daypaw/engine` 与 `@daypaw/store` 随包 vendored（[ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)）。peer 是消费方自备的单例——`@deepseek-ai/cordis` 与 `@deepseek-ai/dsh-invariants` 从上游 npm 发布解析，`zod` 为定义契约提供类型。typecheck 需要 `@types/node`：vendored 的 engine/store 声明引用了 `node:sqlite`。
+tarball 自包含：`@daypaw/engine` 与 `@daypaw/store` 随包 vendored（[ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)）。peer 是消费方自备的单例——`@deepseek-ai/cordis` 从上游 npm 发布解析，`zod` 为定义契约提供类型。typecheck 需要 `@types/node`：vendored 的 engine/store 声明引用了 `node:sqlite`。
 
 ## API
 
@@ -134,3 +134,5 @@ prompt 段与工具表按定义稳定，一个 run 的请求共享一个前缀�
 - **`@daypaw/engine` / `@daypaw/store` 不独立发布** —— 随本 tarball vendored（ADR 0011）；经本包 import 其面，绝不直接引用。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。facade 自身无状态；全部 ledger 状态机都在 `@daypaw/engine`。

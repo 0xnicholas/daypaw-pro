@@ -1,19 +1,26 @@
 /**
  * Package-invariant companion discovery and structural checks.
- * The runtime registry stays product-independent; this gate makes ownership
- * exhaustive across packages without centralizing package checks.
+ * The runtime registry stays product-independent; this gate keeps each
+ * published companion complete and requires an omitted companion to carry
+ * its package-specific README reason. Explained-empty installers stay
+ * accepted until the upstream companion cleanup (upstream 15f2997bcb)
+ * arrives with the next sync and deletes the pre-cleanup companions.
  */
 
 import { existsSync, globSync, readFileSync } from 'node:fs'
 import { dirname, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
 
-/** Required explanation marker for an intentionally empty installer. */
+/** Explanation marker an intentionally empty installer must carry until the
+ * upstream companion cleanup deletes the pre-cleanup explained-empty set. */
 const NO_RUNTIME_INVARIANT_MARKER = 'No runtime invariant:'
+
+/** Package README sentence that records why an invariant companion is omitted. */
+const OMITTED_COMPANION_REASON = /No (?:(?:runtime )?invariant )?companion is published(?: because|[.:;—])\s+\S/i
 
 interface PackageManifest {
   name?: string
-  exports?: Record<string, { types?: string; default?: string } | string | undefined>
+  exports?: Record<string, { types?: string; default?: string } | string | null | undefined>
   files?: string[]
   peerDependencies?: Record<string, string>
   devDependencies?: Record<string, string>
@@ -33,8 +40,14 @@ export interface PackageInvariantViolation {
   readonly message: string
 }
 
-/** Discover every package under the repository package tree. */
+/** Discover packages that own an invariant companion. */
 export function packageInvariantOwners(root: string): PackageInvariantOwner[] {
+  return packageInvariantPackages(root)
+    .filter(owner => existsSync(resolve(root, owner.sourcePath)))
+}
+
+/** Discover every package under the repository package tree. */
+function packageInvariantPackages(root: string): PackageInvariantOwner[] {
   return globSync('packages/*/*/package.json', { cwd: root })
     .map(path => path.split(sep).join('/'))
     .sort()
@@ -56,11 +69,16 @@ export function packageInvariantOwners(root: string): PackageInvariantOwner[] {
 /** Return all violations of the package-invariant companion rules. */
 export function collectPackageInvariantViolations(root: string): PackageInvariantViolation[] {
   const violations: PackageInvariantViolation[] = []
-  for (const owner of packageInvariantOwners(root)) {
+  for (const owner of packageInvariantPackages(root)) {
     const manifest = readManifest(resolve(root, owner.manifestPath))
-    checkManifest(owner, manifest, violations)
-    checkBuild(owner, root, violations)
-    checkSource(owner, root, violations)
+    const hasCompanion = existsSync(resolve(root, owner.sourcePath))
+    checkManifest(owner, manifest, hasCompanion, violations)
+    checkBuild(owner, root, hasCompanion, violations)
+    if (hasCompanion) {
+      checkSource(owner, root, violations)
+    } else {
+      checkOmissionReason(owner, root, violations)
+    }
   }
   return violations
 }
@@ -80,10 +98,29 @@ function addViolation(
 function checkManifest(
   owner: PackageInvariantOwner,
   manifest: PackageManifest,
+  hasCompanion: boolean,
   violations: PackageInvariantViolation[],
 ): void {
   const invariantExport = manifest.exports?.['./invariant']
+  if (!hasCompanion) {
+    if (invariantExport !== undefined) {
+      addViolation(
+        violations,
+        owner.manifestPath,
+        'exports["./invariant"] must be omitted when src/invariant.ts is absent',
+      )
+    }
+    if (manifest.files?.includes('lib/invariant.js')) {
+      addViolation(
+        violations,
+        owner.manifestPath,
+        'files must omit lib/invariant.js when src/invariant.ts is absent',
+      )
+    }
+    return
+  }
   if (typeof invariantExport !== 'object'
+    || invariantExport === null
     || invariantExport.types !== './lib/types/invariant.d.ts'
     || invariantExport.default !== './lib/invariant.js') {
     addViolation(
@@ -96,11 +133,7 @@ function checkManifest(
     addViolation(violations, owner.manifestPath, 'files must publish lib/invariant.js')
   }
   if (owner.packageName === '@deepseek-ai/dsh-invariants') return
-  // ADR 0011: @daypaw/sdk publishes with the consumer-facing npm peer range;
-  // its workspace wiring lives in devDependencies, checked below.
-  const npmPeerPackages = new Set(['@daypaw/sdk'])
-  if (!npmPeerPackages.has(owner.packageName)
-    && manifest.peerDependencies?.['@deepseek-ai/dsh-invariants'] !== 'workspace:^') {
+  if (manifest.peerDependencies?.['@deepseek-ai/dsh-invariants'] !== 'workspace:^') {
     addViolation(
       violations,
       owner.manifestPath,
@@ -119,10 +152,12 @@ function checkManifest(
 function checkBuild(
   owner: PackageInvariantOwner,
   root: string,
+  hasCompanion: boolean,
   violations: PackageInvariantViolation[],
 ): void {
   const tsconfigPath = `${owner.dir}/tsconfig.json`
-  if (owner.packageName !== '@deepseek-ai/dsh-invariants'
+  if (hasCompanion
+    && owner.packageName !== '@deepseek-ai/dsh-invariants'
     && !projectReferencesInvariants(root, owner.dir, tsconfigPath)) {
     addViolation(
       violations,
@@ -134,8 +169,31 @@ function checkBuild(
   const configPath = `${owner.dir}/tsdown.config.ts`
   if (!existsSync(resolve(root, configPath))) return
   const source = readFileSync(resolve(root, configPath), 'utf8')
-  if (!source.includes('lib/types/invariant.js')) {
+  const bundlesCompanion = source.includes('lib/types/invariant.js')
+  if (hasCompanion && !bundlesCompanion) {
     addViolation(violations, configPath, 'package build override must bundle lib/types/invariant.js')
+  } else if (!hasCompanion && bundlesCompanion) {
+    addViolation(
+      violations,
+      configPath,
+      'package build override must omit lib/types/invariant.js when src/invariant.ts is absent',
+    )
+  }
+}
+
+function checkOmissionReason(
+  owner: PackageInvariantOwner,
+  root: string,
+  violations: PackageInvariantViolation[],
+): void {
+  const readmePath = `${owner.dir}/README.md`
+  const absolutePath = resolve(root, readmePath)
+  if (!existsSync(absolutePath) || !OMITTED_COMPANION_REASON.test(readFileSync(absolutePath, 'utf8'))) {
+    addViolation(
+      violations,
+      readmePath,
+      'omitted companion requires a package-specific "No ... companion is published" reason',
+    )
   }
 }
 

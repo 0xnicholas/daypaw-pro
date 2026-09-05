@@ -18,11 +18,11 @@ The typed facade over the daypaw durable engine: `defineWorkflow` declares a cod
 ## Install
 
 ```sh
-npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 @deepseek-ai/dsh-invariants@~0.1.0-rc.3 zod@^4.4.3
+npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 zod@^4.4.3
 npm i -D @types/node
 ```
 
-The tarball is self-contained: `@daypaw/engine` and `@daypaw/store` ship vendored inside it ([ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)). The peers are the consumer-supplied singletons — `@deepseek-ai/cordis` and `@deepseek-ai/dsh-invariants` resolve from upstream's npm releases, and `zod` types the definition contracts. `@types/node` is required for typechecking: the vendored engine and store declarations reference `node:sqlite`.
+The tarball is self-contained: `@daypaw/engine` and `@daypaw/store` ship vendored inside it ([ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)). The peers are the consumer-supplied singletons — `@deepseek-ai/cordis` resolves from upstream's npm releases, and `zod` types the definition contracts. `@types/node` is required for typechecking: the vendored engine and store declarations reference `node:sqlite`.
 
 ## API
 
@@ -134,3 +134,5 @@ Prompt segments and the tool list are stable per definition, so a run's requests
 - **`@daypaw/engine` / `@daypaw/store` are not independently published** — they ship vendored inside this tarball (ADR 0011); import their faces through this package, never directly.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The facade owns no state of its own; every ledger state machine lives in `@daypaw/engine`.

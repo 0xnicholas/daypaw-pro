@@ -46,3 +46,5 @@ daypaw 浏览器壳的 session 投影单元 `approvalHistory`。本插件把 [`@
 - **无逐调用粒度** —— 每次询问一条；跨多个工具调用的询问（无 `callId`）是单行，具体调用的 `callId` 只能从日志本身取回。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。投影折叠是纯函数，其 wire 载荷在每次快照与变更流发布时由投影注册表做 schema 校验；「decided 必随 asked」的事件关系属 dsh-user-approval 的事件流所有，本包自身不产生可独立对照的观测。

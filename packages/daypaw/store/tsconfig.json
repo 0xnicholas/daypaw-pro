@@ -8,7 +8,6 @@
     "src"
   ],
   "references": [
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../../packages/runtime-diagnostics/invariants" }
+    { "path": "../../../vendor/cordis" }
   ]
 }

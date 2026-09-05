@@ -89,3 +89,5 @@ The agent demo drives a real dsh agent loop over the durable engine: the session
 - **宿主是演示** —— 参数解析与 effects 日志为 SIGKILL 套件存在；真实宿主以同一插件行组装自己的 Cordis 应用。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。demo 不持有独立事件流或可变数据；其 durable 行为由 SIGKILL 与快照套件覆盖。

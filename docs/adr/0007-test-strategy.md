@@ -16,7 +16,7 @@
 
 - unit（`pnpm test`，含 daypaw 套件）/ coverage 门（CI lane）/ with-key e2e（无 key 自跳）/ keyless snapshot（canonical example 拥有）四层照搬；上游 web 浏览器车道 daypaw v1 不建（本地手测 + jsdom，升格条件待观察）。
 - **daypaw 重套件留在 `pnpm test`**：同步仪式的诚实性优先——凡 sync 时要绿的测试就是平时要跑的测试。上游 coverage-exempt 重套件机制能免则免（每次使用 = core touch）。
-- **invariant companion 为硬约定**：每个跑 cordis 插件测试的 daypaw 包必须带 `src/invariant.ts`（glob 自动接入上游不变量宿主；缺文件直接 throw）。
+- **invariant companion 按「独立观测才发布」裁剪**（2026-09-03 修订，[#87](https://github.com/0xnicholas/daypaw-pro/issues/87)：上游 `15f2997bcb` 把「无谓 invariant 伴生物」判为反模式并删除 207 个空壳）：fork 家族（含 daypaw-skeleton）的空壳 companion 全数移除，包 README 各自记因；daypaw 包测试继续自动接入上游不变量宿主——companion 缺席时宿主只降级为 service-only（上游同步后的形态）。原「硬约定」表述作废。
 
 ### 3. 真实入口路径：全套沿用
 

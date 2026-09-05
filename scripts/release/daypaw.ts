@@ -46,10 +46,10 @@ const OUT_DIR = resolve(root, 'dist-daypaw')
 
 /**
  * Peer packages the published `@daypaw/sdk` deliberately does NOT bundle:
- * the consumer supplies them (cordis/invariants singletons, zod contracts),
+ * the consumer supplies them (the cordis singleton, zod contracts),
  * resolved from upstream's npm releases (ADR 0011 §2 addendum).
  */
-const SDK_EXTERNAL_PEERS = ['@deepseek-ai/cordis', '@deepseek-ai/dsh-invariants', 'zod'] as const
+const SDK_EXTERNAL_PEERS = ['@deepseek-ai/cordis', 'zod'] as const
 
 /** The two publishable packages and their deploy filters. */
 const PACKAGES = [
@@ -428,9 +428,11 @@ class DaypawRelease {
     // zod ships unbundled even when staged (the consumer supplies it, per the
     // ADR 0011 addendum): a bundled copy beside the consumer's install is a
     // second zod identity whose identical-looking types no longer unify. The
-    // cordis/invariants singletons keep their staged workspace copies bundled —
-    // the facade's declarations type against those, and the 2026-08-29 release
-    // proved this shape against a registry consumer.
+    // cordis singleton keeps its staged workspace copy bundled — the facade's
+    // declarations type against it — and dsh-invariants arrives through the
+    // vendored closure members' peers (retired from the sdk's own peers with
+    // its invariant companion, ticket #87); the 2026-08-29 release proved the
+    // bundled-external-peer shape against a registry consumer.
     const bundled = key === 'cli'
       ? [...installed.keys()].sort()
       : [...installed.keys()].filter(name => name !== 'zod').sort()
@@ -564,7 +566,6 @@ class DaypawRelease {
       dependencies: {
         '@daypaw/sdk': `file:${tarball}`,
         '@deepseek-ai/cordis': '~4.0.1',
-        '@deepseek-ai/dsh-invariants': '~0.1.0-rc.3',
         'zod': pins.zod ?? '',
       },
       devDependencies: {

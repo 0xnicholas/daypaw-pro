@@ -46,3 +46,5 @@ None — the package never touches live request prefixes.
 - **Publish path untested without `NPM_TOKEN`** — the release workflow's publish job needs the secret configured; the pack path is the gated one.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The package is the closure manifest and `bin.mjs` shim for the self-contained CLI tarball; every runtime state machine lives in the vendored `@deepseek-ai/*` packages of the closure.

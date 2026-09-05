@@ -30,9 +30,6 @@
       "path": "../ui-inbox"
     },
     {
-      "path": "../../runtime-diagnostics/invariants"
-    },
-    {
       "path": "../../client/store"
     }
   ]

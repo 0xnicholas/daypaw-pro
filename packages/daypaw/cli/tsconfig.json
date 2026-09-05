@@ -10,7 +10,6 @@
   "references": [
     { "path": "../../../vendor/cordis" },
     { "path": "../../../packages/boot/app-boot" },
-    { "path": "../../../packages/runtime-diagnostics/invariants" },
     { "path": "../../../packages/util/home-paths" }
   ]
 }

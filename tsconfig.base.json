@@ -191,9 +191,7 @@
       "@deepseek-ai/dsh-client-ui-deliverables": ["./packages/client/ui-deliverables/src"],
       "@deepseek-ai/dsh-client-ui-workflow-run": ["./packages/client/ui-workflow-run/src"],
       // daypaw fork packages: one group maps every @daypaw/<name> to its
-      // source; the invariant companion gets its own (more specific) pattern
-      // so it resolves before the generic wildcard below it.
-      "@daypaw/*/invariant": ["./packages/daypaw/*/src/invariant.ts"],
+      // source.
       // The /client browser entry (same shape as dsh-client-*/client above):
       // fork UI plugins pull each other's SlotMap/Context merges type-only.
       "@daypaw/*/client": ["./packages/daypaw/*/src/client"],

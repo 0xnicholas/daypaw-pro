@@ -47,3 +47,5 @@ None; this package neither assembles nor sends a provider request.
 - **Density is not user-adjustable.** Spec 05 §7 fixed one density; a preference knob would need its own ruling (and a settings row) before the `--dp-space-*` values become a swappable layer.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The plugin's only effect is one token-override layer on the theme service, whose stacking, per-scheme composition, and teardown are the theme service's own contract, asserted by this package's apply spec; the layer owns no state of its own.

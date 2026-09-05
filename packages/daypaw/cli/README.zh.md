@@ -46,3 +46,5 @@ manifest 即 deploy root，其 `dependencies` 精确决定哪些 workspace 包�
 - **无 `NPM_TOKEN` 时发布路径未验证**——release workflow 的 publish job 依赖该 secret；受门验证的是 pack 路径。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。本包是自含 CLI tarball 的闭包清单与 `bin.mjs` 垫片；全部运行时状态机都在闭包内 vendored 的 `@deepseek-ai/*` 包里。

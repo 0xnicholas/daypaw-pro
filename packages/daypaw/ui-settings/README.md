@@ -46,3 +46,5 @@ None; this package neither assembles nor sends a provider request.
 - **Density is not a preference** — spec 05 §7 fixed one density (medium-low), carried as the `--dp-space-*` scale by [`@daypaw/ui-brand`](../ui-brand/README.md); the General tab therefore ships no density row.
 
 ### Dev Note
+
+**Runtime invariant:** No companion is published. The plugin's state lives in apply-closure snapshot stores asserted directly by this package's apply/store/component specs; it emits no Cordis events, and credential writes go through the wire face the host side already invariant-covers.

@@ -46,3 +46,5 @@ daypaw 的设置面与首跑 API-key 黄卡，fork 的 client UI 插件，占据
 - **密度不是偏好**——spec 05 §7 定案单一密度（中偏低），由 [`@daypaw/ui-brand`](../ui-brand/README.zh.md) 的 `--dp-space-*` 尺度承载；因此通用分区不设密度行。
 
 ### 开发备注
+
+**运行时 invariant：**不发布 companion。本插件的状态都在 apply 闭包快照 store 里，由本包 apply/store/component spec 直接断言；不 emit Cordis 事件；凭证写入走 wire 面，host 侧的 invariant 已覆盖该面。
