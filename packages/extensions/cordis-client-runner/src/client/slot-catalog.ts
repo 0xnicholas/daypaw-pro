@@ -1413,7 +1413,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.agents.page\', () => ctx.slots.register(\n      { name: \'inbox.agents.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:147',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:161',
   },
   {
     key: 'inbox.detail.body',
@@ -1451,7 +1451,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.detail.body\', () => ctx.slots.register(\n      { name: \'inbox.detail.body\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:156',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:170',
   },
   {
     key: 'inbox.new-task.dialog',
@@ -1481,7 +1481,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.new-task.dialog\', () => ctx.slots.register(\n      { name: \'inbox.new-task.dialog\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:128',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:141',
   },
   {
     key: 'inbox.settings.page',
@@ -1515,7 +1515,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.settings.page\', () => ctx.slots.register(\n      { name: \'inbox.settings.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:122',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:135',
   },
   {
     key: 'inbox.workspace.banner',
@@ -1568,17 +1568,21 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.banner\', () => ctx.slots.register(\n      { name: \'inbox.workspace.banner\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:116',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:129',
   },
   {
     key: 'inbox.workspace.conversation',
     kind: 'single',
     scope: 'session',
-    summary: 'The selected task\'s conversation: the single occupant draws the business-language flow for the current session (the session-maybe inject parameter).',
-    doc: 'The selected task\'s conversation: the single occupant draws the\nbusiness-language flow for the current session (the session-maybe\ninject parameter). An absent occupant falls back to the owner\'s\nplaceholder.',
+    summary: 'The selected task\'s conversation: the single occupant draws the business-language flow for the current session (the session-maybe inject parameter) with the owner-passed run status ruling the follow-up seat.',
+    doc: 'The selected task\'s conversation: the single occupant draws the\nbusiness-language flow for the current session (the session-maybe\ninject parameter) with the owner-passed run status ruling the\nfollow-up seat. An absent occupant falls back to the owner\'s\nplaceholder.',
     registerOptions: [],
-    ownerProps: [],
-    ownerPropsReferences: [],
+    ownerProps: [
+      '/** Owner share of the conversation occupant. */\nexport interface InboxConversationOwnerProps {\n  /**\n   * The task\'s durable run status (sessionId ≡ runId, the board store\'s\n   * ledger row), or undefined when the selected session has no run (a\n   * run-less session). The follow-up seat\'s liveness keys off this, never\n   * the session\'s agent running bit: an agent run parked at a steer segment\n   * boundary keeps its ledger row `running` while its agent sits idle.\n   */\n  readonly runStatus: WireRunStatus | undefined\n}',
+    ],
+    ownerPropsReferences: [
+      'WireRunStatus',
+    ],
     standardProps: [
       'useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>',
       'useSessions: UseSessions',
@@ -1602,7 +1606,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.conversation\', () => ctx.slots.register(\n      { name: \'inbox.workspace.conversation\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:141',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:155',
   },
   {
     key: 'inbox.workspace.tasks',
@@ -1633,7 +1637,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.tasks\', () => ctx.slots.register(\n      { name: \'inbox.workspace.tasks\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:134',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:147',
   },
   {
     key: 'root',

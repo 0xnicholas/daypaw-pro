@@ -173,13 +173,33 @@ async resolveGate(runId: string, gate: string, settlement: GateSettlement, sourc
  * durable before delivery — a body parked in this process wakes
  * immediately, elsewhere the parked poll or the next boot scan observes the
  * segment row. Served to the browser as the Remote endpoint
- * `durable/steer` (the `listDefinitions` precedent). See
+ * `durable/steer` (the `listDefinitions` precedent). The input records as
+ * given: in-process callers pass contract-validated values, and a run this
+ * process cannot resolve a definition for still records (the consumption
+ * side re-validates — the cross-writer defense). See
  * {@link DurableEngineCore.steer}.
  * @param runId - run identity.
- * @param input - JSON-serializable follow-up input; validated by the SDK face.
+ * @param input - contract-validated follow-up input (the SDK face owns validation).
  * @returns the assigned segment sequence (1-based).
  */
 @Remote('steer') async steer(runId: string, input: Json): Promise<number>
+
+/**
+ * Append a free-text follow-up segment to an unfinished steerable run
+ * (ticket #94): the browser follow-up seat's channel. Resolves the run's
+ * definition and validates the text through its wire face — the same
+ * starter-text rule {@link startRun} applies, so the seat sends the bare
+ * text the dialog sends and the recorded segment carries the input the
+ * consuming body expects. Fails loud when the run is unknown, its
+ * definition is not registered, or the wire contract rejects the text
+ * (a json-kind definition takes no free-text follow-up); nothing records
+ * on failure. Served to the browser as the Remote endpoint
+ * `durable/steerText` (the `steer` precedent).
+ * @param runId - run identity.
+ * @param text - free-text follow-up; the definition's wire face owns the starter shape.
+ * @returns the assigned segment sequence (1-based).
+ */
+@Remote('steerText') async steerText(runId: string, text: string): Promise<number>
 
 /**
  * Rerun a terminal top-level run (issue #57): a fresh row with the same
@@ -191,6 +211,19 @@ async resolveGate(runId: string, gate: string, settlement: GateSettlement, sourc
  * @returns the new run's id.
  */
 @Remote('rerun') async rerun(runId: string): Promise<string>
+
+/**
+ * Request cancellation of an unfinished run (ticket #74): the terminal
+ * `cancelled` row with the cause is written first, pending gates settle
+ * cancelled, and a driver in this process aborts. Served to the browser as
+ * the Remote endpoint `durable/cancel` (the `steer` precedent). Idempotent
+ * on terminal runs — a run that already ended satisfies the request, and a
+ * lingering driver still aborts — and loud on unknown runs. See
+ * {@link DurableEngineCore.cancel}.
+ * @param runId - run identity.
+ * @param cause - human-readable cancel cause.
+ */
+@Remote('cancel') async cancel(runId: string, cause?: string): Promise<void>
 ```
 
 Source: [`packages/daypaw/engine/src/index.ts`](../../packages/daypaw/engine/src/index.ts)
