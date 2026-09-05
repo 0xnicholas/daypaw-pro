@@ -4,6 +4,7 @@
 
 | 文件 | 改动 | 原因 | 上游 PR 候选？ | 登记批次 |
 |---|---|---|---|---|
+| `packages/AGENTS.md` | §「Publish `./invariant` only for diverging observations」一行随上游 `15f2997bcb` 同步改写，但链接指向 fork 自有裁撤 note（上游同名 note 随下次 sync 到达，届时可回收本行差异） | 上游口径已改而上游文件随 checkpoint 滞后；链接不能悬空（死链门） | sync 时以上游版为准，链接行差异消失 | #87 |
 | `AGENTS.md` | 文末追加「daypaw-pro (fork layer)」节（issue tracker / triage labels / domain docs 指引） | pi 项目指引须随 AGENTS.md 自动加载；上游段落保持原样、上游所有 | 否（fork 私有流程） | A（fork 导入） |
 | `tsconfig.base.json` | paths 新增 `@daypaw/*` 通配组与 `@daypaw/web-app/startup` 子路径映射（daypaw 新 family 的源解析；#87 起原 `@daypaw/*/invariant` 子映射随空壳 companion 一并移除）；#59 起再增 `@daypaw/*/client` → `packages/daypaw/*/src/client` 一条（fork UI 插件互拉 SlotMap/Context 类型合并的源面解析）；#57 起再增 `@daypaw/*/types` → `packages/daypaw/*/src/types.ts` 一条（fork 纯类型出口的源面解析） | 新 family 纯新增的共享配置加性例外（ADR 0001/ADR 0006；加包清单 §2 预期项）；startup 子路径同上游 `dsh-web-app/startup` 显式映射先例；/client 子路径同上游 `dsh-client-*/client` 通配先例；/types 子路径同上游 `dsh-plan-mode/types` 先例 | 可提（上游无 daypaw，但通配组模式可参考） | C（走骨）/F（产品壳脚手架）/#59（设置单面页）/#57（任务进度） |
 | `tsconfig.host.json` | references 新增 `packages/daypaw/{store,engine,sdk,cli,web-app}` 五行（host 聚合）；#57 起追加 `packages/daypaw/approval-history` 一行 | 同上；项目引用无通配形式，只能逐包登记 | 可提（同上） | C（走骨）/F（产品壳脚手架）/#57（任务进度） |

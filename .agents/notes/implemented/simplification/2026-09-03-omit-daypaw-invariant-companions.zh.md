@@ -22,7 +22,7 @@ Status: implemented
 
 ## 后果
 
-- fork 包不再有 companion 源码、导出、依赖、引用、构建条目或注册测试；README 持有缺席理由，gate 强制其存在与逐包具体性。
+- fork 包不再有 companion 源码、导出、依赖、引用、构建条目或注册测试；README 持有缺席理由，gate 强制其存在与句式，逐包具体性由理由文本自身承载（评审保证，与上游 gate 的检查力一致）。
 - daypaw 包测试只挂 invariant 服务；穷举拓扑测试仍挂载树内全部已发布 companion。
 - 当某个 fork 包日后长出够格关系（例如跨事件生命周期或 durable 投影），companion 带真检查与负例测试回归，README 句子随之替换——对齐上游的重引入条件。
 - 下次 sync 以上游 gate 版本删除过渡标记分支；`scripts/package-invariants.ts` 的 CORE_TOUCHES 行已记明该差异在彼处消解。

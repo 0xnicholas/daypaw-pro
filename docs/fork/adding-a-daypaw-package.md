@@ -24,8 +24,8 @@ packages/daypaw/<pkg>/
 
 `package.json` 不变集：
 
-- `name: "@daypaw/<pkg>"`、`private: true`、`version: "0.0.0"`（独立 0.x 演进；constraints 的严格不变集 scope 限 `@deepseek-ai/dsh-*`，版本不对齐 root——ADR 0001 §3）。**可发布例外**：`@daypaw/cli` 与 `@daypaw/sdk` 经 ADR 0011 核准发布——真实 `0.x` 版本、`publishConfig.access: public`、repository 指向 fork 仓库；消费方自备的单例（cordis、dsh-invariants、zod）用 npm range 作 peer，其余 workspace 引用保持 `workspace:^` 协议（constraints 与 package-invariants 两门各有一条对应豁免，登记在 CORE_TOUCHES.md）。
-- 自愿镜像 dsh manifest 形状：`type: module`、`main: "lib/index.js"`、`types: "lib/types/index.d.ts"`、`exports["."].types` / `.default`、`files` 清单同上游规约（`lib/index.js`、`lib/invariant.js`、`lib/types/**/*.d.ts` 等）。
+- `name: "@daypaw/<pkg>"`、`private: true`、`version: "0.0.0"`（独立 0.x 演进；constraints 的严格不变集 scope 限 `@deepseek-ai/dsh-*`，版本不对齐 root——ADR 0001 §3）。**可发布例外**：`@daypaw/cli` 与 `@daypaw/sdk` 经 ADR 0011 核准发布——真实 `0.x` 版本、`publishConfig.access: public`、repository 指向 fork 仓库；消费方自备的单例（cordis、zod；dsh-invariants peer 已随空壳 companion 退役，ticket #87）用 npm range 作 peer，其余 workspace 引用保持 `workspace:^` 协议（constraints 门有一条对应豁免，登记在 CORE_TOUCHES.md）。
+- 自愿镜像 dsh manifest 形状：`type: module`、`main: "lib/index.js"`、`types: "lib/types/index.d.ts"`、`exports["."].types` / `.default`、`files` 清单同上游规约（`lib/index.js`、`lib/types/**/*.d.ts` 等）。**invariant companion 默认缺席**（上游 `15f2997bcb` 口径，ticket #87）：不建 `src/invariant.ts`、不发布 `./invariant` 导出与 `lib/invariant.js`，README（en+zh）末尾写逐包理由句 `**Runtime invariant:** No companion is published. …`；只有拥有「可独立分歧观测」关系的包才建真 companion。
 - `@deepseek-ai/cordis` 同时入 `peerDependencies` 与 `devDependencies`（同 range；插件包必须，纯库包按实际需要）。
 - 运行时校验器入 `dependencies`：sdk 用 zod（ADR 0003 / spec 02 双 schema 并存裁决）；其余包按章定。
 - 包内相对导入一律显式 `.ts` 后缀（编译器改写规则同上游）。

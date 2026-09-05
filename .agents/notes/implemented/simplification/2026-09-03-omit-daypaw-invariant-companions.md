@@ -22,7 +22,7 @@ Every fork-owned package published a `src/invariant.ts` companion with an empty 
 
 ## Consequences
 
-- Fork packages carry no companion source, export, dependency, reference, build entry, or registration test; their READMEs own the omission reason and the gate enforces its presence and package specificity.
+- Fork packages carry no companion source, export, dependency, reference, build entry, or registration test; their READMEs own the omission reason, the gate enforces its presence and sentence shape, and per-package specificity is carried by the reason text itself (review-enforced, matching the upstream gate's reach).
 - Daypaw package tests mount the invariant service only (service-only roots); the exhaustive topology test still mounts every published companion in the tree.
 - When a fork package later gains a qualifying relationship (for example a cross-event lifecycle or durable projection), the companion returns with a real check and a negative test, and the README sentence is replaced — mirroring upstream's reintroduction condition.
 - The next sync deletes the transitional marker branch with upstream's gate version; the CORE_TOUCHES row for `scripts/package-invariants.ts` records that the delta dissolves there.

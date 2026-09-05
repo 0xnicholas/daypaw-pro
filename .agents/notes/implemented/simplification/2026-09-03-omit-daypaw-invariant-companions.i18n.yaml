@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-09-03-omit-daypaw-invariant-companions.md
-2026-09-03-omit-daypaw-invariant-companions.md: f51f9c9a0bb62b95618d590fcaf824d1e396b8b2
-2026-09-03-omit-daypaw-invariant-companions.zh.md: d1addcd41ad171a4760d10f2f4a2288d508112cf
+2026-09-03-omit-daypaw-invariant-companions.md: c2bae1b9166c884242f370c97491f3bcea2c1809
+2026-09-03-omit-daypaw-invariant-companions.zh.md: b94e7fcb128c034908833f37549b065202511449
