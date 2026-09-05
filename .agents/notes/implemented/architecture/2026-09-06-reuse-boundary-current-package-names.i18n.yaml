@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-06-reuse-boundary-current-package-names.md
+2026-09-06-reuse-boundary-current-package-names.md: 746bd978d140f60cc5d907a9ec3e92d870891ab8
+2026-09-06-reuse-boundary-current-package-names.zh.md: ab4ef717fe96b303ffdd04c486fe10a9b9943862
