@@ -53,6 +53,7 @@
   height: 28px;
   border: none;
   border-radius: 50%;
+  corner-shape: round;
   padding: 0;
   background: transparent;
   cursor: pointer;
@@ -141,7 +142,7 @@
   flex-direction: column;
   gap: var(--dp-space-0);
   padding-top: var(--dp-space-2);
-  border-top: 1px solid var(--dsw-alias-border-l2);
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .dialogStub {

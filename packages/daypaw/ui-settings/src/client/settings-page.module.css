@@ -17,7 +17,7 @@
 .header {
   flex: none;
   padding: var(--dp-space-5) var(--dp-space-6);
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .title {
@@ -41,7 +41,7 @@
   gap: var(--dp-space-0);
   width: 140px;
   padding: var(--dp-space-4) var(--dp-space-3);
-  border-right: 1px solid var(--dsw-alias-border-l2);
+  border-right: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .tab {
@@ -107,6 +107,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--dsw-alias-state-warn-primary);
 }
 
@@ -135,7 +136,7 @@
 
 .button {
   padding: var(--dp-space-1) var(--dp-space-4);
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-2);
   color: inherit;
@@ -151,7 +152,7 @@
 .input {
   width: 220px;
   padding: var(--dp-space-1) var(--dp-space-3);
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
   color: inherit;
@@ -161,7 +162,7 @@
 
 .select {
   padding: var(--dp-space-1) var(--dp-space-3);
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 8px;
   background: var(--dsw-alias-bg-base);
   color: inherit;

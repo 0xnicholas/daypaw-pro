@@ -12,7 +12,7 @@
 .header {
   flex: none;
   padding: var(--dp-space-5) var(--dp-space-6);
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .title {
@@ -32,7 +32,7 @@
 .retry {
   margin-left: var(--dp-space-3);
   padding: var(--dp-space-0) var(--dp-space-4);
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 6px;
   background: transparent;
   color: var(--dsw-alias-label-primary);
