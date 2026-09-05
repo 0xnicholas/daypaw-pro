@@ -90,6 +90,8 @@ packages/daypaw/
 
 host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjections`/mux 投影**（attach 路径 `pollMs` 为现成先例）。
 
+失败词汇（票 [#86](https://github.com/0xnicholas/daypaw-pro/issues/86)）：`durable/*` 全部私有 Remote 采纳上游 `804b1ffbfc` 收敛后的失败词汇口径——闭集 `durable/` 前缀码 + 类型化 details（`@daypaw/engine` `src/failures.ts` 为唯一正典），消费端（ui-inbox/ui-agents/ui-tasks）按 `error.code` 判别、不解析消息文本；fixture 应答同步收敛。上游 sync 载入 `RemoteError` 后仅换载体类，码表与 details 不变。
+
 缓做与不做：`ctx.waitFor` gate 原语缓做（[第 1 章](01-durable-execution.md) §6 既定引擎工作，另立引擎票 #47）；v1 审批待办板块只用 dsh 交互式审批面（apiproxy pending 聚合 + mux 重放，wire 闭环已全），「等待人审批的 run」业务语义随原语落地后升级；pending 审批 unary 查询不做（mux-open 重放即冷启动基线）；路线 C 对话面缺口随 #36 否决消灭。
 
 ## 6. 权限与安全模型（裁决 [#46](https://github.com/0xnicholas/daypaw-pro/issues/46)）

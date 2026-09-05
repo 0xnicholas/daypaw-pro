@@ -101,9 +101,9 @@ describe('createCatalogApi', () => {
     expect(calls).toEqual([['/api', 'durable/listDefinitions', { args: {} }]])
   })
 
-  it('throws on a wire error branch', async () => {
-    const api = createCatalogApi(rpcReturning({ ok: false, error: { code: 'internal', message: 'no engine', details: {} } }))
-    await expect(api.listDefinitions()).rejects.toThrow('no engine')
+  it('throws on a wire error branch, carrying the wire code', async () => {
+    const api = createCatalogApi(rpcReturning({ ok: false, error: { code: 'durable/ledger-unavailable', message: 'no engine', details: {} } }))
+    await expect(api.listDefinitions()).rejects.toThrow('failed (durable/ledger-unavailable): no engine')
   })
 
   it('throws on a non-array payload', async () => {

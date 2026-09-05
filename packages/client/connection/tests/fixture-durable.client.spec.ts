@@ -119,7 +119,14 @@ describe('fixture durable endpoints', () => {
     })
 
     const missing = await rpc.call('/api', 'durable/rerun', { args: { runId: 'fx-run-ghost' } })
-    expect(missing).toMatchObject({ ok: false, error: { code: 'internal', message: 'no run fx-run-ghost' } })
+    expect(missing).toMatchObject({
+      ok: false,
+      error: {
+        code: 'durable/run-not-found',
+        message: 'durable engine: rerun targets unknown run fx-run-ghost',
+        details: { runId: 'fx-run-ghost' },
+      },
+    })
   })
 })
 
@@ -162,12 +169,26 @@ describe('fixture durable startRun', () => {
     expect(row!.input_json).toBe('{"invoice":"INV-2044"}')
   })
 
-  it('rejects an unregistered definition name', async () => {
+  it('rejects an unregistered definition name with the durable failure vocabulary', async () => {
     const { rpc } = createFixtureFaces()
     const missing = await rpc.call('/api', 'durable/startRun', { args: { request: { defName: 'ghost-agent', input: 'x' } } })
-    expect(missing).toMatchObject({ ok: false, error: { code: 'internal', message: 'no registered definition matches ghost-agent' } })
+    expect(missing).toMatchObject({
+      ok: false,
+      error: {
+        code: 'durable/definition-not-found',
+        message: 'durable engine: no registered definition matches ghost-agent',
+        details: { defName: 'ghost-agent' },
+      },
+    })
     const wrongVersion = await rpc.call('/api', 'durable/startRun', { args: { request: { defName: 'starter-assistant', defVersion: '9.9.9', input: 'x' } } })
-    expect(wrongVersion).toMatchObject({ ok: false, error: { code: 'internal', message: 'no registered definition matches starter-assistant@9.9.9' } })
+    expect(wrongVersion).toMatchObject({
+      ok: false,
+      error: {
+        code: 'durable/definition-not-found',
+        message: 'durable engine: no registered definition matches starter-assistant@9.9.9',
+        details: { defName: 'starter-assistant', defVersion: '9.9.9' },
+      },
+    })
   })
 })
 

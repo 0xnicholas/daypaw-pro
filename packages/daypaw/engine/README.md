@@ -37,6 +37,10 @@ The query methods (`listRuns` / `runLineage` / `journalTimeline`) are the ledger
 
 Configuration (schemastery): `path` (ledger file or `:memory:`), `pollMs` (attach poll interval, default 1s).
 
+### Failure vocabulary (ticket #86)
+
+Every wire-reachable failure throws the closed `durable/*` code set with typed details (`src/failures.ts`): `durable/run-not-found`, `durable/run-terminal`, `durable/run-unfinished`, `durable/run-is-child`, `durable/run-definition-mismatch`, `durable/run-not-steerable`, `durable/definition-not-found`, `durable/definition-ambiguous`, `durable/definition-unregistered`, `durable/input-invalid` (zod issues in `details.issues` for SDK-compiled wire faces), `durable/wire-face-missing`, and `durable/ledger-unavailable`. The failures cross the Remote boundary unchanged (the `TypertRemoteFailure` vehicle of this tree), so consumers discriminate by `error.code`, never by message text. When the next upstream sync lands `RemoteError` with the merge-extensible `RemoteErrorDetailsMap` (upstream `804b1ffbfc`), `src/failures.ts` becomes that map's `durable/*` declaration and only the carrier class swaps — codes and details stay.
+
 ## Execution model
 
 A run drives its body with a step ctx. `ctx.step(name, fn, { key? })` derives the idempotency key `name#occurrence` (or takes an explicit key); a completed step returns its recorded result without re-executing, an unfinished one (re)executes and records — at-least-once execution, exactly-once step commits. Cancellation writes the terminal row first and takes effect at the next step boundary. Disposal stops driving without terminal writes: unfinished runs stay revivable.

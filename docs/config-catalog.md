@@ -27,7 +27,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/daypaw/engine/src/index.ts:45`](../packages/daypaw/engine/src/index.ts)
+Source: [`packages/daypaw/engine/src/index.ts:48`](../packages/daypaw/engine/src/index.ts)
 
 <a id="daypawweb-app"></a>
 

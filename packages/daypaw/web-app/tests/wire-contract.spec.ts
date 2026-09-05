@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import TypertGatewayService, { TypertGatewayError } from '@deepseek-ai/dsh-api-gateway'
+import { TypertRemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
 import { DurableEngine } from '@daypaw/sdk'
 import type { Json } from '@daypaw/engine'
 import { createNewTaskApi } from '@daypaw/ui-tasks/src/client/new-task-api.ts'
@@ -70,7 +71,11 @@ function gatewayRpc(ctx: Context): { call(channel: string, endpoint: string, pay
           ok: false,
           error: error instanceof TypertGatewayError
             ? { code: error.code, message: error.message, details: {} }
-            : { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} },
+            // Mirrors the gateway's rpcFailure: a vocabulary failure crosses
+            // with its own code and details (ticket #86).
+            : error instanceof TypertRemoteFailure
+              ? error.failure
+              : { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} },
         }
       }
     },
@@ -255,5 +260,21 @@ describe('new-task dialog against the live durable gateway', () => {
       args: { defName: 'contract-assistant', defVersion: '1', input: 'write the report', runId: 'contract-run-1' },
     })).rejects.toThrow('args fields do not match the descriptor: unexpected "defName", "defVersion", "input", "runId"')
     expect(await ctx.durable.listRuns()).toHaveLength(0)
+  })
+
+  it('carries the durable failure vocabulary across the gateway wire (ticket #86)', async () => {
+    const ctx = await boot()
+    await registerStarterAgent(ctx)
+    // The browser's startRun lane: a definition-resolution failure crosses the
+    // real gateway as the stable `durable/definition-not-found` code with
+    // typed details — consumers discriminate by code, never by message text.
+    await expect(createNewTaskApi(gatewayRpc(ctx)).startRun({
+      defName: 'contract-ghost',
+      defVersion: '1',
+      input: 'write the report',
+      runId: 'contract-vocab-1',
+    })).rejects.toThrow(
+      'ui-tasks: durable/startRun failed (durable/definition-not-found): durable engine: no registered definition matches contract-ghost',
+    )
   })
 })

@@ -3798,7 +3798,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         // starter `{ task }` shape, start-or-attach by run id, insert the run
         // row, and drive the session twin's first turn — the engine creates
         // the session (sessionId ≡ runId) on first drive and logs the input's
-        // JSON serialization as the first user message (ADR 0010).
+        // JSON serialization as the first user message (ADR 0010). Failure
+        // answers carry the engine's `durable/*` failure vocabulary (ticket
+        // #86): codes and details match the engine's throw sites verbatim.
         case 'durable/startRun': {
           const request = args.request as { defName?: string; defVersion?: string; input?: unknown; runId?: string }
           const defName = request.defName
@@ -3808,17 +3810,23 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
             ? candidates.length === 1 ? candidates[0] : undefined
             : candidates.find(candidate => candidate.version === defVersion)
           if (def === undefined) {
-            const listing = candidates.map(candidate => `${candidate.kind}/${candidate.name}/${candidate.version}`).join(', ')
+            if (defVersion === undefined && candidates.length > 1) {
+              const candidateList = candidates.map(candidate => `${candidate.kind}/${candidate.name}/${candidate.version}`)
+              return Promise.resolve({
+                ok: false,
+                error: {
+                  code: 'durable/definition-ambiguous',
+                  message: `durable engine: definition ${String(defName)} is ambiguous across ${candidateList.join(', ')}; pass an exact version`,
+                  details: { defName, candidates: candidateList },
+                },
+              })
+            }
             return Promise.resolve({
               ok: false,
               error: {
-                code: 'internal',
-                message: defVersion === undefined
-                  ? candidates.length === 0
-                    ? `no registered definition matches ${defName}`
-                    : `definition ${defName} is ambiguous across ${listing}; pass an exact version`
-                  : `no registered definition matches ${defName}@${defVersion}`,
-                details: {},
+                code: 'durable/definition-not-found',
+                message: `durable engine: no registered definition matches ${defVersion === undefined ? String(defName) : `${defName}@${defVersion}`}`,
+                details: defVersion === undefined ? { defName } : { defName, defVersion },
               },
             })
           }
@@ -3890,9 +3898,14 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           const source = fixtureRuns.find(row => row.run_id === args.runId)
           if (source === undefined) {
             return Promise.resolve({
-              // RpcError's closed code union has no run code; internal carries the naming message.
+              // The engine's durable/* failure vocabulary (ticket #86): the
+              // run code replaces the former message-only internal answer.
               ok: false,
-              error: { code: 'internal', message: `no run ${String(args.runId)}`, details: {} },
+              error: {
+                code: 'durable/run-not-found',
+                message: `durable engine: rerun targets unknown run ${String(args.runId)}`,
+                details: { runId: args.runId },
+              },
             })
           }
           return Promise.resolve({ ok: true, value: appendFixtureRerun(source).run_id })

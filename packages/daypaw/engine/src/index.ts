@@ -10,19 +10,22 @@
 
 import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Remote, TypertRemoteFailure, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { JournalRow, RunRow } from '@daypaw/store'
 import { openLedgerDatabase } from '@daypaw/store'
 import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
-import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
+import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, EngineWireFace, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
 import type { Json } from './types.ts'
 import type { StartRunRequest } from './types.ts'
 import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
+import { durableFailure } from './failures.ts'
 
 export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
+export { durableFailure } from './failures.ts'
+export type { DurableFailureCode, DurableFailureDetailsMap } from './failures.ts'
 export type { Json } from './types.ts'
 export type {
   DefinitionDisplay, DefinitionView, EngineDefinition, EngineRunErrorCode, EngineRunHandle, EngineRunOptions,
@@ -180,7 +183,7 @@ export default class DurableEngine extends TypertRemoteService {
   async startRun(request: StartRunRequest): Promise<{ runId: string }> {
     const core = await this.coreOrFail()
     const def = core.resolveDefinition(request.defName, request.defVersion)
-    const input = def.wire === undefined ? request.input : def.wire.parseInput(request.input)
+    const input = def.wire === undefined ? request.input : this.parseWireInput(def.wire, request.input)
     const handle = core.run(def, input, request.runId === undefined ? {} : { runId: request.runId })
     handle.result.catch(() => {})
     return { runId: handle.id }
@@ -241,9 +244,13 @@ export default class DurableEngine extends TypertRemoteService {
     if (row === null) return core.steer(runId, text)
     const def = core.resolveDefinition(row.def_name, row.def_version)
     if (def.wire === undefined) {
-      throw new Error(`durable engine: steerText requires a wire face, and ${row.def_name}@${row.def_version} carries none`)
+      throw durableFailure(
+        'durable/wire-face-missing',
+        `durable engine: steerText requires a wire face, and ${row.def_name}@${row.def_version} carries none`,
+        { defName: row.def_name, defVersion: row.def_version },
+      )
     }
-    return core.steer(runId, def.wire.parseInput(text))
+    return core.steer(runId, this.parseWireInput(def.wire, text))
   }
 
   /**
@@ -279,8 +286,26 @@ export default class DurableEngine extends TypertRemoteService {
   private async coreOrFail(): Promise<DurableEngineCore> {
     try {
       return await this.ready
+    } catch {
+      throw durableFailure('durable/ledger-unavailable', 'durable engine failed to open its ledger', {})
+    }
+  }
+
+  /**
+   * Validate one wire input through a definition's wire face, folding every
+   * rejection into the `durable/input-invalid` vocabulary entry: an SDK-compiled
+   * face already throws a vocabulary failure (with issue details) and passes
+   * through; a hand-rolled face keeps its message under the stable code.
+   * @param face - the definition's wire face.
+   * @param value - the raw input the caller sent.
+   * @returns the contract-validated input.
+   */
+  private parseWireInput(face: EngineWireFace, value: unknown): Json {
+    try {
+      return face.parseInput(value)
     } catch (error) {
-      throw new Error('durable engine failed to open its ledger', { cause: error })
+      if (error instanceof TypertRemoteFailure) throw error
+      throw durableFailure('durable/input-invalid', error instanceof Error ? error.message : String(error), { issues: [] })
     }
   }
 

@@ -8,6 +8,7 @@
 
 import { z } from 'zod'
 import type { ZodType } from 'zod'
+import { durableFailure } from '@daypaw/engine'
 import type { EngineWireFace, Json } from '@daypaw/engine'
 
 /**
@@ -35,12 +36,20 @@ function textShapeOf(schema: ZodType): TextInput | undefined {
 /**
  * Compile one definition's wire face.
  * @param input - the definition's input contract.
- * @returns the wire face stamped onto the engine definition record.
+ * @returns the wire face stamped onto the engine definition record; a contract
+ * rejection throws the `durable/input-invalid` vocabulary failure with the
+ * zod issues as details, so in-process starts and wire starts fail alike.
  */
 export function wireFace(input: ZodType): EngineWireFace {
   const textShape = textShapeOf(input)
   return {
     inputKind: textShape === undefined ? 'json' : 'text',
-    parseInput: value => input.parse(textShape === 'task' && typeof value === 'string' ? { task: value } : value) as Json,
+    parseInput: (value) => {
+      const parsed = input.safeParse(textShape === 'task' && typeof value === 'string' ? { task: value } : value)
+      if (!parsed.success) {
+        throw durableFailure('durable/input-invalid', parsed.error.message, { issues: parsed.error.issues })
+      }
+      return parsed.data as Json
+    },
   }
 }

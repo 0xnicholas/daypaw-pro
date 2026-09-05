@@ -37,6 +37,10 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 
 配置（schemastery）：`path`（ledger 文件或 `:memory:`）、`pollMs`（attach 轮询间隔，默认 1s）。
 
+### 失败词汇（ticket #86）
+
+每一条 wire 可达失败都抛出携带类型化 details 的闭集 `durable/*` 码表（`src/failures.ts`）：`durable/run-not-found`、`durable/run-terminal`、`durable/run-unfinished`、`durable/run-is-child`、`durable/run-definition-mismatch`、`durable/run-not-steerable`、`durable/definition-not-found`、`durable/definition-ambiguous`、`durable/definition-unregistered`、`durable/input-invalid`（SDK 编译 wire face 的 zod issues 在 `details.issues`）、`durable/wire-face-missing`、`durable/ledger-unavailable`。失败原样跨 Remote 边界（本树载体 `TypertRemoteFailure`），消费端按 `error.code` 判别、绝不解析消息文本。下一次上游 sync 载入携带可合并扩展 `RemoteErrorDetailsMap` 的 `RemoteError`（上游 `804b1ffbfc`）后，`src/failures.ts` 成为该 map 的 `durable/*` 声明，仅载体类更换——码表与 details 不变。
+
 ## 执行模型
 
 run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键 `name#occurrence`（或显式 key）；已完成 step 直接返回已记录结果不再执行，未完成的（重）执行并记录——执行 at-least-once，step 提交 exactly-once。取消先写终态行，在下一 step 边界生效。销毁停止驱动且不写终态：未完 run 保持可复活。

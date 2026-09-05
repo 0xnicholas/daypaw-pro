@@ -69,7 +69,7 @@ export function createCatalogApi(rpc: Pick<ClientConnectionRpc, 'call'>): Catalo
   return {
     async listDefinitions() {
       const result = await rpc.call('/api', 'durable/listDefinitions', { args: {} })
-      if (!result.ok) throw new Error(`ui-agents: durable/listDefinitions failed: ${result.error.message}`)
+      if (!result.ok) throw new Error(`ui-agents: durable/listDefinitions failed (${result.error.code}): ${result.error.message}`)
       if (!Array.isArray(result.value)) throw new Error('ui-agents: durable/listDefinitions answered a non-array')
       return (result.value as unknown[]).map(parseEntry)
     },

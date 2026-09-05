@@ -188,7 +188,14 @@ describe('loadAgentFiles', () => {
     }
     const row = (await ctx.durable.listRuns()).find(run => run.run_id === started.runId)
     expect(row?.status).toBe('done')
-    await expect(ctx.durable.startRun({ defName: 'checked-flow', input: { code: 7 } })).rejects.toThrow()
+    // The SDK-compiled zod face rejects through the `durable/input-invalid`
+    // vocabulary entry, carrying the zod issues as details (ticket #86).
+    const rejected = await ctx.durable.startRun({ defName: 'checked-flow', input: { code: 7 } }).then(
+      () => { throw new Error('expected a rejection') },
+      (error: unknown) => error as { failure: { code: string; details: { issues: unknown[] } } },
+    )
+    expect(rejected.failure.code).toBe('durable/input-invalid')
+    expect(rejected.failure.details.issues).toHaveLength(1)
   })
 
   it('accepts the bare free text for the { task } starter shape across the wire', async () => {
@@ -217,7 +224,8 @@ describe('loadAgentFiles', () => {
     const plain = await ctx.durable.startRun({ defName: 'plain-flow', input: 'write a poem' })
     const plainRow = (await ctx.durable.listRuns()).find(run => run.run_id === plain.runId)
     expect(plainRow?.input_json).toBe('"write a poem"')
-    await expect(ctx.durable.startRun({ defName: 'tasked-flow', input: { task: 7 } })).rejects.toThrow()
+    await expect(ctx.durable.startRun({ defName: 'tasked-flow', input: { task: 7 } }))
+      .rejects.toMatchObject({ failure: { code: 'durable/input-invalid' } })
   })
 
   it('fails loud when the directory path is a regular file', async () => {

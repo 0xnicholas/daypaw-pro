@@ -60,10 +60,10 @@ describe('createNewTaskApi startRun', () => {
     expect(calls).toEqual([{ endpoint: 'durable/startRun', payload: { args: { request: { defName: 'a', defVersion: '1', input: 'x', runId: 'r-minted' } } } }])
   })
 
-  it('fails loud when the endpoint answers a business failure', async () => {
-    const { rpc } = fakeRpc(() => ({ ok: false, error: { code: 'internal', message: 'engine down', details: {} } }))
+  it('fails loud with the wire code when the endpoint answers a business failure', async () => {
+    const { rpc } = fakeRpc(() => ({ ok: false, error: { code: 'durable/definition-not-found', message: 'engine down', details: {} } }))
     await expect(createNewTaskApi(rpc).startRun({ defName: 'a', defVersion: '1', input: 'x', runId: 'r' }))
-      .rejects.toThrow('durable/startRun failed: engine down')
+      .rejects.toThrow('durable/startRun failed (durable/definition-not-found): engine down')
   })
 
   it.each([

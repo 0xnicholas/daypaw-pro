@@ -82,14 +82,15 @@ function parseAgentEntry(value: unknown): WireAgentDefinition | undefined {
 }
 
 /**
- * Unwrap one endpoint call's RPC result, failing loud with the endpoint name.
+ * Unwrap one endpoint call's RPC result, failing loud with the endpoint name
+ * and the wire failure code.
  * @param endpoint - the Remote endpoint called (for the error message).
  * @param result - the raw RPC result.
  * @returns the success payload.
  */
 async function callEndpoint(rpc: Pick<ClientConnectionRpc, 'call'>, endpoint: string, payload: unknown): Promise<unknown> {
   const result = await rpc.call('/api', endpoint, payload)
-  if (!result.ok) throw new Error(`ui-tasks: ${endpoint} failed: ${result.error.message}`)
+  if (!result.ok) throw new Error(`ui-tasks: ${endpoint} failed (${result.error.code}): ${result.error.message}`)
   return result.value
 }
 

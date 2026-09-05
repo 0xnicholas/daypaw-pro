@@ -12,6 +12,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow } from '@daypaw/store'
+import { durableFailure } from './failures.ts'
 import type { JournalStore, RunListFilter } from './seams.ts'
 import type { DefinitionDisplay, DefinitionView } from './types.ts'
 import type { Json } from './types.ts'
@@ -445,14 +446,20 @@ export class DurableEngineCore {
   steer(runId: string, input: unknown): number {
     this.assertNotDisposed()
     const row = this.store.selectRun(runId)
-    if (row === undefined) throw new Error(`durable engine: steer targets unknown run ${runId}`)
+    if (row === undefined) throw durableFailure('durable/run-not-found', `durable engine: steer targets unknown run ${runId}`, { runId })
     if (isTerminal(row.status)) {
-      throw new Error(`durable engine: steer targets terminal run ${runId} (${row.status})`)
+      throw durableFailure(
+        'durable/run-terminal',
+        `durable engine: steer targets terminal run ${runId} (${row.status})`,
+        { runId, status: row.status },
+      )
     }
     const def = this.definitions.get(definitionKey(row.def_kind, row.def_name, row.def_version))
     if (def !== undefined && def.steerable !== true) {
-      throw new Error(
+      throw durableFailure(
+        'durable/run-not-steerable',
         `durable engine: run ${runId} belongs to ${row.def_kind}/${row.def_name}/${row.def_version}, which is not steerable`,
+        { runId, defKind: row.def_kind, defName: row.def_name, defVersion: row.def_version },
       )
     }
     const seq = this.store.selectJournalSegments(runId).length + 1
@@ -475,17 +482,27 @@ export class DurableEngineCore {
   rerun(runId: string): EngineRunHandle {
     this.assertNotDisposed()
     const row = this.store.selectRun(runId)
-    if (row === undefined) throw new Error(`durable engine: rerun targets unknown run ${runId}`)
+    if (row === undefined) throw durableFailure('durable/run-not-found', `durable engine: rerun targets unknown run ${runId}`, { runId })
     if (!isTerminal(row.status)) {
-      throw new Error(`durable engine: rerun targets unfinished run ${runId} (${row.status})`)
+      throw durableFailure(
+        'durable/run-unfinished',
+        `durable engine: rerun targets unfinished run ${runId} (${row.status})`,
+        { runId, status: row.status },
+      )
     }
     if (row.parent_run_id !== null) {
-      throw new Error(`durable engine: rerun targets child run ${runId} (rerun applies to top-level runs only)`)
+      throw durableFailure(
+        'durable/run-is-child',
+        `durable engine: rerun targets child run ${runId} (rerun applies to top-level runs only)`,
+        { runId },
+      )
     }
     const def = this.definitions.get(definitionKey(row.def_kind, row.def_name, row.def_version))
     if (def === undefined) {
-      throw new Error(
+      throw durableFailure(
+        'durable/definition-unregistered',
         `durable engine: run ${runId} belongs to ${row.def_kind}/${row.def_name}/${row.def_version}, which is not registered`,
+        { runId, defKind: row.def_kind, defName: row.def_name, defVersion: row.def_version },
       )
     }
     return this.insertAndDrive(def, JSON.parse(row.input_json), {
@@ -596,13 +613,19 @@ export class DurableEngineCore {
     )
     const [def] = candidates
     if (def === undefined) {
-      throw new Error(
+      throw durableFailure(
+        'durable/definition-not-found',
         `durable engine: no registered definition matches ${version === undefined ? name : `${name}@${version}`}`,
+        version === undefined ? { defName: name } : { defName: name, defVersion: version },
       )
     }
     if (candidates.length > 1) {
-      const listing = candidates.map(candidate => `${candidate.kind}/${candidate.name}/${candidate.version}`).join(', ')
-      throw new Error(`durable engine: definition ${name} is ambiguous across ${listing}; pass an exact version`)
+      const candidatesList = candidates.map(candidate => `${candidate.kind}/${candidate.name}/${candidate.version}`)
+      throw durableFailure(
+        'durable/definition-ambiguous',
+        `durable engine: definition ${name} is ambiguous across ${candidatesList.join(', ')}; pass an exact version`,
+        { defName: name, candidates: candidatesList },
+      )
     }
     return def
   }
@@ -659,8 +682,10 @@ export class DurableEngineCore {
 
   private assertSameDefinition(row: RunRow, def: EngineDefinition): void {
     if (row.def_kind !== def.kind || row.def_name !== def.name || row.def_version !== def.version) {
-      throw new Error(
+      throw durableFailure(
+        'durable/run-definition-mismatch',
         `durable engine: run ${row.run_id} belongs to ${row.def_kind}/${row.def_name}/${row.def_version}, not ${def.kind}/${def.name}/${def.version}`,
+        { runId: row.run_id },
       )
     }
   }
@@ -1131,7 +1156,7 @@ export class DurableEngineCore {
   async cancel(runId: string, cause?: string): Promise<void> {
     this.assertNotDisposed()
     const row = this.store.selectRun(runId)
-    if (row === undefined) throw new Error(`durable engine: cancel targets unknown run ${runId}`)
+    if (row === undefined) throw durableFailure('durable/run-not-found', `durable engine: cancel targets unknown run ${runId}`, { runId })
     if (isTerminal(row.status)) {
       this.drivers.get(runId)?.abort(cause)
       return

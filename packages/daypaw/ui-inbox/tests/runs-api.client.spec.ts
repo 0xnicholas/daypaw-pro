@@ -107,12 +107,12 @@ describe('createRunsApi', () => {
     expect(calls).toEqual([['/api', 'durable/rerun', { args: { runId: 'r1' } }]])
   })
 
-  it('throws the endpoint error message on a wire error branch', async () => {
-    const api = createRunsApi(rpcReturning({ ok: false, error: { code: 'internal', message: 'no engine', details: {} } }))
-    await expect(api.listRuns()).rejects.toThrow('ui-inbox: durable/listRuns failed: no engine')
-    await expect(api.runLineage('r1')).rejects.toThrow('ui-inbox: durable/runLineage failed: no engine')
-    await expect(api.journalTimeline('r1')).rejects.toThrow('ui-inbox: durable/journalTimeline failed: no engine')
-    await expect(api.rerun('r1')).rejects.toThrow('ui-inbox: durable/rerun failed: no engine')
+  it('throws the endpoint failure with its wire code on a wire error branch', async () => {
+    const api = createRunsApi(rpcReturning({ ok: false, error: { code: 'durable/ledger-unavailable', message: 'no engine', details: {} } }))
+    await expect(api.listRuns()).rejects.toThrow('ui-inbox: durable/listRuns failed (durable/ledger-unavailable): no engine')
+    await expect(api.runLineage('r1')).rejects.toThrow('ui-inbox: durable/runLineage failed (durable/ledger-unavailable): no engine')
+    await expect(api.journalTimeline('r1')).rejects.toThrow('ui-inbox: durable/journalTimeline failed (durable/ledger-unavailable): no engine')
+    await expect(api.rerun('r1')).rejects.toThrow('ui-inbox: durable/rerun failed (durable/ledger-unavailable): no engine')
   })
 
   it.each([
