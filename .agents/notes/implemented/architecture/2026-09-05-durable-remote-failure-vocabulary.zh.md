@@ -22,4 +22,4 @@ wire 可达的引擎失败在消息改动之下保持稳定：十二个码覆盖
 
 ## Testing
 
-`packages/daypaw/engine/tests/failure-vocabulary.spec.ts` 走完整个码表——每条 wire 可达路径断言码、details 与未改动的消息文本，含 ledger-unavailable。`packages/daypaw/sdk/tests/agents-dir.spec.ts` 钉住 zod issues details；`packages/daypaw/web-app/tests/wire-contract.spec.ts` 证明码跨真网关（其 `gatewayRpc` 助手现在镜像 `rpcFailure` 的放行，而非把业务失败压平为 `internal`）。`packages/client/connection/tests/fixture-durable.client.spec.ts` 钉住 fixture 应答；三个消费端 spec 钉住携带 `(code)` 的失败格式。
+`packages/daypaw/engine/tests/failure-vocabulary.spec.ts` 走完整个码表——每条 wire 可达路径断言码、details 与未改动的消息文本，含 ledger-unavailable。`packages/daypaw/sdk/tests/agents-dir.spec.ts` 钉住 zod issues details；`packages/daypaw/web-app/tests/wire-contract.spec.ts` 证明码跨真网关（其 `gatewayRpc` 助手现在镜像 `rpcFailure` 的放行，而非把业务失败压平为 `internal`）。`apps/daypaw-web/tests/durable-rpc.spec.ts` 钉住装饰器应答；三个消费端 spec 钉住携带 `(code)` 的失败格式。

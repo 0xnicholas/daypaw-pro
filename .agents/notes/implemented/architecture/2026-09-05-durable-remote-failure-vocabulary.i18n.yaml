@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-05-durable-remote-failure-vocabulary.md
-2026-09-05-durable-remote-failure-vocabulary.md: b637cd42a801332af41211fb3e13e3438aa2fe71
-2026-09-05-durable-remote-failure-vocabulary.zh.md: fc9df432d6c8418a447c2c1fa65a4aeb2d7bd404
+2026-09-05-durable-remote-failure-vocabulary.md: ec274c9d6798d70ac41292c6e60439c1d463ad79
+2026-09-05-durable-remote-failure-vocabulary.zh.md: 3a57807ffb0546f95e4aa9f2c2ebade44356fffe

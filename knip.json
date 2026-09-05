@@ -717,6 +717,7 @@
     "apps/daypaw-web": {
       "entry": [
         "tests/**/*.golden.ts",
+        "tests/**/*.spec.ts",
         "src/node-module-stub.ts"
       ],
       "project": [

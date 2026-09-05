@@ -52,6 +52,10 @@ export type {
   ClientConnectionRpc, ConnectionRpcFailure, ConnectionRpcResult,
 } from '../rpc.ts'
 export type { RpcFetch } from './rpc.ts'
+// The fixture factory stays public so shells and assembled tests can install the
+// fixture world as a ClientTransportHooks carrier override instead of forking
+// this plugin's transport selection.
+export { createFixtureConnectionRpc } from './fixture.ts'
 
 /** Observable identity and Host facts for the active connection generation. */
 export interface ConnectionGenerationState {

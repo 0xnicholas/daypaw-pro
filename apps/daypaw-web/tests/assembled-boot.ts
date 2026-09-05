@@ -2,11 +2,14 @@
 // workspace `lib/client.js` artifacts of the fork roster (packages/daypaw/
 // web-app/cordis.patch.yml's client rows, layered over the base bundle) booted
 // through AppWebEntry's ModuleLoader path (loadBundle) against the keyless
-// fixture Connection RPC transport. Every file that mounts this graph needs
-// the same boot entry list, the same bundle map, the same jsdom globals, and
-// the same mount call, and differs only in what it asserts afterwards, so the
-// scaffolding lives here (the apps/web/tests/assembled-boot.ts precedent with
-// the fork roster).
+// fixture transport: the page installs the connection plugin's carrier
+// override (`__DSH_TRANSPORT__`) over the upstream fixture world wrapped with
+// the fork's `durable/*` decorator, so the mounted graph rides the same
+// ClientRequest/ServerResponse envelope the served web app's HTTP carrier
+// uses. Every file that mounts this graph needs the same boot entry list, the
+// same bundle map, the same jsdom globals, and the same mount call, and
+// differs only in what it asserts afterwards, so the scaffolding lives here
+// (the apps/web/tests/assembled-boot.ts precedent with the fork roster).
 //
 // Keyless and deterministic: the fixture is the fake server, so nothing here
 // reaches a model or the network.
@@ -16,9 +19,16 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
+import type {
+  ClientConnectionRpc,
+  ClientRequest,
+  ClientTransportHooks,
+} from '@deepseek-ai/dsh-client-connection/client'
+import { createFixtureConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import { bootInjections, orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
 import type { ClientModuleLoaderTarget, WebBootEntry, WebBootGraph } from '@deepseek-ai/dsh-client-modules/client'
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
+import { decorateDurableRpc } from './durable-rpc.ts'
 
 interface AssembledPlugin extends WebBootEntry {
   /** Absolute path to the built client artifact declared by this package. */
@@ -177,6 +187,7 @@ function bundleTable(graph: WebBootGraph, plugins: readonly AssembledPlugin[]): 
 interface FixtureWindow extends Window {
   __DSH_BOOT__?: WebBootGraph
   __ModuleLoader__?: ClientModuleLoaderTarget
+  __DSH_TRANSPORT__?: ClientTransportHooks
 }
 
 class ResizeObserverStub {
@@ -231,6 +242,7 @@ export function installAssembledBootEnv(): void {
     cleanup()
     delete win.__DSH_BOOT__
     delete win.__ModuleLoader__
+    delete win.__DSH_TRANSPORT__
     document.body.innerHTML = ''
     document.head.querySelectorAll('style[data-plugin]').forEach((style) => { style.remove() })
     document.title = ''
@@ -243,15 +255,58 @@ export function installAssembledBootEnv(): void {
 }
 
 /**
- * Mount the assembled application on the fixture transport; the teardown
- * registered by installAssembledBootEnv disposes it.
- * @param search - fixture query string used to select deterministic host behavior.
+ * Bridge the decorated fixture transport onto the connection plugin's
+ * carrier-override hooks: unary calls cross the real ClientRequest/
+ * ServerResponse envelope the web caller builds, and streams delegate to the
+ * fixture's in-process opens.
+ * @param rpc - the decorated fixture Connection transport.
+ * @returns transport hooks installing the fixture as the page's carrier.
+ */
+function createFixtureTransportHooks(rpc: ClientConnectionRpc): ClientTransportHooks {
+  return {
+    async fetch(input, init) {
+      const endpoint = decodeURIComponent(input.pathname.replace(/^\/api\//, ''))
+      // The web caller always posts one JSON-stringified ClientRequest; a
+      // non-string body can only come from a foreign caller on this carrier.
+      if (typeof init.body !== 'string') {
+        throw new Error(`fixture transport: non-string request body for ${endpoint}`)
+      }
+      const body = JSON.parse(init.body) as ClientRequest
+      const result = await rpc.call('/api', endpoint, body.payload, init.signal ?? undefined)
+      return new Response(
+        JSON.stringify({ type: 'server-response', rpcId: body.rpcId, result }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    },
+    openStream(endpoint, payload, signal) {
+      const stream = rpc.open?.('/api', endpoint, payload, signal)
+      if (stream === undefined) {
+        throw new Error(`fixture transport: stream endpoint ${JSON.stringify(endpoint)} is unavailable`)
+      }
+      return stream
+    },
+  }
+}
+
+/**
+ * Mount the assembled application on the decorated fixture transport; the
+ * teardown registered by installAssembledBootEnv disposes it.
+ * @param search - fixture query string selecting deterministic host behavior
+ * (the `fixture` key itself is rejected: the fixture rides the carrier hooks).
  * @param options - composition changes applied to this mount.
  */
-export function mountAssembledApp(search = '?fixture', options: AssembledBootOptions = {}): void {
+export function mountAssembledApp(search = '', options: AssembledBootOptions = {}): void {
+  if (new URLSearchParams(search).has('fixture')) {
+    throw new Error('assembled boot: the fixture rides the __DSH_TRANSPORT__ carrier hooks; remove the ?fixture switch')
+  }
   const excluded = new Set(options.exclude)
   const plugins = PLUGINS.filter(plugin => !excluded.has(plugin.id))
   history.replaceState(null, '', `/${search}`)
+  // The fixture world is minted per mount after the search is in place, so
+  // its option switches apply and later mounts never see earlier appends.
+  win.__DSH_TRANSPORT__ = createFixtureTransportHooks(
+    decorateDurableRpc(createFixtureConnectionRpc()),
+  )
   const root = document.createElement('div')
   root.id = 'root'
   document.body.appendChild(root)

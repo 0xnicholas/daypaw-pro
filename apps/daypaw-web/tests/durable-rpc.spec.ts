@@ -1,20 +1,24 @@
-/**
- * Fixture daypaw durable lane: the `durable/*` Remote endpoints over the seeded
- * run ledger (list/lineage/timeline/rerun) and the approvalHistory projection
- * fold (control-stream baseline plus live advance on asked/decided appends).
- */
+// The daypaw durable wire lane: the fork's `durable/*` Remote answers over
+// the decorator transport (the seeded run ledger's list/lineage/timeline/rerun,
+// startRun's registry resolution plus the session twin driven through the
+// fixture's public session face) and the approvalHistory projection fold
+// (control-stream baseline plus live advance on asked/decided appends) over
+// the same composed fixture face the assembled golden lanes ride.
 import { describe, expect, it } from 'vitest'
-import type { ClientConnectionRpc } from '../src/client/index.ts'
-import { createFixtureFaces } from '../src/client/fixture.ts'
+import { createFixtureConnectionRpc, type ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
+import { decorateDurableRpc } from './durable-rpc.ts'
 
 interface TimingHooks {
   appendApproval(id: string, approvalId: string, toolName: string, outcome: 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'): void
 }
 const timing = (): TimingHooks => (globalThis as Record<string, unknown>).__fxTiming as TimingHooks
 
-/** Drive one durable Remote endpoint against the fixture state graph. */
+/** One decorated fixture world per call, mirroring the assembled boot's per-mount world. */
+const durableRpc = (): ClientConnectionRpc => decorateDurableRpc(createFixtureConnectionRpc())
+
+/** Drive one durable Remote endpoint against the decorated transport. */
 async function callRemote<T>(
-  rpc: ReturnType<typeof createFixtureFaces>['rpc'],
+  rpc: ClientConnectionRpc,
   endpoint: string,
   args: Record<string, unknown>,
 ): Promise<T> {
@@ -49,7 +53,7 @@ interface JournalRow {
 
 describe('fixture durable endpoints', () => {
   it('lists every run newest-first, honoring the optional status filter', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const all = await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})
     // created_at DESC: the running agent run (aliasing the fx-alpha session) leads.
     expect(all.map(row => row.run_id)).toEqual([
@@ -69,7 +73,7 @@ describe('fixture durable endpoints', () => {
   })
 
   it('answers run lineage: own row, parent, and direct children oldest-first', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const top = await callRemote<{ run?: RunRow; parent?: RunRow; children: RunRow[] }>(
       rpc, 'durable/runLineage', { runId: 'fx-run-invoice-audit' })
     expect(top.run?.run_id).toBe('fx-run-invoice-audit')
@@ -85,12 +89,12 @@ describe('fixture durable endpoints', () => {
     expect(child.children).toEqual([])
 
     const unknown = await callRemote<{ run?: RunRow; parent?: RunRow; children: RunRow[] }>(
-      rpc, 'durable/runLineage', { runId: 'fx-run-ghost' })
+      rpc, 'durable/runLineage', { runId: 'fx-ghost' })
     expect(unknown).toEqual({ run: undefined, parent: undefined, children: [] })
   })
 
   it('serves the run journal in start order and an empty timeline for journal-less runs', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const steps = await callRemote<JournalRow[]>(rpc, 'durable/journalTimeline', { runId: 'fx-run-release-digest' })
     expect(steps.map(row => [row.step_key, row.name, row.status])).toEqual([
       ['collect-updates', 'Collect team updates', 'completed'],
@@ -101,7 +105,7 @@ describe('fixture durable endpoints', () => {
   })
 
   it('rerun appends a fresh running row chaining the source, visible to the next listRuns poll', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const before = await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})
     const newId = await callRemote<string>(rpc, 'durable/rerun', { runId: 'fx-run-invoice-audit' })
     expect(newId).toMatch(/^fx-rerun-\d+$/)
@@ -118,13 +122,13 @@ describe('fixture durable endpoints', () => {
       retried_from_run_id: 'fx-run-invoice-audit',
     })
 
-    const missing = await rpc.call('/api', 'durable/rerun', { args: { runId: 'fx-run-ghost' } })
+    const missing = await rpc.call('/api', 'durable/rerun', { args: { runId: 'fx-ghost' } })
     expect(missing).toMatchObject({
       ok: false,
       error: {
         code: 'durable/run-not-found',
-        message: 'durable engine: rerun targets unknown run fx-run-ghost',
-        details: { runId: 'fx-run-ghost' },
+        message: 'durable engine: rerun targets unknown run fx-ghost',
+        details: { runId: 'fx-ghost' },
       },
     })
   })
@@ -132,7 +136,7 @@ describe('fixture durable endpoints', () => {
 
 describe('fixture durable startRun', () => {
   it('starts a run with a dialog-minted id, coerces the starter text shape, and lists the session twin', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const runId = 'fx-started-by-dialog'
     const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
       request: { defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId },
@@ -145,8 +149,9 @@ describe('fixture durable startRun', () => {
     expect(row).toMatchObject({ def_kind: 'agent', def_name: 'starter-assistant', def_version: '1.0.0', status: 'running' })
     expect(row!.input_json).toBe('{"task":"write a poem"}')
 
-    // The session twin exists (sessionId ≡ runId) and carries the first turn
-    // (the input's JSON serialization as the first user message, ADR 0010).
+    // The session twin exists (sessionId ≡ runId, registered through the
+    // fixture's public session/create) and carries the first turn (the
+    // input's JSON serialization as the first user message, ADR 0010).
     const listed = await callRemote<{ items: { sessionId: string }[] }>(rpc, 'session/list', {})
     expect(listed.items.map(item => item.sessionId)).toContain(runId)
 
@@ -158,8 +163,28 @@ describe('fixture durable startRun', () => {
     expect((await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})).filter(candidate => candidate.run_id === runId)).toHaveLength(1)
   })
 
+  it('drives the twin first turn over the public session face', async () => {
+    const rpc = durableRpc()
+    const runId = 'fx-twin-first-turn'
+    await callRemote(rpc, 'durable/startRun', {
+      request: { defName: 'starter-assistant', defVersion: '1.0.0', input: 'hello twin', runId },
+    })
+    // The queued prompt's user message (the input's JSON serialization) is
+    // already appended when the twin's history page is read.
+    const page = await callRemote<{
+      records: { type: string; event: { type: string; data?: { content?: { type: string; text?: string }[] } } }[]
+    }>(rpc, 'session/page', {
+      request: { address: { kind: 'session', sessionId: runId }, throughSeq: 100 },
+    })
+    const userEvents = page.records
+      .map(record => record.event)
+      .filter(event => event.type === 'user/message')
+    expect(userEvents.length).toBeGreaterThanOrEqual(1)
+    expect(userEvents[0]!.data!.content?.map(block => block.text ?? '').join('')).toBe('{"task":"hello twin"}')
+  })
+
   it('mints a fresh run id when the caller passes none', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
       request: { defName: 'invoice-checker', input: { invoice: 'INV-2044' } },
     })
@@ -170,7 +195,7 @@ describe('fixture durable startRun', () => {
   })
 
   it('rejects an unregistered definition name with the durable failure vocabulary', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const missing = await rpc.call('/api', 'durable/startRun', { args: { request: { defName: 'ghost-agent', input: 'x' } } })
     expect(missing).toMatchObject({
       ok: false,
@@ -200,7 +225,7 @@ describe('fixture approvalHistory projection', () => {
   }
 
   it('replays the seeded pairs in the control baseline', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const abort = new AbortController()
     for await (const frame of openControl(rpc, abort.signal)) {
       const baseline = frame as {
@@ -219,7 +244,7 @@ describe('fixture approvalHistory projection', () => {
   })
 
   it('pushes a live approvalHistory frame on each asked/decided append', async () => {
-    const { rpc } = createFixtureFaces()
+    const rpc = durableRpc()
     const abort = new AbortController()
     const framesPromise = (async (): Promise<unknown[]> => {
       const frames: unknown[] = []
