@@ -5087,6 +5087,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-renderer':
         specifier: workspace:^
         version: link:../../client/ui-renderer
+      '@deepseek-ai/dsh-client-ui-schedule':
+        specifier: workspace:^
+        version: link:../../client/ui-schedule
       '@deepseek-ai/dsh-client-ui-session':
         specifier: workspace:^
         version: link:../../client/ui-session
@@ -5174,6 +5177,9 @@ importers:
       '@deepseek-ai/dsh-session-stats':
         specifier: workspace:^
         version: link:../../session/session-stats
+      '@deepseek-ai/dsh-session-turn-outline':
+        specifier: workspace:^
+        version: link:../../session/session-turn-outline
       '@deepseek-ai/dsh-tool-subagent':
         specifier: workspace:^
         version: link:../../subagent/tool-subagent
@@ -5196,12 +5202,24 @@ importers:
       '@deepseek-ai/dsh-api-gateway':
         specifier: workspace:^
         version: link:../../api/gateway
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:^
+        version: link:../../core/session
+      '@deepseek-ai/dsh-session-projection':
+        specifier: workspace:^
+        version: link:../../session/session-projection
       '@deepseek-ai/dsh-shell-env':
         specifier: workspace:^
         version: link:../../shell/shell-env
       '@deepseek-ai/dsh-system-prompt':
         specifier: workspace:^
         version: link:../../core/system-prompt
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:^
+        version: link:../../typert/protocol
       '@deepseek-ai/dsh-typert-registry':
         specifier: workspace:^
         version: link:../../typert/registry
