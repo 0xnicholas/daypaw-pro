@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import DurableEngine from '@daypaw/engine'
 import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
-import type { EngineDefinition, EngineStepCtx, EngineWireFace, Json } from '@daypaw/engine'
+import type { DurableFailureCode, DurableFailureDetailsMap, EngineDefinition, EngineStepCtx, EngineWireFace, Json } from '@daypaw/engine'
 
 const contexts: Context[] = []
 let root: string | undefined
@@ -61,17 +61,26 @@ function taskWire(): EngineWireFace {
   }
 }
 
+/** One thrown vocabulary failure's wire triple, code kept on the closed union. */
+interface FailureTriple<Code extends DurableFailureCode = DurableFailureCode> {
+  readonly code: Code
+  readonly message: string
+  readonly details: DurableFailureDetailsMap[Code]
+}
+
 /**
  * Run one action and return its thrown vocabulary failure's wire triple.
  * @param action - the engine call expected to reject.
  * @returns the thrown failure's `{ code, message, details }`.
  */
-async function failureOf(action: () => Promise<unknown>): Promise<{ code: string; message: string; details: unknown }> {
+async function failureOf<Code extends DurableFailureCode>(action: () => Promise<unknown>): Promise<FailureTriple<Code>> {
   return await action().then(
     () => { throw new Error('expected a rejection') },
     (error: unknown) => {
       const remote = remoteErrorOf(error)
-      if (remote !== undefined) return { code: remote.code, message: remote.message, details: remote.details }
+      if (remote !== undefined) {
+        return { code: remote.code as Code, message: remote.message, details: remote.details as DurableFailureDetailsMap[Code] }
+      }
       throw new Error(`expected a durable/* vocabulary failure, got: ${String(error)}`)
     },
   )

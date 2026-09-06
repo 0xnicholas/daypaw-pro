@@ -20,6 +20,7 @@ import * as SessionTurnOutline from '@deepseek-ai/dsh-session-turn-outline'
 // program (the host-face parallel of ui-chat's client type-only import).
 import type {} from '@deepseek-ai/dsh-session-turn-outline/types'
 import { DurableEngine } from '@daypaw/sdk'
+import type { EngineStepCtx } from '@daypaw/engine'
 
 const contexts: Context[] = []
 
@@ -72,7 +73,7 @@ describe('turnOutline and durable/journalTimeline over one composition (ticket #
       kind: 'workflow',
       name: 'outline-coexists',
       version: '1',
-      body: async (run: { step: (key: string, body: () => Promise<unknown>) => Promise<unknown> }) => {
+      body: async (run: EngineStepCtx) => {
         await run.step('collect', async () => 'ok')
         return 'done'
       },

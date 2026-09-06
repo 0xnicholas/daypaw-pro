@@ -120,6 +120,7 @@
     "@deepseek-ai/dsh-system-prompt": "workspace:^"
   },
   "devDependencies": {
+    "@daypaw/engine": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
     "@deepseek-ai/dsh-api-gateway": "workspace:^",

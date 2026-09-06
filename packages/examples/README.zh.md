@@ -13,4 +13,4 @@ examples 包组收的是跑得起来的演示，而不是产品接口：每个�
 
 ## 包清单
 
-- [`daypaw-skeleton/`](daypaw-skeleton/README.zh.md) — daypaw 走骨架：可扛住真实 `SIGKILL` 的三步持久工作流，加支柱②的 agent 编译面（`@daypaw/daypaw-skeleton`）
+- [`daypaw-skeleton/`](daypaw-skeleton/README.zh.md) — daypaw 走骨架：可扛住真实 `SIGKILL` 的三步持久工作流，加支柱②的 agent 编译面（`daypaw-skeleton-example`）

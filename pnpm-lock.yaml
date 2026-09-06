@@ -5193,6 +5193,9 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
     devDependencies:
+      '@daypaw/engine':
+        specifier: workspace:^
+        version: link:../engine
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis

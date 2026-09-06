@@ -13,4 +13,4 @@ The examples group holds runnable demonstrations rather than product interfaces:
 
 ## Packages
 
-- [`daypaw-skeleton/`](daypaw-skeleton/README.md) — the daypaw walking skeleton: a three-step durable workflow surviving a real `SIGKILL`, plus the pillar-② agent compilation face (`@daypaw/daypaw-skeleton`)
+- [`daypaw-skeleton/`](daypaw-skeleton/README.md) — the daypaw walking skeleton: a three-step durable workflow surviving a real `SIGKILL`, plus the pillar-② agent compilation face (`daypaw-skeleton-example`)
