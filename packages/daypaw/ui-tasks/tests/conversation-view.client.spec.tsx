@@ -27,7 +27,12 @@ let seq = 0
 /** Assemble a Chat snapshot over the given legacy conversation nodes and running calls. */
 function chatWith(nodes: readonly ConversationNode[], runningCalls: readonly RunningToolCall[] = []): ChatSnapshot {
   return {
-    order: [], nodes: { get: () => undefined, values: () => [] },
+    order: [], nodes: {
+      get: () => undefined,
+      values: () => [],
+      source: () => neverHook,
+      processSource: () => neverHook,
+    },
     locations: { getTurn: () => [], getStep: () => [] },
     navigation: { items: () => [] },
     timeline: { turnOrder: [], turns: new Map() },

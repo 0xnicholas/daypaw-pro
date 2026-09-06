@@ -14,7 +14,7 @@ import type { LlmModelReasoningInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { ReasoningEffortId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -110,6 +110,7 @@ async function loadComposition(
     '- name: \'@deepseek-ai/dsh-tools\'',
     '- name: \'@deepseek-ai/dsh-agent\'',
     '- name: \'@deepseek-ai/dsh-agent-loop\'',
+    '- name: \'@deepseek-ai/dsh-session-projection\'',
     '- name: \'@deepseek-ai/dsh-session-persistence-jsonl\'',
     '  config:',
     `    root: ${JSON.stringify(sessionsRoot)}`,
@@ -129,6 +130,7 @@ async function loadComposition(
     ['@deepseek-ai/dsh-tools', ToolRuntime],
     ['@deepseek-ai/dsh-agent', AgentRegistry],
     ['@deepseek-ai/dsh-agent-loop', AgentLoop],
+    ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
     ['@deepseek-ai/dsh-session-persistence-jsonl', JsonlSessionPersistence],
   ])
   ctx.loader.internal = {
@@ -262,7 +264,7 @@ describe('bindAgent over a real dsh composition', () => {
 
     // sessionId ≡ runId: the session log materialized under the run identity.
     const persisted = await ctx.sessionPersistence.list()
-    expect(persisted.map(header => String(header.id))).toContain('agent-happy-1')
+    expect(persisted.map(snapshot => String(snapshot.header.id))).toContain('agent-happy-1')
   })
 
   it('registers the definition tools in the agent scope', { timeout }, async () => {
@@ -413,7 +415,7 @@ describe('bindAgent over a real dsh composition', () => {
     await until(() => first.adapter.requests.length === 1)
     // The partial first turn must reach durable storage before the "crash".
     await until(async () => (await first.ctx.sessionPersistence.list())
-      .some(header => String(header.id) === 'agent-revive-1'))
+      .some(snapshot => String(snapshot.header.id) === 'agent-revive-1'))
     contexts = contexts.filter(item => item !== first.ctx)
     await first.ctx.fiber.dispose()
 
@@ -443,7 +445,7 @@ describe('bindAgent over a real dsh composition', () => {
     crashed.result.catch(() => {})
     await until(() => first.adapter.requests.length === 1)
     await until(async () => (await first.ctx.sessionPersistence.list())
-      .some(header => String(header.id) === 'agent-budget-1'))
+      .some(snapshot => String(snapshot.header.id) === 'agent-budget-1'))
     contexts = contexts.filter(item => item !== first.ctx)
     await first.ctx.fiber.dispose()
 
@@ -599,6 +601,7 @@ describe('bindAgent over a real dsh composition', () => {
       '- name: \'@deepseek-ai/dsh-tools\'',
       '- name: \'@deepseek-ai/dsh-agent\'',
       '- name: \'@deepseek-ai/dsh-agent-loop\'',
+      '- name: \'@deepseek-ai/dsh-session-projection\'',
       '',
     ].join('\n'))
     const ctx = new Context()
@@ -614,6 +617,7 @@ describe('bindAgent over a real dsh composition', () => {
       ['@deepseek-ai/dsh-tools', ToolRuntime],
       ['@deepseek-ai/dsh-agent', AgentRegistry],
       ['@deepseek-ai/dsh-agent-loop', AgentLoop],
+      ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
     ])
     ctx.loader.internal = {
       version: 'v2',
@@ -677,7 +681,7 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     // Parked: turn 1 completed without submit.
     await until(() => first.adapter.requests.length === 1)
     await until(async () => (await first.ctx.sessionPersistence.list())
-      .some(header => String(header.id) === 'agent-steer-park-1'))
+      .some(snapshot => String(snapshot.header.id) === 'agent-steer-park-1'))
     await until(() => readJournal(first.ledgerPath, 'agent-steer-park-1')
       .some(step => step.step_key === 'dsh-step:1:1' && step.status === 'completed'))
     contexts = contexts.filter(item => item !== first.ctx)
@@ -717,7 +721,7 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     crashed.result.catch(() => {})
     await until(() => first.adapter.requests.length === 1)
     await until(async () => (await first.ctx.sessionPersistence.list())
-      .some(header => String(header.id) === 'agent-steer-dead-1'))
+      .some(snapshot => String(snapshot.header.id) === 'agent-steer-dead-1'))
     contexts = contexts.filter(item => item !== first.ctx)
     await first.ctx.fiber.dispose()
 
@@ -784,7 +788,7 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     await until(() => first.adapter.requests.length === 1)
     // The partial first turn must reach durable storage before the "crash".
     await until(async () => (await first.ctx.sessionPersistence.list())
-      .some(header => String(header.id) === 'agent-steer-crash-1'))
+      .some(snapshot => String(snapshot.header.id) === 'agent-steer-crash-1'))
     contexts = contexts.filter(item => item !== first.ctx)
     await first.ctx.fiber.dispose()
 
@@ -819,8 +823,10 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     // Turn 2's close must be durable before the "crash", or the revival would
     // re-deliver the segment (model-visible ⟺ logged ordinal dedup).
     await until(async () => {
-      const inspection = await first.ctx.sessionPersistence.inspect(SessionId('agent-steer-repark-1'))
-      return inspection.events.some(event => event.type === 'turn/end' && event.data.turn === 2)
+      const handle = await first.ctx.sessionPersistence.open(SessionId('agent-steer-repark-1'), 'read')
+      const events = await handle.read()
+      await handle.close()
+      return events.some(event => event.type === 'turn/end' && event.data.turn === 2)
     })
     contexts = contexts.filter(item => item !== first.ctx)
     await first.ctx.fiber.dispose()
@@ -864,34 +870,21 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     crashed.result.catch(() => {})
     await until(() => first.adapter.requests.length === 1)
     await until(async () => (await first.ctx.sessionPersistence.list())
-      .some(header => String(header.id) === 'agent-steer-foreign-1'))
+      .some(snapshot => String(snapshot.header.id) === 'agent-steer-foreign-1'))
     // A writer outside the run flow records a complete turn whose user message
     // carries two text blocks. Run-owned inputs are always single-text, so the
     // ordinal dedup must not count it.
-    const inspection = await first.ctx.sessionPersistence.inspect(SessionId('agent-steer-foreign-1'))
-    const nextSeq = (inspection.events.at(-1)?.seq ?? 0) + 1
-    const foreignTurn: SessionEvent[] = [
-      {
-        type: 'turn/start', seq: nextSeq, time: Date.now(),
-        data: { turn: 2 },
-      },
-      {
-        type: 'user/message', seq: nextSeq + 1, time: Date.now(),
-        data: createUserMessage({
-          content: [
-            { type: 'text', text: 'foreign part 1' },
-            { type: 'text', text: 'foreign part 2' },
-          ],
-          source: { kind: 'user' },
-        }),
-        surfaceOp: 'append',
-      },
-      {
-        type: 'turn/end', seq: nextSeq + 2, time: Date.now(),
-        data: { turn: 2, reason: { kind: 'completed' } },
-      },
-    ]
-    await first.ctx.sessionPersistence.append(SessionId('agent-steer-foreign-1'), foreignTurn)
+    const foreign = first.ctx.sessions.get(SessionId('agent-steer-foreign-1'))
+    if (foreign === undefined) throw new Error('live session for agent-steer-foreign-1 went away before injection')
+    foreign.append('turn/start', { turn: 2 })
+    foreign.append('user/message', createUserMessage({
+      content: [
+        { type: 'text', text: 'foreign part 1' },
+        { type: 'text', text: 'foreign part 2' },
+      ],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    foreign.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
     contexts = contexts.filter(item => item !== first.ctx)
     await first.ctx.fiber.dispose()
 

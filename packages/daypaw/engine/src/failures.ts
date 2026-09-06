@@ -3,14 +3,13 @@
  * details, shared by the engine (the owner), the SDK wire face, and the
  * shell's consuming client packages. Thrown failures cross the Remote
  * boundary unchanged and consumers discriminate by `error.code`, never by
- * message text. `TypertRemoteFailure` is this tree's wire failure vehicle;
- * when the next upstream sync lands `RemoteError` with the merge-extensible
- * `RemoteErrorDetailsMap` (upstream `804b1ffbfc`), this module's details map
- * becomes that map's `durable/*` declaration and only the carrier class
- * swaps — codes and details stay (ticket #86).
+ * message text. `RemoteError` is the wire failure vehicle; the code set
+ * merges into `RemoteErrorDetailsMap` next to the Gateway's infrastructure
+ * codes (ticket #86).
  * @module @daypaw/engine
  */
-import { TypertRemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import type { RemoteErrorDetailsMap } from '@deepseek-ai/dsh-typert-protocol'
 
 /** Wire details each `durable/*` failure code carries. */
 export interface DurableFailureDetailsMap {
@@ -50,6 +49,10 @@ export interface DurableFailureDetailsMap {
   'durable/ledger-unavailable': Record<string, never>
 }
 
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface RemoteErrorDetailsMap extends DurableFailureDetailsMap {}
+}
+
 /** Closed code set of the `durable/*` failure vocabulary. */
 export type DurableFailureCode = keyof DurableFailureDetailsMap
 
@@ -64,6 +67,9 @@ export function durableFailure<Code extends DurableFailureCode>(
   code: Code,
   message: string,
   details: DurableFailureDetailsMap[Code],
-): TypertRemoteFailure {
-  return new TypertRemoteFailure({ code, message, details })
+): RemoteError<Code> {
+  // The merge above types the map; the generic indexed access through the
+  // declaration-merged interface still defeats the checker, so the details
+  // cross with the same one-line cast the gateway's dynamic-code sites use.
+  return new RemoteError(code, message, details as RemoteErrorDetailsMap[Code])
 }

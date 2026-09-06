@@ -129,7 +129,7 @@ describe('defineAgent compilation snapshots', () => {
       // The whole model-visible surface of the compiled agent is pinned by the
       // persisted session log: the persona prompt section text, the injected
       // `submit` tool schema, and the input message.
-      const log = await expectSessionLog(sessions, join(happyDir, 'session.expected.jsonl'))
+      const log = await expectSessionLog(sessions, join(happyDir, 'session.jsonl'))
       expect(log).toContain('You review code and report a numeric score from 0 to 100.')
       expect(log).toContain('"name":"submit"')
       expect(log).toContain('Submission accepted; the run is complete.')
@@ -172,7 +172,7 @@ describe('defineAgent compilation snapshots', () => {
       expect(restart.stdout).toBe('{"verdict":7}\n')
 
       // The revived session's log pins the synthetic resume steer the model sees.
-      const log = await expectSessionLog(sessions, join(reviveDir, 'session.expected.jsonl'))
+      const log = await expectSessionLog(sessions, join(reviveDir, 'session.jsonl'))
       expect(log).toContain('The host process restarted')
       expect(log).toContain('REVIEW RESUMED')
 
@@ -201,7 +201,7 @@ describe('defineAgent compilation snapshots', () => {
 
       // One session log carries both user messages: the initial input and the
       // steered follow-up, with no synthetic resume steer in between.
-      const log = await expectSessionLog(sessions, join(steerDir, 'session.expected.jsonl'))
+      const log = await expectSessionLog(sessions, join(steerDir, 'session.jsonl'))
       expect(log).toContain('You review code iteratively and report a numeric score from 0 to 100 once the review is complete.')
       expect(log).toContain('export const answer = 42')
       expect(log).toContain('export const extra = 1')

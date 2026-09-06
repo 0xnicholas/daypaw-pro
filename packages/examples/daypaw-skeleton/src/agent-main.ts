@@ -16,6 +16,7 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import { installLlmReplay } from '@deepseek-ai/dsh-llm-replay'
 import SessionStore from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -90,6 +91,7 @@ await ctx.plugin(SessionStore)
 await ctx.plugin(SystemPrompt)
 await ctx.plugin(ToolRuntime)
 await ctx.plugin(AgentRegistry)
+await ctx.plugin(SessionProjectionRegistry)
 await ctx.plugin(AgentLoop)
 await ctx.plugin(JsonlSessionPersistence, { root: sessionsRoot })
 // Override-only replay: `file` points at a deliberately absent primary session

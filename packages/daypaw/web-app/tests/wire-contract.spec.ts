@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import TypertGatewayService, { TypertGatewayError } from '@deepseek-ai/dsh-api-gateway'
-import { TypertRemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
+import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import { DurableEngine } from '@daypaw/sdk'
 import type { Json } from '@daypaw/engine'
 import { createNewTaskApi } from '@daypaw/ui-tasks/src/client/new-task-api.ts'
@@ -73,9 +73,7 @@ function gatewayRpc(ctx: Context): { call(channel: string, endpoint: string, pay
             ? { code: error.code, message: error.message, details: {} }
             // Mirrors the gateway's rpcFailure: a vocabulary failure crosses
             // with its own code and details (ticket #86).
-            : error instanceof TypertRemoteFailure
-              ? error.failure
-              : { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} },
+            : remoteErrorOf(error) ?? { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} },
         }
       }
     },

@@ -39,7 +39,12 @@ function errorNode(): ConversationNode {
 /** Assemble a Chat snapshot whose legacy slice carries the given nodes. */
 function chatWith(nodes: readonly ConversationNode[]): ChatSnapshot {
   return {
-    order: [], nodes: { get: () => undefined, values: () => [] },
+    order: [], nodes: {
+      get: () => undefined,
+      values: () => [],
+      source: () => neverHook,
+      processSource: () => neverHook,
+    },
     locations: { getTurn: () => [], getStep: () => [] },
     navigation: { items: () => [] },
     timeline: { turnOrder: [], turns: new Map() },

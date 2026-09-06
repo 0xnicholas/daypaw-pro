@@ -12,10 +12,12 @@ import AgentRegistry from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { DurableEngine } from '@daypaw/sdk'
+import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import { loadAgentFiles } from '../src/agents-dir.ts'
 
 let root: string | undefined
@@ -39,6 +41,7 @@ async function boot(): Promise<Context> {
   await ctx.plugin(SystemPrompt, { persona: '' })
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(AgentRegistry)
+  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(AgentLoop)
   await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
   return ctx
@@ -192,10 +195,10 @@ describe('loadAgentFiles', () => {
     // vocabulary entry, carrying the zod issues as details (ticket #86).
     const rejected = await ctx.durable.startRun({ defName: 'checked-flow', input: { code: 7 } }).then(
       () => { throw new Error('expected a rejection') },
-      (error: unknown) => error as { failure: { code: string; details: { issues: unknown[] } } },
+      (error: unknown) => remoteErrorOf(error),
     )
-    expect(rejected.failure.code).toBe('durable/input-invalid')
-    expect(rejected.failure.details.issues).toHaveLength(1)
+    expect(rejected?.code).toBe('durable/input-invalid')
+    expect(rejected?.details).toMatchObject({ issues: [{ path: ['code'] }] })
   })
 
   it('accepts the bare free text for the { task } starter shape across the wire', async () => {
@@ -225,7 +228,7 @@ describe('loadAgentFiles', () => {
     const plainRow = (await ctx.durable.listRuns()).find(run => run.run_id === plain.runId)
     expect(plainRow?.input_json).toBe('"write a poem"')
     await expect(ctx.durable.startRun({ defName: 'tasked-flow', input: { task: 7 } }))
-      .rejects.toMatchObject({ failure: { code: 'durable/input-invalid' } })
+      .rejects.toMatchObject({ code: 'durable/input-invalid' })
   })
 
   it('fails loud when the directory path is a regular file', async () => {

@@ -10,7 +10,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
-import { Remote, TypertRemoteFailure, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Remote, remoteErrorOf, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { JournalRow, RunRow } from '@daypaw/store'
 import { openLedgerDatabase } from '@daypaw/store'
@@ -304,7 +304,7 @@ export default class DurableEngine extends TypertRemoteService {
     try {
       return face.parseInput(value)
     } catch (error) {
-      if (error instanceof TypertRemoteFailure) throw error
+      if (remoteErrorOf(error) !== undefined) throw error
       throw durableFailure('durable/input-invalid', error instanceof Error ? error.message : String(error), { issues: [] })
     }
   }

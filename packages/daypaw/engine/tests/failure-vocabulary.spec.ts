@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import DurableEngine from '@daypaw/engine'
-import { TypertRemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
+import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import type { EngineDefinition, EngineStepCtx, EngineWireFace, Json } from '@daypaw/engine'
 
 const contexts: Context[] = []
@@ -62,16 +62,17 @@ function taskWire(): EngineWireFace {
 }
 
 /**
- * Run one action and return its thrown vocabulary failure.
+ * Run one action and return its thrown vocabulary failure's wire triple.
  * @param action - the engine call expected to reject.
- * @returns the thrown {@link TypertRemoteFailure}.
+ * @returns the thrown failure's `{ code, message, details }`.
  */
-async function failureOf(action: () => Promise<unknown>): Promise<TypertRemoteFailure> {
+async function failureOf(action: () => Promise<unknown>): Promise<{ code: string; message: string; details: unknown }> {
   return await action().then(
     () => { throw new Error('expected a rejection') },
     (error: unknown) => {
-      if (error instanceof TypertRemoteFailure) return error
-      throw new Error(`expected a TypertRemoteFailure vocabulary failure, got: ${String(error)}`)
+      const remote = remoteErrorOf(error)
+      if (remote !== undefined) return { code: remote.code, message: remote.message, details: remote.details }
+      throw new Error(`expected a durable/* vocabulary failure, got: ${String(error)}`)
     },
   )
 }
@@ -84,19 +85,19 @@ describe('durable failure vocabulary (ticket #86)', () => {
     await engine.register({ ...workflowDef('dual', async () => 'ok'), version: '2' })
 
     const byName = await failureOf(() => engine.startRun({ defName: 'ghost', input: {} }))
-    expect(byName.failure).toEqual({
+    expect(byName).toEqual({
       code: 'durable/definition-not-found',
       message: 'durable engine: no registered definition matches ghost',
       details: { defName: 'ghost' },
     })
     const byVersion = await failureOf(() => engine.startRun({ defName: 'solo', defVersion: '9', input: {} }))
-    expect(byVersion.failure).toEqual({
+    expect(byVersion).toEqual({
       code: 'durable/definition-not-found',
       message: 'durable engine: no registered definition matches solo@9',
       details: { defName: 'solo', defVersion: '9' },
     })
     const ambiguous = await failureOf(() => engine.startRun({ defName: 'dual', input: {} }))
-    expect(ambiguous.failure).toEqual({
+    expect(ambiguous).toEqual({
       code: 'durable/definition-ambiguous',
       message: 'durable engine: definition dual is ambiguous across workflow/dual/1, workflow/dual/2; pass an exact version',
       details: { defName: 'dual', candidates: ['workflow/dual/1', 'workflow/dual/2'] },
@@ -107,7 +108,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
     const { engine } = await boot()
     await engine.register(workflowDef('tasked', async () => 'done', taskWire()))
     const failure = await failureOf(() => engine.startRun({ defName: 'tasked', input: { wrong: true } }))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/input-invalid',
       message: 'input must be { task: string }',
       details: { issues: [] },
@@ -125,7 +126,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
     }
     await engine.register(workflowDef('stringy', async () => 'done', throwingString))
     const failure = await failureOf(() => engine.startRun({ defName: 'stringy', input: {} }))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/input-invalid',
       message: 'not a contract value',
       details: { issues: [] },
@@ -138,7 +139,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
     await engine.register(workflowDef('owned-b', async () => 'ok'))
     const started = await engine.startRun({ defName: 'owned-a', input: {} })
     const failure = await failureOf(() => engine.startRun({ defName: 'owned-b', input: {}, runId: started.runId }))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/run-definition-mismatch',
       message: `durable engine: run ${started.runId} belongs to workflow/owned-a/1, not workflow/owned-b/1`,
       details: { runId: started.runId },
@@ -159,19 +160,19 @@ describe('durable failure vocabulary (ticket #86)', () => {
     await until(async () => (await engine.runLineage('steer-held-1')).run?.status === 'running')
 
     const unknown = await failureOf(() => engine.steer('steer-ghost', null))
-    expect(unknown.failure).toEqual({
+    expect(unknown).toEqual({
       code: 'durable/run-not-found',
       message: 'durable engine: steer targets unknown run steer-ghost',
       details: { runId: 'steer-ghost' },
     })
     const terminal = await failureOf(() => engine.steer('steer-done-1', null))
-    expect(terminal.failure).toEqual({
+    expect(terminal).toEqual({
       code: 'durable/run-terminal',
       message: 'durable engine: steer targets terminal run steer-done-1 (done)',
       details: { runId: 'steer-done-1', status: 'done' },
     })
     const notSteerable = await failureOf(() => engine.steer('steer-held-1', null))
-    expect(notSteerable.failure).toEqual({
+    expect(notSteerable).toEqual({
       code: 'durable/run-not-steerable',
       message: 'durable engine: run steer-held-1 belongs to workflow/held/1, which is not steerable',
       details: { runId: 'steer-held-1', defKind: 'workflow', defName: 'held', defVersion: '1' },
@@ -184,7 +185,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
   it('steerText reports an unknown run through the steer delegation', async () => {
     const { engine } = await boot()
     const failure = await failureOf(() => engine.steerText('steertext-ghost', 'follow up'))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/run-not-found',
       message: 'durable engine: steer targets unknown run steertext-ghost',
       details: { runId: 'steertext-ghost' },
@@ -200,7 +201,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
     const held = await engine.run(def, null, { runId: 'steertext-1' })
     await until(async () => (await engine.runLineage('steertext-1')).run?.status === 'running')
     const failure = await failureOf(() => engine.steerText('steertext-1', 'follow up'))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/wire-face-missing',
       message: 'durable engine: steerText requires a wire face, and nowire@1 carries none',
       details: { defName: 'nowire', defVersion: '1' },
@@ -227,19 +228,19 @@ describe('durable failure vocabulary (ticket #86)', () => {
     await until(async () => (await engine.runLineage('rerun-running-1')).run?.status === 'running')
 
     const unknown = await failureOf(() => engine.rerun('rerun-ghost'))
-    expect(unknown.failure).toEqual({
+    expect(unknown).toEqual({
       code: 'durable/run-not-found',
       message: 'durable engine: rerun targets unknown run rerun-ghost',
       details: { runId: 'rerun-ghost' },
     })
     const unfinished = await failureOf(() => engine.rerun('rerun-running-1'))
-    expect(unfinished.failure).toEqual({
+    expect(unfinished).toEqual({
       code: 'durable/run-unfinished',
       message: 'durable engine: rerun targets unfinished run rerun-running-1 (running)',
       details: { runId: 'rerun-running-1', status: 'running' },
     })
     const child = await failureOf(() => engine.rerun('rerun-child-1'))
-    expect(child.failure).toEqual({
+    expect(child).toEqual({
       code: 'durable/run-is-child',
       message: 'durable engine: rerun targets child run rerun-child-1 (rerun applies to top-level runs only)',
       details: { runId: 'rerun-child-1' },
@@ -263,7 +264,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
     contexts.push(second)
     await second.plugin(DurableEngine, { path, pollMs: 20 })
     const failure = await failureOf(() => second.durable.rerun('vocab-unreg-1'))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/definition-unregistered',
       message: 'durable engine: run vocab-unreg-1 belongs to workflow/ephemeral/1, which is not registered',
       details: { runId: 'vocab-unreg-1', defKind: 'workflow', defName: 'ephemeral', defVersion: '1' },
@@ -273,7 +274,7 @@ describe('durable failure vocabulary (ticket #86)', () => {
   it('cancel reports unknown runs', async () => {
     const { engine } = await boot()
     const failure = await failureOf(() => engine.cancel('cancel-ghost'))
-    expect(failure.failure).toEqual({
+    expect(failure).toEqual({
       code: 'durable/run-not-found',
       message: 'durable engine: cancel targets unknown run cancel-ghost',
       details: { runId: 'cancel-ghost' },
@@ -288,8 +289,8 @@ describe('durable failure vocabulary (ticket #86)', () => {
     contexts.push(ctx)
     await ctx.plugin(DurableEngine, { path: join(notADir, 'nested', 'ledger.db') })
     const failure = await failureOf(() => ctx.durable.listRuns())
-    expect(failure.failure.code).toBe('durable/ledger-unavailable')
-    expect(failure.failure.message).toBe('durable engine failed to open its ledger')
+    expect(failure.code).toBe('durable/ledger-unavailable')
+    expect(failure.message).toBe('durable engine failed to open its ledger')
     await rm(dir, { recursive: true, force: true })
   })
 })
