@@ -49,7 +49,7 @@ async function bench(declare = true) {
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('zh')
   ctx.provide('locale', locale)
-  const sessions = { open: vi.fn() }
+  const sessions = { open: vi.fn(), create: vi.fn() }
   ctx.provide('sessions', sessions as never)
   const rpc = fakeRpc()
   ctx.provide('connection', { rpc } as never)
@@ -163,6 +163,36 @@ describe('ui-inbox apply', () => {
     navFace.select({ kind: 'group', group: 'done' })
     navFace.select({ kind: 'settings' })
     expect(b.sessions.open).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts a light chat by creating a plain session and selecting it as the conversation (issue #102)', async () => {
+    const b = await bench()
+    b.sessions.create.mockResolvedValue('fresh')
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const { navFace } = faces(b)
+    navFace.startChat()
+    await flush()
+    // One plain session created on the host (no engine run, no definition).
+    expect(b.sessions.create).toHaveBeenCalledOnce()
+    expect(b.sessions.create).toHaveBeenCalledWith()
+    // The created session opens as the middle column's conversation selection.
+    expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'task', sessionId: 'fresh' })
+    expect(b.sessions.open).toHaveBeenCalledWith('fresh')
+  })
+
+  it('warns and keeps the selection when the chat session create fails', async () => {
+    const b = await bench()
+    b.sessions.create.mockRejectedValue(new Error('host down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const { navFace } = faces(b)
+    navFace.startChat()
+    await flush()
+    expect(warn).toHaveBeenCalledOnce()
+    // The failed create never moves the selection or the runtime session.
+    expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'group', group: 'running' })
+    expect(b.sessions.open).not.toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('starts the board poll on apply and binds the detail store to run selections', async () => {

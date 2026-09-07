@@ -73,6 +73,13 @@
 /* The most prominent element: full-width primary new-task bar. */
 .newTask {
   width: 100%;
+  margin-bottom: var(--dp-space-2);
+}
+
+/* The light-chat entry under the primary bar: secondary weight, still
+   full-width so the two conversation starters read as one block. */
+.chatEntry {
+  width: 100%;
   margin-bottom: var(--dp-space-3);
 }
 

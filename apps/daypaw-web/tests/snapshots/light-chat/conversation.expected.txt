@@ -1,0 +1,4 @@
+status=none
+user=help me write a haiku
+assistant=回声：help me write a haiku。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。
+seat=Chat with the assistant… disabled=false

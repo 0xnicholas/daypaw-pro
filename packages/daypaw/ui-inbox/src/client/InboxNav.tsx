@@ -1,11 +1,12 @@
 /**
  * Inbox navigation column (the 'sidebar' occupant): wordmark, the big
  * 「+ 新任务」 button opening the new-task dialog (body delegated to the
- * 'inbox.new-task.dialog' occupant, stub copy while absent), the three inbox
+ * 'inbox.new-task.dialog' occupant, stub copy while absent), the 「直接和助手聊」
+ * light-chat entry beside it (a plain session, no engine run), the three inbox
  * groups with live counts projected from the sessions list plus the run
  * ledger, and the Agents / 设置 secondary nav. Collapsed renders the compact control rail
- * (sidebar toggle + new-task icon button) required by the 'sidebar' occupant
- * contract.
+ * (sidebar toggle + new-task and light-chat icon buttons) required by the
+ * 'sidebar' occupant contract.
  */
 import { useState } from 'react'
 import clsx from 'clsx'
@@ -19,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 // in so PropsRenderSlots resolves.
 import type {} from './contract.ts'
 import {
-  Button, IconPanelLeftOutline16, IconPlusOutline16, Modal, Tooltip,
+  Button, IconNewChatOutline16, IconPanelLeftOutline16, IconPlusOutline16, Modal, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InboxGroup, InboxSelection } from './selection.ts'
 import { projectInboxBoard } from './task-projection.ts'
@@ -41,6 +42,8 @@ export interface InboxNavInjected {
   toggleSidebar: () => void
   /** Kick an out-of-band board refetch (a just-started task's run lists without waiting the poll cadence). */
   refreshBoard: () => void
+  /** Open a plain conversation session (no engine run) and select it as the middle column's conversation. */
+  startChat: () => void
 }
 
 /** Full component props: layout owner share + child render share + injected face + locale seat. */
@@ -67,7 +70,7 @@ const GROUP_LABEL: Record<InboxGroup, InboxKey> = {
  */
 export function InboxNav({
   collapsed, useSelection, useBoard, useSessions, useSessionPendingInteraction,
-  select, toggleSidebar, refreshBoard, renderSlot, t,
+  select, toggleSidebar, refreshBoard, startChat, renderSlot, t,
 }: InboxNavProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
@@ -124,6 +127,16 @@ export function InboxNav({
             <IconPlusOutline16 size={18} />
           </button>
         </Tooltip>
+        <Tooltip label={t('nav.chat')} delayMs={500}>
+          <button
+            type="button"
+            className={css.iconButton}
+            aria-label={t('nav.chat')}
+            onClick={() => { startChat() }}
+          >
+            <IconNewChatOutline16 size={18} />
+          </button>
+        </Tooltip>
         {newTaskDialog}
       </div>
     )
@@ -152,6 +165,15 @@ export function InboxNav({
         onClick={() => { setDialogOpen(true) }}
       >
         {t('nav.new-task')}
+      </Button>
+
+      <Button
+        variant="outline"
+        className={css.chatEntry}
+        icon={<IconNewChatOutline16 size={14} />}
+        onClick={() => { startChat() }}
+      >
+        {t('nav.chat')}
       </Button>
 
       <nav className={css.groups}>

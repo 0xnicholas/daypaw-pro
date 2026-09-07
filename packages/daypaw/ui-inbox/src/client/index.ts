@@ -130,6 +130,22 @@ export function apply(ctx: ClientContext): void {
     })
   }
 
+  /**
+   * The light-chat entry's dispatcher (ruling #98, issue #102): create a
+   * plain session on the host (no engine run, no definition, no startRun)
+   * and select it as the middle column's conversation. The create
+   * resolution guarantee puts the session in the list store before open,
+   * so the task selection lands on a listed id; a create failure only
+   * warns (the nav carries no inline failure surface, and the connection
+   * indicator already owns transport health).
+   */
+  const startChat = (): void => {
+    void ctx.sessions.create().then(
+      (sessionId) => { selection.select({ kind: 'task', sessionId }) },
+      (reason: unknown) => { console.warn('chat session create failed:', reason) },
+    )
+  }
+
   ctx.effect(() => {
     const nav = ctx.slots.register({
       name: 'sidebar',
@@ -143,6 +159,7 @@ export function apply(ctx: ClientContext): void {
         select: (next) => { selection.select(next) },
         toggleSidebar: () => { ctx.layout.toggleSidebar() },
         refreshBoard: () => { void board.refresh() },
+        startChat,
       }),
     }, InboxNav)
     const workspace = ctx.slots.register({

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * ConversationView: the business-language whitelist projection, the running status
- * row, the error marker, the approval card, the live follow-up steer seat.
+ * row, the error marker, the approval card, the live follow-up steer seat, and
+ * the run-less session's plain-chat seat (issue #102).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -77,6 +78,7 @@ function mountView(
     sendNote?: ConversationViewProps['sendNote']
     runStatus?: ConversationViewProps['runStatus']
     steer?: ConversationViewProps['steer']
+    sendChat?: ConversationViewProps['sendChat']
   } = {},
 ) {
   const session = {
@@ -107,6 +109,7 @@ function mountView(
       useSessions={useSessions} useWorkspaces={neverHook}
       sendNote={options.sendNote ?? (() => Promise.resolve())}
       steer={options.steer ?? (() => Promise.resolve())}
+      sendChat={options.sendChat ?? (() => Promise.resolve())}
       runStatus={options.runStatus} t={t}
     />,
   )
@@ -160,12 +163,45 @@ describe('ConversationView', () => {
     expect(screen.queryByText(/provider exploded/)).toBeNull()
   })
 
-  it('renders the empty state and keeps the follow-up seat closed without a live run', () => {
+  it('renders the empty state and keeps the seat live as the chat input when the session has no run (issue #102)', () => {
     mountView({})
     expect(screen.getByText('暂无对话内容')).toBeTruthy()
+    const seat = screen.getByRole('textbox', { name: '和助手聊…' })
+    expect(seat).toHaveProperty('disabled', false)
+    expect(seat).toHaveProperty('placeholder', '和助手聊…')
+  })
+
+  it('keeps the follow-up seat closed when the task has a settled run', () => {
+    mountView({ runStatus: 'done' })
     const followup = screen.getByRole('textbox', { name: '追问…' })
     expect(followup).toHaveProperty('disabled', true)
     expect(followup).toHaveProperty('placeholder', '任务已结束')
+  })
+
+  it('sends ordinary queued prompts from the chat seat of a run-less session (issue #102)', async () => {
+    const sendChat = vi.fn(() => Promise.resolve())
+    const steer = vi.fn(() => Promise.resolve())
+    mountView({ chat: chatWith([userNode('在吗')]), sendChat, steer })
+    const seat = screen.getByRole('textbox', { name: '和助手聊…' })
+    expect(seat).toHaveProperty('disabled', false)
+    fireEvent.change(seat, { target: { value: '写一首诗' } })
+    fireEvent.submit(seat.closest('form')!)
+    await waitFor(() => { expect(sendChat).toHaveBeenCalledWith('s1' as SessionId, '写一首诗') })
+    // The chat seat never steers: a run-less session has no run.
+    expect(steer).not.toHaveBeenCalled()
+    // A landed send clears the draft.
+    await waitFor(() => { expect(seat).toHaveProperty('value', '') })
+    expect(screen.queryByText('发送失败，请重试')).toBeNull()
+  })
+
+  it('keeps the draft and shows the chat inline failure when the queued prompt fails', async () => {
+    const sendChat = vi.fn(() => Promise.reject(new Error('wire down')))
+    mountView({ chat: chatWith([userNode('在吗')]), sendChat })
+    const seat = screen.getByRole('textbox', { name: '和助手聊…' })
+    fireEvent.change(seat, { target: { value: '写一首诗' } })
+    fireEvent.submit(seat.closest('form')!)
+    await waitFor(() => { expect(screen.getByText('发送失败，请重试')).toBeTruthy() })
+    expect(seat).toHaveProperty('value', '写一首诗')
   })
 
   it('steers the run from the follow-up seat while the ledger row is unfinished (issue #94)', async () => {

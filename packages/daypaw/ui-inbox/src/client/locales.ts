@@ -4,6 +4,7 @@
 export const zh = {
   'nav.new-task': '新任务',
   'nav.new-task.label': '新建任务',
+  'nav.chat': '直接和助手聊',
   'nav.toggle.open': '打开侧边栏',
   'nav.toggle.collapse': '收起侧边栏',
   'nav.group.pending': '等待你确认',
@@ -39,6 +40,7 @@ export type InboxKey = keyof typeof zh
 export const en = {
   'nav.new-task': 'New Task',
   'nav.new-task.label': 'New task',
+  'nav.chat': 'Chat with the assistant',
   'nav.toggle.open': 'Open sidebar',
   'nav.toggle.collapse': 'Collapse sidebar',
   'nav.group.pending': 'Awaiting your confirmation',

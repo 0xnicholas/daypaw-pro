@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
-/** InboxNav: groups with live sessions-list counts, selection routing, the delegated new-task dialog, collapsed rail, skeleton snapshot. */
+/**
+ * InboxNav: groups with live sessions-list counts, selection routing, the delegated new-task
+ * dialog, the light-chat entry, collapsed rail, skeleton snapshot.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
@@ -61,6 +64,7 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
   const controller = new InboxSelectionController(openSession)
   const toggleSidebar = vi.fn()
   const refreshBoard = vi.fn()
+  const startChat = vi.fn()
   const renderSlot: InboxNavProps['renderSlot'] = ((_key: string, _owner: object, opts?: { fallback?: unknown }) =>
     (opts?.fallback ?? null)) as never
   const view = render(
@@ -71,10 +75,10 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
       useSelection={bindSnapshotSelector(controller.store)}
       useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
       select={(next) => { controller.select(next) }}
-      toggleSidebar={toggleSidebar} refreshBoard={refreshBoard} renderSlot={renderSlot} t={t}
+      toggleSidebar={toggleSidebar} refreshBoard={refreshBoard} startChat={startChat} renderSlot={renderSlot} t={t}
     />,
   )
-  return { controller, openSession, toggleSidebar, refreshBoard, view }
+  return { controller, openSession, toggleSidebar, refreshBoard, startChat, view }
 }
 
 /** A board run row fixture. */
@@ -92,7 +96,7 @@ function boardRun(overrides: Partial<WireRun> = {}): WireRun {
 }
 
 describe('InboxNav', () => {
-  it('renders the expanded skeleton: wordmark, new-task button, groups with live counts, secondary nav', () => {
+  it('renders the expanded skeleton: wordmark, new-task and light-chat buttons, groups with live counts, secondary nav', () => {
     const { toggleSidebar } = mountNav({
       rows: [
         { id: 'a', running: true },
@@ -103,6 +107,7 @@ describe('InboxNav', () => {
     })
     expect(screen.getByText('daypaw')).toBeTruthy()
     expect(screen.getByRole('button', { name: '新任务' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '直接和助手聊' })).toBeTruthy()
     // Live projection: one running, two settled; blank drafts never count;
     // no row carries an approval badge, so 等待你确认 stays zero here.
     expect(screen.getByRole('button', { name: '等待你确认0' })).toBeTruthy()
@@ -160,7 +165,7 @@ describe('InboxNav', () => {
         useSelection={bindSnapshotSelector(controller.store)}
         useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs: [] }))}
         select={(next) => { controller.select(next) }}
-        toggleSidebar={() => {}} refreshBoard={refreshBoard} renderSlot={renderSlot} t={t}
+        toggleSidebar={() => {}} refreshBoard={refreshBoard} startChat={() => {}} renderSlot={renderSlot} t={t}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: '新任务' }))
@@ -179,6 +184,14 @@ describe('InboxNav', () => {
     expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 's1' })
   })
 
+  it('routes the light-chat entry through the injected startChat, never the task dialog', () => {
+    const { startChat } = mountNav()
+    fireEvent.click(screen.getByRole('button', { name: '直接和助手聊' }))
+    expect(startChat).toHaveBeenCalledOnce()
+    // The light-chat entry opens no task dialog.
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('counts engine runs alongside sessions: a running workflow run counts 进行中, a settled one 已完成, an agent run dedupes its session twin', () => {
     mountNav({
       rows: [{ id: 'r2', running: true }],
@@ -195,14 +208,18 @@ describe('InboxNav', () => {
     expect(screen.getByRole('button', { name: '等待你确认0' })).toBeTruthy()
   })
 
-  it('renders the collapsed rail: toggle and new-task icon buttons only', () => {
-    const { toggleSidebar } = mountNav({ collapsed: true, rows: [{ id: 'a', running: true }] })
+  it('renders the collapsed rail: toggle, new-task, and light-chat icon buttons only', () => {
+    const { toggleSidebar, startChat } = mountNav({ collapsed: true, rows: [{ id: 'a', running: true }] })
     expect(screen.queryByText('daypaw')).toBeNull()
     expect(screen.queryByRole('button', { name: '进行中1' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '打开侧边栏' }))
     expect(toggleSidebar).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: '新建任务' }))
     expect(screen.getByRole('dialog', { name: '新任务' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }))
+    fireEvent.click(screen.getByRole('button', { name: '直接和助手聊' }))
+    expect(startChat).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('matches the expanded skeleton snapshot', () => {

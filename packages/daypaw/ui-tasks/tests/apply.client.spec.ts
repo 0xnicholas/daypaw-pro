@@ -113,6 +113,8 @@ describe('ui-tasks apply', () => {
     await face.sendNote('s1' as never, '先别删')
     expect(b.sessions.binding).toHaveBeenCalledWith('s1')
     expect(prompt).toHaveBeenCalledWith([{ type: 'text', text: '先别删' }], 'queue')
+    // The light-chat seat rides the same queued-prompt sender (issue #102).
+    expect(face.sendChat).toBe(face.sendNote)
     // Fail loud: an unlisted session throws; a rejected prompt throws.
     b.sessions.binding.mockReturnValue(undefined)
     await expect(face.sendNote('ghost' as never, 'x')).rejects.toThrow('resolved no binding')

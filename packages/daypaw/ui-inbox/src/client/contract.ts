@@ -69,7 +69,9 @@ export interface InboxConversationOwnerProps {
    * ledger row), or undefined when the selected session has no run (a
    * run-less session). The follow-up seat's liveness keys off this, never
    * the session's agent running bit: an agent run parked at a steer segment
-   * boundary keeps its ledger row `running` while its agent sits idle.
+   * boundary keeps its ledger row `running` while its agent sits idle, and a
+   * run-less session keeps the seat live as the plain-chat input (issue
+   * #102).
    */
   readonly runStatus: WireRunStatus | undefined
 }

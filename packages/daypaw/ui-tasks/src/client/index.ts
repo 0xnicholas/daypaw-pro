@@ -69,9 +69,11 @@ export function apply(ctx: ClientContext): void {
   const connection = ctx.get('connection') as ConnectionHandle
   const newTask = new NewTaskStore(createNewTaskApi(connection.rpc), { list: ctx.sessions.list })
 
-  // The reject note rides the ordinary prompt path (queue mode lets a
-  // running task consume it as steering and an idle one start a new turn).
-  const sendNote = async (sessionId: SessionId, note: string): Promise<void> => {
+  // One queued-prompt sender serves both riders: the approval reject note
+  // (拒绝可附言回对话) and the light-chat seat's input (issue #102) — queue mode
+  // lets a running task consume the text as steering and an idle one start a
+  // new turn.
+  const sendQueued = async (sessionId: SessionId, note: string): Promise<void> => {
     const binding = ctx.sessions.binding(sessionId)
     if (binding === undefined) throw new Error(`ui-tasks: session "${sessionId}" resolved no binding`)
     const prompted = await binding.session.prompt([{ type: 'text', text: note }], 'queue')
@@ -102,7 +104,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.workspace.conversation', () => ctx.slots.register({
     name: 'inbox.workspace.conversation',
     locale: NS,
-    inject: (): ConversationViewInjected => ({ sendNote, steer }),
+    inject: (): ConversationViewInjected => ({ sendNote: sendQueued, steer, sendChat: sendQueued }),
   }, ConversationView))
   ctx.slots.inject('inbox.detail.body', () => ctx.slots.register({
     name: 'inbox.detail.body',

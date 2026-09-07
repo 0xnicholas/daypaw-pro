@@ -44,10 +44,9 @@ exports[`ConversationView > matches the mixed-flow snapshot 1`] = `
         class="_wrap_759a2d"
       >
         <input
-          aria-label="追问…"
+          aria-label="和助手聊…"
           class="_input_759a2d"
-          disabled=""
-          placeholder="任务已结束"
+          placeholder="和助手聊…"
           value=""
         />
       </span>
