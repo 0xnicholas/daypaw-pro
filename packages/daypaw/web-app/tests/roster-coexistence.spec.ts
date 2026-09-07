@@ -1,11 +1,12 @@
 /**
- * Ticket #92's executed proof that the upstream `session-turn-outline`
- * capability and the fork's durable right-column read model coexist:
- * the roster facts the surface ships (outline row taken, schedule row
- * mirrored upstream's disabled state) and one composed host tree where the
- * `turnOutline` session projection and the engine's `durable/journalTimeline`
- * Remote answer side by side — session-projection seam and durable engine
- * seam, distinct keys, no shared surface.
+ * Executed roster facts for the fork web surface, plus ticket #92's
+ * coexistence proof: the roster rows the surface ships (turn-outline taken,
+ * schedule mirrored disabled, the ticket #104 attachment and reference
+ * client rows taken) compose through the real `dsh-app-boot` patch layering,
+ * and one composed host tree answers the `turnOutline` session projection and
+ * the engine's `durable/journalTimeline` Remote side by side —
+ * session-projection seam and durable engine seam, distinct keys, no shared
+ * surface.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { fileURLToPath } from 'node:url'
@@ -46,16 +47,33 @@ function composedRoster(): readonly ComposedEntry[] {
   return composeEntries(BUNDLE_LAYERS.map(patch => loadOverlayPatches('roster coexistence', patch)))
 }
 
+/** Map composed rows by package name to the profile's final enabled state. */
+function rosterByName(): Map<string, { enabled: boolean }> {
+  const rows = new Map<string, { enabled: boolean }>()
+  for (const entry of composedRoster()) {
+    if (typeof entry.name !== 'string') continue
+    // Later layers override by id, so the fork's row wins over any base row.
+    rows.set(entry.name, { enabled: entry.disabled !== true })
+  }
+  return rows
+}
+
 describe('roster rows (ticket #92)', () => {
   it('takes the session-turn-outline row enabled and mirrors ui-schedule disabled', () => {
-    const rows = new Map<string, { enabled: boolean }>()
-    for (const entry of composedRoster()) {
-      if (typeof entry.name !== 'string') continue
-      // Later layers override by id, so the fork's row wins over any base row.
-      rows.set(entry.name, { enabled: entry.disabled !== true })
-    }
+    const rows = rosterByName()
     expect(rows.get('@deepseek-ai/dsh-session-turn-outline')).toEqual({ enabled: true })
     expect(rows.get('@deepseek-ai/dsh-client-ui-schedule')).toEqual({ enabled: false })
+  })
+})
+
+describe('roster rows (ticket #104)', () => {
+  it("takes the ui-attachment and ui-reference rows enabled, with ui-reference's service rows mounted", () => {
+    const rows = rosterByName()
+    expect(rows.get('@deepseek-ai/dsh-client-ui-attachment')).toEqual({ enabled: true })
+    expect(rows.get('@deepseek-ai/dsh-client-ui-reference')).toEqual({ enabled: true })
+    // ui-reference's candidate domains resolve from these Host service rows.
+    expect(rows.get('@deepseek-ai/dsh-file-reference-local')).toEqual({ enabled: true })
+    expect(rows.get('@deepseek-ai/dsh-session-reference')).toEqual({ enabled: true })
   })
 })
 
