@@ -5186,9 +5186,9 @@ importers:
       '@deepseek-ai/dsh-session-turn-outline':
         specifier: workspace:^
         version: link:../../session/session-turn-outline
-      '@deepseek-ai/dsh-tool-subagent':
+      '@deepseek-ai/dsh-tool-ask-user':
         specifier: workspace:^
-        version: link:../../subagent/tool-subagent
+        version: link:../../interaction/tool-ask-user
       '@deepseek-ai/dsh-workspace':
         specifier: workspace:^
         version: link:../../workspace/workspace

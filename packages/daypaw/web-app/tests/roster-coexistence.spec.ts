@@ -77,6 +77,52 @@ describe('roster rows (ticket #104)', () => {
   })
 })
 
+describe('roster rows (ticket #103)', () => {
+  it('keeps the agent-plane tool rows live on the host plane', () => {
+    const rows = rosterByName()
+    // The model-side tool line the base composes stays enabled through this
+    // overlay, so every agent inherits the global tools layer (ADR 0013 §3).
+    for (const name of [
+      '@deepseek-ai/dsh-tool-bash',
+      '@deepseek-ai/dsh-tool-pwsh',
+      '@deepseek-ai/dsh-tool-jobs',
+      '@deepseek-ai/dsh-tool-fs',
+      '@deepseek-ai/dsh-tool-fs-search',
+      '@deepseek-ai/dsh-tool-str-replace-editor',
+      '@deepseek-ai/dsh-skill-filesystem',
+      '@deepseek-ai/dsh-tool-skill',
+      '@deepseek-ai/dsh-tool-goal',
+      '@deepseek-ai/dsh-plan-mode',
+      '@deepseek-ai/dsh-compaction-basic',
+      '@deepseek-ai/dsh-command-compact',
+      '@deepseek-ai/dsh-compaction-tool-result-pruner',
+      '@deepseek-ai/dsh-tool-subagent-control',
+      '@deepseek-ai/dsh-tool-subagent-control/list-agents',
+      '@deepseek-ai/dsh-tool-subagent',
+      '@deepseek-ai/dsh-workflow-worker-thread',
+      '@deepseek-ai/dsh-tool-workflow',
+      '@deepseek-ai/dsh-tool-ralph',
+      '@deepseek-ai/dsh-agent-instructions',
+      '@deepseek-ai/dsh-tool-todo',
+      '@deepseek-ai/dsh-tool-web',
+    ]) {
+      expect(rows.get(name), name).toEqual({ enabled: true })
+    }
+  })
+
+  it('mounts tool-ask-user host-plane and retires the preset roster', () => {
+    const rows = rosterByName()
+    // `tool-ask-user` has no base row (upstream ships it only through
+    // presets); the open capability base mounts it here so the mounted
+    // ui-user-questions face keeps its producer.
+    expect(rows.get('@deepseek-ai/dsh-tool-ask-user')).toEqual({ enabled: true })
+    // The preset roster stays disabled (ADR 0012 §4: presets are the upstream
+    // compatibility layer): sessions compose the host plane, and a live row on
+    // both planes would mount twice — a row belongs to exactly one plane.
+    expect(rows.get('@deepseek-ai/dsh-agent-presets')).toEqual({ enabled: false })
+  })
+})
+
 describe('turnOutline and durable/journalTimeline over one composition (ticket #92)', () => {
   it('serves both read models side by side: distinct seams, distinct keys', async () => {
     const ctx = new Context()
