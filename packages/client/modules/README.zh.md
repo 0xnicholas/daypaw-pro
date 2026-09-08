@@ -29,7 +29,7 @@ kind: "package-reference"
 
 ### 声明客户端插件
 
-浏览器插件包在其 `package.json` 中以 `platform: 'web'` 声明 `dsh.client`，导出 `./client` bundle，并在 `dsh.client.external` 下列出任何基座之外的模块请求。宿主半侧把每份声明变成 `/plugins` 下提供的 bundle，并让动态提供方先于其消费方加载。
+浏览器插件包在其 `package.json` 中以 `platform: 'web'` 声明 `dsh.client`，导出 `./client` bundle，并在 `dsh.client.external` 下列出任何基座之外的模块请求。浏览器半侧要消费所属行 cordis config 的包另需声明 `dsh.client.config: true`：宿主随后把该 config 随 boot wire 携带下发（必须保持 JSON 可序列化，否则组合期大声失败），boot 内核将其交给插件 `apply`。未声明则行 config 仅停留在宿主侧，双面包的行因此可以继续携带仅宿主可用的 `!!js` 表达式。宿主半侧把每份声明变成 `/plugins` 下提供的 bundle，并让动态提供方先于其消费方加载。
 
 ### 浏览器加载什么
 

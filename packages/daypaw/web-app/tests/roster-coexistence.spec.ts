@@ -40,6 +40,8 @@ const BUNDLE_LAYERS = [
 interface ComposedEntry {
   name?: unknown
   disabled?: unknown
+  /** The row's composed cordis config (patch layers replace it whole). */
+  config?: unknown
 }
 
 /** Compose the fork web surface's roster rows exactly as the profile does. */
@@ -120,6 +122,17 @@ describe('roster rows (ticket #103)', () => {
     // compatibility layer): sessions compose the host plane, and a live row on
     // both planes would mount twice — a row belongs to exactly one plane.
     expect(rows.get('@deepseek-ai/dsh-agent-presets')).toEqual({ enabled: false })
+  })
+})
+
+describe('roster rows (ticket #105)', () => {
+  it('retargets the trajectory ledger into the conversation seat inspector ring, config intact', () => {
+    const rows = composedRoster()
+    const trajectory = rows.find(entry => entry.name === '@deepseek-ai/dsh-client-ui-trajectory')
+    expect(trajectory?.disabled).not.toBe(true)
+    // Single-shell layering: the ledger registers into the fork seat's ring
+    // (declared by @daypaw/ui-tasks), not the dormant upstream view ring.
+    expect(trajectory?.config).toEqual({ viewSlot: 'inbox.workspace.conversation.inspector' })
   })
 })
 

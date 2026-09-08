@@ -217,4 +217,57 @@ describe('plugin activation', () => {
     expect(container.textContent).toBe('mounted')
     await entry.dispose()
   })
+
+  it('passes each graph row config to the mounted plugin apply', async () => {
+    const seen: unknown[] = []
+    const container = document.createElement('div')
+    document.body.append(container)
+    const target = installFacade()
+    const entries: WebBootEntry[] = [
+      { id: 'configured', url: '/configured.js', rev: '1', config: { viewSlot: 'host.ring' } },
+      { id: 'renderer', url: '/renderer.js', rev: '1' },
+    ]
+    win.__DSH_BOOT__ = {
+      rev: 'graph',
+      entries,
+      batches: [{
+        phase: 'application',
+        url: '/application.js',
+        rev: 'batch',
+        entries: entries.map(row => row.id),
+      }],
+    }
+    const registrations = new Map<string, ClientBundleRegistration>([
+      ['/configured.js', {
+        id: 'configured',
+        factory: () => ({
+          apply: (ctx: Context, config: unknown) => {
+            seen.push(config)
+            ctx.reflect.provide('configuredMarker', true)
+          },
+        }),
+      }],
+      ['/renderer.js', {
+        id: 'renderer',
+        factory: () => ({
+          apply: (ctx: Context) => {
+            ctx.reflect.provide('uiRenderer', { mount: () => () => {} })
+          },
+        }),
+      }],
+    ])
+    const webEntry = new AppWebEntry(container, {
+      loadBundle: async (url) => {
+        if (url !== '/application.js') throw new Error(`missing fixture batch ${url}`)
+        for (const registration of registrations.values()) target.load(registration)
+      },
+    })
+
+    await webEntry.run()
+
+    // The wire config reaches the plugin's apply — the channel the loader
+    // row's cordis config travels to the browser fiber through.
+    expect(seen).toEqual([{ viewSlot: 'host.ring' }])
+    await webEntry.dispose()
+  })
 })

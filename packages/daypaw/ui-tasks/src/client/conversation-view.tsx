@@ -10,14 +10,20 @@
  * ordinary queued prompts); a settled task's run keeps the seat disabled.
  * Everything else the chat assembles (tool calls, commands, retries,
  * metrics) is filtered by the whitelist projection.
- * While an approval pends, the approval card pins atop the flow (审批卡置顶,
+ * While an approval pends, the approval card pins atop the seat (审批卡置顶,
  * spec 05 §3): the session's pending list feeds it, the runtime manager's
  * replay restores it after a cold start, and the resolved broadcast removes
  * it — the card itself never polls.
+ * Single-shell layering (#105): the seat offers a two-tab strip — the
+ * business 对话 pane above and the 检查器 pane on demand — and the inspector
+ * renders the 'inbox.workspace.conversation.inspector' view ring, where the
+ * retargeted upstream trajectory ledger (verbatim event data) registers. No
+ * global mode switch; the business language stays the default pane.
  */
 import { useState, type FormEvent } from 'react'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ConvViewOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-inbox's SlotMap merge (the conversation seat) in so
 // PropsRuntime<'inbox.workspace.conversation'> resolves.
 import type {} from '@daypaw/ui-inbox/client'
@@ -28,6 +34,19 @@ import { isUnfinishedWireRun } from '@daypaw/ui-inbox/client'
 import { ApprovalCard, type PendingApprovalWait } from './approval-card.tsx'
 import { projectBusinessRows } from './chat-projection.ts'
 import css from './conversation-view.module.css'
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    /**
+     * The conversation seat's inspector view ring: session-scoped list slots
+     * whose owner share is ui-conversation's view-ring face (the retargeted
+     * trajectory ledger registers here — the cordis row's `viewSlot` config
+     * points its registration at this key, ticket #105). The seat renders the
+     * ring only while the 检查器 tab is active.
+     */
+    'inbox.workspace.conversation.inspector': { kind: 'list'; scope: 'session'; owner: ConvViewOwnerProps }
+  }
+}
 
 /** Registration-side business face for the conversation occupant. */
 export interface ConversationViewInjected {
@@ -56,17 +75,19 @@ export interface ConversationViewInjected {
 /** Full component props: session-maybe runtime share + injected face + locale seat. */
 export type ConversationViewProps =
   PropsRuntime<'inbox.workspace.conversation'>
+  & PropsRenderSlots<'inbox.workspace.conversation.inspector'>
   & InjectFace<ConversationViewInjected>
   & PropsLocale<'daypaw-tasks'>
 
 /**
  * Render the selected task's conversation (session scope: the seat renders
  * only while a task's session is selected).
- * @param props - composed slot props (session standard kit + injected face + locale seat).
+ * @param props - composed slot props (session standard kit + inspector ring render share + injected face + locale seat).
  * @returns the conversation element tree.
  */
 export function ConversationView({
-  useSession, useSessions, useChat, useSessionPendingInteraction, sessionId, runStatus, sendNote, steer, sendChat, t,
+  useSession, useSessions, useChat, useSessionPendingInteraction, sessionId, runStatus,
+  sendNote, steer, sendChat, renderSlot, t,
 }: ConversationViewProps) {
   const chat = useChat(s => s)
   const running = useSession(s => s.running)
@@ -77,6 +98,12 @@ export function ConversationView({
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState(false)
+  // The inspector tab is per-task pane state: a session switch resets it to
+  // the business pane (derived from the session identity, never an effect).
+  const [pane, setPane] = useState<{ sessionId: SessionId; inspecting: boolean }>({
+    sessionId, inspecting: false,
+  })
+  const inspecting = pane.sessionId === sessionId && pane.inspecting
   // The run's ledger row rules the seat, never the session's agent running
   // bit: a steerable run parked at a segment boundary reads `running` on the
   // ledger while its agent sits idle between turns.
@@ -109,6 +136,16 @@ export function ConversationView({
     ? undefined
     : runningCalls.find(call => call.callId === approval.callId)?.argsRaw
 
+  // The ring's owner face: the seat originates no focus request (nothing in
+  // the fork surfaces targets a ring view yet), so viewRequest stays null and
+  // completeViewRequest acknowledges nothing; openView still routes a
+  // ring-bound switch to the inspector pane.
+  const ringOwner: ConvViewOwnerProps = {
+    viewRequest: null,
+    openView: (view) => { if (view === 'trajectory') setPane({ sessionId, inspecting: true }) },
+    completeViewRequest: () => {},
+  }
+
   return (
     <div className={css.root}>
       {approval && sessionId && (
@@ -121,18 +158,50 @@ export function ConversationView({
           t={t}
         />
       )}
-      {running && <div className={css.statusRow}>{t('conversation.running')}</div>}
-      <div className={css.flow}>
-        {rows.length === 0
-          ? <div className={css.empty}>{t('conversation.empty')}</div>
-          : rows.map(row => row.kind === 'error'
-            ? <div key={row.key} className={css.errorRow}>{t('conversation.error')}</div>
-            : (
-              <div key={row.key} className={row.kind === 'assistant' ? css.assistantRow : css.userRow}>
-                <p className={css.rowText}>{row.text}</p>
-              </div>
-            ))}
+      <div className={css.tabs} role="tablist" aria-label={t('conversation.tabs.label')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!inspecting}
+          className={inspecting ? css.tab : css.tabActive}
+          onClick={() => { setPane({ sessionId, inspecting: false }) }}
+        >
+          {t('conversation.tab.conversation')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={inspecting}
+          className={inspecting ? css.tabActive : css.tab}
+          onClick={() => { setPane({ sessionId, inspecting: true }) }}
+        >
+          {t('conversation.tab.inspector')}
+        </button>
       </div>
+      {inspecting
+        ? (
+          <div className={css.inspector}>
+            {renderSlot('inbox.workspace.conversation.inspector', ringOwner, {
+              fallback: <div className={css.inspectorEmpty}>{t('conversation.inspector.unavailable')}</div>,
+            })}
+          </div>
+        )
+        : (
+          <>
+            {running && <div className={css.statusRow}>{t('conversation.running')}</div>}
+            <div className={css.flow}>
+              {rows.length === 0
+                ? <div className={css.empty}>{t('conversation.empty')}</div>
+                : rows.map(row => row.kind === 'error'
+                  ? <div key={row.key} className={css.errorRow}>{t('conversation.error')}</div>
+                  : (
+                    <div key={row.key} className={row.kind === 'assistant' ? css.assistantRow : css.userRow}>
+                      <p className={css.rowText}>{row.text}</p>
+                    </div>
+                  ))}
+            </div>
+          </>
+        )}
       <form className={css.followup} onSubmit={submitFollowup}>
         <Input
           disabled={!live || sending}

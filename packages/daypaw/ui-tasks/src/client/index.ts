@@ -104,6 +104,11 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.workspace.conversation', () => ctx.slots.register({
     name: 'inbox.workspace.conversation',
     locale: NS,
+    children: {
+      // The inspector view ring (#105): the retargeted upstream trajectory
+      // ledger registers here (the ui-trajectory row's `viewSlot` config).
+      'inbox.workspace.conversation.inspector': { kind: 'list', scope: 'session' },
+    },
     inject: (): ConversationViewInjected => ({ sendNote: sendQueued, steer, sendChat: sendQueued }),
   }, ConversationView))
   ctx.slots.inject('inbox.detail.body', () => ctx.slots.register({

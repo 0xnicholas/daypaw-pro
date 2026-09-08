@@ -2,6 +2,7 @@
  * Browser trajectory plugin contributing one entry to the conversation view
  * slot without defining a service.
  */
+import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -39,12 +40,38 @@ export type {
 /** Required services: the conversation slot, registries, ordinary Session paging, and the locale service. */
 export const inject = ['slots', 'sessions', 'uiSession', 'uiConversation', 'locale']
 
+/** Browser trajectory plugin configuration. */
+export interface Config {
+  /**
+   * The view-ring slot this ledger registers its tab into: a session-scoped
+   * list slot whose owner share matches ui-conversation's ConvViewOwnerProps
+   * (viewRequest/openView/completeViewRequest). A composition whose shell
+   * never renders the upstream conversation ring — a replacement middle
+   * column — hosts the ledger in its own declared ring by pointing this at
+   * that ring's key; the key must name a slot some entry declares, or the
+   * registration never lands. Default keeps upstream's conversation shell.
+   */
+  viewSlot?: string
+}
+
+/** Validated trajectory plugin configuration. */
+export const Config: z<Config> = z.object({
+  viewSlot: z.string().default('conversation.view'),
+})
+
 /**
  * Client plugin body: register the trajectory view tab. The registration
  * rides the slot service's effect wrapper, so plugin unload removes the tab.
  * @param ctx - client root context.
+ * @param config - validated {@link Config}.
  */
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: Config = Config({})): void {
+  // The validated string must narrow back to the literal key for the typed
+  // register overloads below; the runtime register still validates the target
+  // is a declared list slot when the declaration lands. The default-ring flag
+  // is a separate boolean so the register branches never narrow it away.
+  const defaultRing = config.viewSlot === 'conversation.view'
+  const viewSlot = config.viewSlot as 'conversation.view'
   const trajectorySources = new WeakMap<SessionBinding, ObservableSnapshot<TrajectorySnapshot>>()
   const trajectorySource = (binding: SessionBinding): ObservableSnapshot<TrajectorySnapshot> => {
     let source = trajectorySources.get(binding)
@@ -74,34 +101,50 @@ export function apply(ctx: Context): void {
     hooks: ['trajectory'],
     resolve: binding => ({ hooks: { trajectory: trajectorySource(binding) } }),
   })
-  ctx.slots.inject('conversation.view', () => ctx.slots.register({
-    name: 'conversation.view',
-    id: 'trajectory',
-    order: 10,
-    locale: NS,
-    label: () => t('view.trajectory'),
-    children: {
-      'conversation.trajectory.images': { kind: 'single', scope: 'session' },
-    },
-    inject: (sessionId: SessionId): TrajectoryViewInjected => {
-      const session = ctx.sessions.binding(sessionId)?.session
-      if (session === undefined) {
-        throw new Error(`ui-trajectory: session "${sessionId}" is unavailable`)
-      }
-      const trajectory = ctx.uiConversation.binding(sessionId).target('trajectory')
-      return {
-        hooks: { duration },
-        loadOlder: async () => {
-          const before = trajectory.getSnapshot()
-          await session.loadOlder()
-          return trajectory.getSnapshot() !== before
-        },
-        loadImage: Object.assign(
-          (attachment: ImageAttachmentRef) => ctx.uiConversation.imageUrl(sessionId, attachment),
-          { peek: (attachment: ImageAttachmentRef) => ctx.uiConversation.peekImageUrl(sessionId, attachment) },
-        ),
-        setActualDuration: (value) => { duration.set(value) },
-      }
-    },
-  }, TrajectoryView))
+  const injectView = (sessionId: SessionId): TrajectoryViewInjected => {
+    const session = ctx.sessions.binding(sessionId)?.session
+    if (session === undefined) {
+      throw new Error(`ui-trajectory: session "${sessionId}" is unavailable`)
+    }
+    const trajectory = ctx.uiConversation.binding(sessionId).target('trajectory')
+    return {
+      hooks: { duration },
+      loadOlder: async () => {
+        const before = trajectory.getSnapshot()
+        await session.loadOlder()
+        return trajectory.getSnapshot() !== before
+      },
+      loadImage: Object.assign(
+        (attachment: ImageAttachmentRef) => ctx.uiConversation.imageUrl(sessionId, attachment),
+        { peek: (attachment: ImageAttachmentRef) => ctx.uiConversation.peekImageUrl(sessionId, attachment) },
+      ),
+      setActualDuration: (value) => { duration.set(value) },
+    }
+  }
+  // The default branch keeps its options fully literal: the client slot
+  // catalog is generated from register call sites and reads literal keys
+  // only. A retargeted host takes the second branch with the same entry.
+  ctx.slots.inject(viewSlot, () => defaultRing
+    ? ctx.slots.register({
+      name: 'conversation.view',
+      id: 'trajectory',
+      order: 10,
+      locale: NS,
+      label: () => t('view.trajectory'),
+      children: {
+        'conversation.trajectory.images': { kind: 'single', scope: 'session' },
+      },
+      inject: injectView,
+    }, TrajectoryView)
+    : ctx.slots.register({
+      name: viewSlot,
+      id: 'trajectory',
+      order: 10,
+      locale: NS,
+      label: () => t('view.trajectory'),
+      children: {
+        'conversation.trajectory.images': { kind: 'single', scope: 'session' },
+      },
+      inject: injectView,
+    }, TrajectoryView))
 }

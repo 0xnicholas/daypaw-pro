@@ -6,6 +6,28 @@ exports[`ConversationView > matches the mixed-flow snapshot 1`] = `
     class="_root_79f15d"
   >
     <div
+      aria-label="对话视图"
+      class="_tabs_79f15d"
+      role="tablist"
+    >
+      <button
+        aria-selected="true"
+        class="_tabActive_79f15d"
+        role="tab"
+        type="button"
+      >
+        对话
+      </button>
+      <button
+        aria-selected="false"
+        class="_tab_79f15d"
+        role="tab"
+        type="button"
+      >
+        检查器
+      </button>
+    </div>
+    <div
       class="_statusRow_79f15d"
     >
       进行中

@@ -32,6 +32,13 @@ interface WebBootEntry {
   immediately?: boolean
   /** Non-baseline module specifiers this row requests; omitted when it requests none. */
   external?: string[]
+  /**
+   * The loader row's cordis config, forwarded to the browser plugin's apply.
+   * JSON-serializable only (the boot wire is a JSON global): functions and
+   * other values JSON drops or mangles are rejected at host composition.
+   * Omitted when the row carries no config; edits take effect on restart.
+   */
+  config?: unknown
 }
 ```
 
@@ -74,7 +81,7 @@ interface WebBootGraph {
 
 ## 扫描
 
-包加入这张表的方式，是在自己的 package.json 中声明 `dsh.client`（`platform: 'web'`、可选的 `inject` 边、可选的 `immediately`），并在 `exports["./client"]` 导出构建好的 bundle。每个 live row 都从自己的 Loader specifier 与所属 tree `baseUrl` 解析；若 `loader.internal.resolveSync` 可用，则使用 Host face import 所用的同一个实现。最近归属的 package manifest 提供浏览器模块 id，因此相对 source 与 built overlay 仍保留包身份。若不同的 active Loader source 解析到同一包名，组合会失败；一个来源卸载后，仍存活的来源无需重启 fiber 即可提供该 row。
+包加入这张表的方式，是在自己的 package.json 中声明 `dsh.client`（`platform: 'web'`、可选的 `inject` 边、可选的 `immediately`、可选的 `config` 消费标记），并在 `exports["./client"]` 导出构建好的 bundle。每个 live row 都从自己的 Loader specifier 与所属 tree `baseUrl` 解析；若 `loader.internal.resolveSync` 可用，则使用 Host face import 所用的同一个实现。最近归属的 package manifest 提供浏览器模块 id，因此相对 source 与 built overlay 仍保留包身份。若不同的 active Loader source 解析到同一包名，组合会失败；一个来源卸载后，仍存活的来源无需重启 fiber 即可提供该 row。
 
 扫描是单包增量的；不存在全量重扫代码路径。fiber 构造或 dispose（资源释放）时的每次 cordis `internal/plugin` 发射都把该 fiber 的 entry 名标脏，一次微任务 flush 把每个脏名与实时 loader entry 对账。激活趟以全部当前 entry 灌入同一个脏集合并同步 flush，因此初扫与稳态共享一条实现——但失败姿态相反。激活时，已加载 entry 中的畸形声明或缺失 bundle 会聚合为一个大声的 `AggregateError`，列出每个损坏的包：该 fiber 进入 FAILED，由启动的大声失败 sweep 上报。稳态下，损坏的包只记录一条警告，且不得殃及其他包。
 

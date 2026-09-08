@@ -27,6 +27,8 @@ English | [中文](README.zh.md)
 
 Open the Trajectory tab in the conversation's view ring to inspect agent activity as an event ledger and timeline. The ledger covers records with an explicit loading row until the initial tail is positioned; while an older prefix remains unloaded, a first-row control loads one earlier page on click and shows a disabled loading status while that page is pending.
 
+A composition whose shell never renders the upstream conversation ring hosts the ledger in its own declared ring instead: set the row's `viewSlot` config to that slot's key (a session-scoped list slot whose owner share matches the conversation view-ring face), and the registration lands there. The key must name a slot some entry declares, or the ledger never mounts; the default keeps upstream's conversation shell.
+
 ### Inspecting records
 
 Selection, timeline navigation, folding, and search cover the React-visible window. Request numbers and cumulative usage cover the complete resident snapshot. Selecting a record opens a local inspector for token usage, duration, Input, Output, Timing, and durable images. Image URLs use the Conversation-owned per-session cache, so Chat and Trajectory share one authorized read per attachment. A user record shows the generic-file count beside its text, while a record without text shows its image and file counts. A standalone compaction request appears chronologically in its own `Between turns` section, while a numbered compaction remains inside its owning turn.

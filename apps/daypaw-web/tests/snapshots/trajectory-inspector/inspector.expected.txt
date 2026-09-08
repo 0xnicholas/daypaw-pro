@@ -1,0 +1,5 @@
+tabs=Conversation:false|Inspector:true
+toolbar=Trajectory toolbar
+timeline=present
+ledger=USER, help me write a haiku / Request , compaction / ASSISTANT, 回声：help me write a haiku。这是 fixture 的流式回复，用于验证打字机增长与定稿切换。 / SYSTEM, Initial System Prompt
+seat=Chat with the assistant… disabled=false

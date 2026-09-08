@@ -372,6 +372,12 @@
 
     - id: ui-trajectory
       name: '@deepseek-ai/dsh-client-ui-trajectory'
+      config:
+        # Single-shell layering (#105): the ledger registers into the fork
+        # conversation seat's inspector ring instead of the upstream
+        # conversation view ring this shell never renders. The row config
+        # rides the browser boot wire (the client-modules config channel).
+        viewSlot: inbox.workspace.conversation.inspector
 
 # ── the agent plane rides the host composition ──────────────────────────────
 #

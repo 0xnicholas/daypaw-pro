@@ -90,6 +90,11 @@ describe('ui-tasks apply', () => {
     expect(dialog.locale).toBe('daypaw-tasks')
     expect(b.slots.entriesOfSlot('inbox.workspace.tasks')[0]!.component).toBe(TaskList)
     expect(b.slots.entriesOfSlot('inbox.workspace.conversation')[0]!.component).toBe(ConversationView)
+    // The conversation seat declares the inspector view ring for the retargeted
+    // trajectory ledger (#105); the ring renders only from the seat's tab.
+    expect(b.slots.entriesOfSlot('inbox.workspace.conversation')[0]!.children).toEqual({
+      'inbox.workspace.conversation.inspector': { kind: 'list', scope: 'session' },
+    })
     expect(b.slots.entriesOfSlot('inbox.detail.body')[0]!.component).toBe(DetailBody)
     // The dictionaries answer in the browser's zh locale.
     expect(b.locale.bind('daypaw-tasks')('list.empty')).toBe('暂无任务')

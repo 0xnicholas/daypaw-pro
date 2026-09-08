@@ -49,6 +49,7 @@ interface ClientPackageManifest {
       inject?: string[]
       external?: string[]
       immediately?: boolean
+      config?: boolean
     }
   }
 }
@@ -56,6 +57,8 @@ interface ClientPackageManifest {
 interface ComposedEntry {
   name?: unknown
   disabled?: unknown
+  /** The row's cordis config, forwarded to the browser plugin's apply. */
+  config?: unknown
 }
 
 interface BootComposition {
@@ -124,6 +127,7 @@ function loadAssembledPlugins(): readonly AssembledPlugin[] {
       rev: 'fx',
       inject: declaration.inject ?? [],
       immediately: declaration.immediately === true,
+      ...(declaration.config === true && entry.config !== undefined ? { config: entry.config } : {}),
     })
   }
   return orderByModuleGraph([...plugins.values()]).map(({ id }) => {

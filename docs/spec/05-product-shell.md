@@ -46,7 +46,7 @@ IA 定案 = **变体 C 收件箱工作台**，三栏：
 **复用边界**（簇员 14+15+11 共 40、现行包 39——ui-chat 跨整包复用与重写两簇双计，[#37](https://github.com/0xnicholas/daypaw-pro/issues/37) 盘点 + #36 裁决，包名按 [#80](https://github.com/0xnicholas/daypaw-pro/issues/80) 裁决 4 采用上游 2026-08-28 重组后的现行口径——`runtime` 拆为 store / ui-conversation / ui-chat，`render-service` 与 `web-react` 并入 ui-renderer，`schema-form` 并入 ui-settings，旧 `ui-conversation` 的聊天表现面并入 `ui-chat` 而其名让位会话域层）：
 
 - **整包复用（14）**：connection、locale、modules、web、ui-slots、ui-settings、ui-theme、ui-primitives、ui-attachment、hmr + store、ui-conversation、ui-chat、ui-renderer——协议/对象层 + boot 内核 + 服务基座 + 纯组件基料，无一携带开发者向文案；数据管道零重写，工程量集中在 IA 与组件。
-- **wholesale 重写（15）**：会话表现簇与 IA/品牌/诊断面（ui-chat、ui-tool、ui-workflow-run、ui-trajectory、ui-sidebar、ui-workspace、ui-directory-picker-browse/-native、ui-subagent、ui-goal、ui-plan、ui-agent-preset、ui-settings-models、ui-settings-plugins、ui-settings-plugin-inventory），业务语言版从 ui-conversation 的 ConversationNode 装配机供数重画（ui-chat 的重写对象只是其中旧 ui-conversation 并入的聊天表现面，其模型与装配供数层仍属上方整包复用）；其中 ui-trajectory、ui-settings-plugins、ui-settings-plugin-inventory 实为不随壳交付，ui-agent-preset 自 ADR 0012 起随 preset 退兼容层一并不随壳交付（§5）。
+- **wholesale 重写（15）**：会话表现簇与 IA/品牌/诊断面（ui-chat、ui-tool、ui-workflow-run、ui-sidebar、ui-workspace、ui-directory-picker-browse/-native、ui-subagent、ui-goal、ui-plan、ui-agent-preset、ui-settings-models、ui-settings-plugins、ui-settings-plugin-inventory），业务语言版从 ui-conversation 的 ConversationNode 装配机供数重画（ui-chat 的重写对象只是其中旧 ui-conversation 并入的聊天表现面，其模型与装配供数层仍属上方整包复用）；其中 ui-settings-plugins、ui-settings-plugin-inventory 不随壳交付，ui-agent-preset 自 ADR 0012 起随 preset 退兼容层一并不随壳交付（§5）；ui-trajectory 自 #100/#105 裁决改为原样随壳交付——经行 config（`viewSlot`）重定向注册到对话席检查器环（§3 单壳分层），不入重写簇。
 - **灰色 11 包逐包裁决**：
 
 | 包 | 裁决 | 备注 |

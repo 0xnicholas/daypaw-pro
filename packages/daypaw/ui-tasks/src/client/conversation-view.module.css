@@ -22,6 +22,53 @@
   line-height: 18px;
 }
 
+/* Single-shell layering (#105): the business pane is the default; the
+   inspector pane expands on demand. */
+.tabs {
+  flex: none;
+  display: flex;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-3) var(--dp-space-6);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.tab {
+  padding: var(--dp-space-1) var(--dp-space-4);
+  border: none;
+  border-radius: 999px;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.tabActive {
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* The inspector ring fills the remaining seat height; the trajectory ledger
+   owns its inner scrollers. The follow-up seat sits in flow below the pane
+   (not floating over it), so the ledger's floating-composer clearance
+   reserves only its fixed tail padding. */
+.inspector {
+  flex: 1;
+  min-height: 0;
+  --dsh-composer-height: 0px;
+}
+
+.inspectorEmpty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
 .flow {
   flex: 1;
   min-height: 0;

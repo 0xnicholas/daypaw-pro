@@ -51,10 +51,14 @@ function writePackage(
 }
 
 /** Create a built package with the supplied client declaration. */
-function writeBuiltPackage(packageName: string, client: Record<string, unknown>): void {
+function writeBuiltPackage(
+  packageName: string,
+  client: Record<string, unknown>,
+): string {
   const clientPath = writePackage(packageName, { dsh: { client: { platform: 'web', ...client } } })
   mkdirSync(dirname(clientPath), { recursive: true })
   writeFileSync(clientPath, 'module.exports = {}\n')
+  return clientPath
 }
 
 /** Construct the node-half service and capture its plugin-bundle route. */
@@ -64,6 +68,7 @@ function constructWithRoute(
     contextBaseUrl?: string
     entryBaseUrl?: string
     internal?: NonNullable<Context['loader']['internal']>
+    entryConfigs?: Record<string, unknown>
   } = {},
 ): { context: Context; service: ClientModuleRegistry; route: WebRoute } {
   const ctx = new Context()
@@ -72,8 +77,9 @@ function constructWithRoute(
     internal: options.internal,
     *entries() {
       for (const packageName of packageNames) {
+        const config = options.entryConfigs?.[packageName]
         yield {
-          options: { name: packageName },
+          options: { name: packageName, ...(config === undefined ? {} : { config }) },
           fiber: {},
           disabled: false,
           parent: { tree: { ctx: { baseUrl: options.entryBaseUrl ?? ctx.baseUrl } } },
@@ -284,6 +290,54 @@ describe('client bundle activation', () => {
 
     expect(service.clientPath(packageName)).toBe(clientPath)
     expect(service.graph().entries.map(entry => entry.id)).toEqual([packageName])
+  })
+
+  it('forwards each loader row config to its browser graph entry', () => {
+    const configured = '@fixture/configured-row'
+    const plain = '@fixture/plain-row'
+    writeBuiltPackage(configured, { config: true })
+    writeBuiltPackage(plain, {})
+
+    const { service } = constructWithRoute([configured, plain], {
+      entryConfigs: { [configured]: { viewSlot: 'host.ring' } },
+    })
+
+    const rows = new Map(service.graph().entries.map(entry => [entry.id, entry]))
+    expect(rows.get(configured)?.config).toEqual({ viewSlot: 'host.ring' })
+    // A row without config omits the field entirely, not a null placeholder.
+    expect(rows.get(plain)).not.toHaveProperty('config')
+  })
+
+  it('keeps an undeclared row config host-side only', () => {
+    // The dual-face regression shape: a row whose config carries host-only
+    // `!!js` expressions (service references the browser never injects)
+    // stays out of the boot wire unless the package declared consumption.
+    const hostOnly = '@fixture/host-config-row'
+    writeBuiltPackage(hostOnly, {})
+
+    const { service } = constructWithRoute([hostOnly], {
+      entryConfigs: { [hostOnly]: { trustedHosts: () => ['app.internal'] } },
+    })
+
+    const [row] = service.graph().entries
+    expect(row).toBeDefined()
+    expect(row).not.toHaveProperty('config')
+  })
+
+  it('rejects a declared browser row config the JSON boot wire cannot carry faithfully', () => {
+    const packageName = '@fixture/function-config-row'
+    writeBuiltPackage(packageName, { config: true })
+
+    for (const mangled of [
+      { mode: () => 'dropped by JSON' },
+      { nan: Number.NaN },
+      { map: new Map([['k', 1]]) },
+      { nested: { infinity: Number.POSITIVE_INFINITY } },
+    ]) {
+      expect(() => constructWithRoute([packageName], {
+        entryConfigs: { [packageName]: mangled },
+      }), JSON.stringify(mangled, (_k, v) => typeof v === 'number' && !Number.isFinite(v) ? 'non-finite' : v)).toThrow('config is not JSON-serializable')
+    }
   })
 
   it.each(['relative', 'absolute'] as const)(

@@ -55,6 +55,14 @@ interface DshClientDeclaration {
   /** Boot phase-one registration barrier; absent rows still ride the shared application batch. */
   immediately?: boolean
   /**
+   * The browser half consumes the loader row's cordis config: the node half
+   * forwards it over the boot wire to the browser plugin's apply. Absent
+   * (the default) keeps the config host-side only — a dual-face row whose
+   * config holds host-only `!!js` expressions (service references the
+   * browser never injects) stays untouched.
+   */
+  config?: boolean
+  /**
    * Exact module-table requests beyond the implicit client baseline. Any
    * specifier is valid, including subpaths such as `<pkg>/client`; each
    * importing package declares its own exceptional requests. A type-only
@@ -70,6 +78,8 @@ interface WebBootRowFields {
   /** Module specifiers the package requests from the module table. */
   external: string[]
   immediately: boolean
+  /** Whether the browser half declared config consumption (dsh.client.config). */
+  clientConfig: boolean
 }
 
 /** Filesystem baseline captured before a client artifact snapshot is read. */
@@ -100,6 +110,11 @@ interface ClientPackageSource extends ResolvedPkgMeta {
   baseUrl: string
   /** Stable cache and contribution key for this source. */
   sourceKey: string
+  /**
+   * The loader row's cordis config, forwarded to the browser plugin's apply
+   * (restart-level: a config edit reloads the host, so no live update path).
+   */
+  config: unknown
 }
 
 /** Recovery instruction shared by grouped startup and steady-state bundle diagnostics. */
@@ -150,6 +165,8 @@ interface WebPluginRecord {
   loaderName: string
   /** Loader resolution input that selected this package instance. */
   sourceKey: string
+  /** The loader row's config riding every rebuilt wire entry. */
+  config: unknown
   meta: PkgMeta
   /** Exact build artifact included in the startup batches. */
   bundle: Buffer
@@ -212,11 +229,15 @@ function parseDshClient(pkgName: string, value: unknown): DshClientDeclaration |
   if (decl.immediately !== undefined && typeof decl.immediately !== 'boolean') {
     throw new Error(`client-modules: ${pkgName} dsh.client.immediately must be a boolean`)
   }
+  if (decl.config !== undefined && typeof decl.config !== 'boolean') {
+    throw new Error(`client-modules: ${pkgName} dsh.client.config must be a boolean`)
+  }
   return {
     platform: decl.platform,
     ...(inject !== undefined ? { inject } : {}),
     ...(external !== undefined ? { external } : {}),
     ...(decl.immediately !== undefined ? { immediately: decl.immediately } : {}),
+    ...(decl.config !== undefined ? { config: decl.config } : {}),
   }
 }
 
@@ -413,8 +434,53 @@ function buildBatch(phase: WebBootBatchPhase, records: readonly WebPluginRecord[
   }
 }
 
+/** Reject a loader row config the JSON boot wire cannot carry faithfully.
+ * The browser graph is injected as a JSON global, so a config JSON drops or
+ * mangles (functions, symbols, `undefined`, bigints, non-finite numbers,
+ * non-plain objects such as Map/Set/Date) would reach the plugin silently
+ * corrupted; fail at composition instead.
+ * @param id - loader row name, for the diagnostic.
+ * @param value - the row's config value.
+ * @throws {Error} naming the row when any nested value is not JSON-serializable.
+ */
+function assertWireSerializable(id: string, value: unknown): void {
+  const visit = (node: unknown): boolean => {
+    switch (typeof node) {
+      case 'function':
+      case 'symbol':
+      case 'undefined':
+      case 'bigint':
+        return false
+      case 'number':
+        // JSON.stringify turns NaN/Infinity into null.
+        return Number.isFinite(node)
+      case 'object':
+        // JSON.stringify turns Map/Set/Date and class instances into mangled
+        // plain objects; only plain objects and arrays round-trip.
+        if (node === null) return true
+        if (Array.isArray(node)) return node.every(visit)
+        if (Object.getPrototypeOf(node) !== Object.prototype
+          && Object.getPrototypeOf(node) !== null) return false
+        return Object.values(node).every(visit)
+      default:
+        return true
+    }
+  }
+  if (!visit(value)) {
+    throw new Error(
+      `client-modules: loader row ${JSON.stringify(id)} config is not JSON-serializable — `
+      + 'the browser boot wire is a JSON global; host-only config values (functions, symbols) cannot ride it',
+    )
+  }
+}
+
 /** Graph row for one bundle rev (url carries the rev as its cache-busting query). */
-function graphRow(id: string, rev: string, fields: WebBootRowFields): WebBootEntry {
+function graphRow(id: string, rev: string, fields: WebBootRowFields, config: unknown): WebBootEntry {
+  // Only a package that declared config consumption (dsh.client.config)
+  // rides its row config to the browser; every other row's config stays a
+  // host-side fact (dual-face rows may carry host-only `!!js` expressions).
+  const wireConfig = fields.clientConfig ? config : undefined
+  if (wireConfig !== undefined) assertWireSerializable(id, wireConfig)
   return {
     id,
     url: comboUrl([id], rev),
@@ -422,6 +488,7 @@ function graphRow(id: string, rev: string, fields: WebBootRowFields): WebBootEnt
     ...(fields.inject !== undefined ? { inject: fields.inject } : {}),
     ...(fields.immediately ? { immediately: true } : {}),
     ...(fields.external.length > 0 ? { external: fields.external } : {}),
+    ...(wireConfig !== undefined ? { config: wireConfig } : {}),
   }
 }
 
@@ -636,7 +703,7 @@ export class ClientModuleRegistry extends Service {
     const rev = artifactRevision(bundle, sourceMap)
     record.baseline = baseline
     if (rev === record.entry.rev) return rev
-    record.entry = graphRow(id, rev, record.meta)
+    record.entry = graphRow(id, rev, record.meta, record.config)
     record.bundle = bundle
     if (sourceMap === undefined) delete record.sourceMap
     else record.sourceMap = sourceMap
@@ -766,6 +833,7 @@ export class ClientModuleRegistry extends Service {
       ...(decl.inject !== undefined ? { inject: decl.inject } : {}),
       external: decl.external ?? [],
       immediately: decl.immediately === true,
+      clientConfig: decl.config === true,
     }
     const resolved = { packageName, meta }
     this.pkgMeta.set(sourceKey, resolved)
@@ -936,7 +1004,13 @@ export class ClientModuleRegistry extends Service {
     }
     const resolved = this.resolveMeta(loaderName, baseUrl)
     if (resolved === null) return undefined
-    return { ...resolved, loaderName, baseUrl, sourceKey: this.sourceKey(loaderName, baseUrl) }
+    return {
+      ...resolved,
+      loaderName,
+      baseUrl,
+      sourceKey: this.sourceKey(loaderName, baseUrl),
+      config: entry.options.config,
+    }
   }
 
   private reconcilePackage(packageName: string): boolean {
@@ -960,9 +1034,10 @@ export class ClientModuleRegistry extends Service {
     const snapshot = this.initialBundleSnapshot(packageName, source.meta.clientPath)
     const rev = this.allocateInitialRevision()
     this.table.set(packageName, {
-      entry: graphRow(packageName, rev, source.meta),
+      entry: graphRow(packageName, rev, source.meta, source.config),
       loaderName: source.loaderName,
       sourceKey: source.sourceKey,
+      config: source.config,
       meta: source.meta,
       bundle: snapshot.bundle,
       baseline: snapshot.baseline,

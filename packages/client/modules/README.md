@@ -29,7 +29,7 @@ Use it when you compose or build a browser client plugin: the package turns a pa
 
 ### Declaring a client plugin
 
-A browser plugin package declares `dsh.client` in its `package.json` with `platform: 'web'`, exports a `./client` bundle, and lists any non-baseline module requests under `dsh.client.external`. The host half turns each declaration into a served bundle under `/plugins`, ordered so dynamic providers load before their consumers.
+A browser plugin package declares `dsh.client` in its `package.json` with `platform: 'web'`, exports a `./client` bundle, and lists any non-baseline module requests under `dsh.client.external`. A package whose browser half consumes its row's cordis config declares `dsh.client.config: true`: the host then carries that config over the boot wire (it must stay JSON-serializable; the composition fails loud otherwise) and the boot kernel hands it to the plugin's `apply`. Without the declaration the row config stays host-side only, so dual-face rows may keep host-only `!!js` expressions in theirs. The host half turns each declaration into a served bundle under `/plugins`, ordered so dynamic providers load before their consumers.
 
 ### What the browser loads
 

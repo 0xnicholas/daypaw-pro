@@ -368,6 +368,23 @@ describe('boot manifest wire', () => {
     ])
   })
 
+  it('carries each row config to the plugin view only', () => {
+    const manifest = parseBootManifest({
+      rev: 'graph',
+      entries: [
+        { id: 'a', url: '/a.js', rev: '1', config: { viewSlot: 'host.ring' } },
+        { id: 'b', url: '/b.js', rev: '2' },
+      ],
+      batches: [{ phase: 'application', url: '/batch.js', rev: 'batch', entries: ['a', 'b'] }],
+    })
+    expect(manifest.plugins).toEqual([
+      { id: 'a', inject: [], immediately: false, config: { viewSlot: 'host.ring' } },
+      { id: 'b', inject: [], immediately: false },
+    ])
+    // The module table never consumes plugin config, so its rows stay lean.
+    expect(manifest.modules.every(row => !('config' in row))).toBe(true)
+  })
+
   it('rejects a non-array external', () => {
     expect(() => parseBootManifest({
       rev: 'graph',

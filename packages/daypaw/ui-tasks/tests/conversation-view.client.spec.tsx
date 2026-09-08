@@ -5,7 +5,8 @@
  * the run-less session's plain-chat seat (issue #102).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import type { ChatSnapshot, ConversationNode, RunningToolCall } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -68,7 +69,8 @@ const errorNode = (): ConversationNode => {
 const runningCall = (callId: string, argsRaw: string): RunningToolCall =>
   ({ callId, name: 'bash', argsRaw, turn: 1, step: 0, time: 1, subCalls: [] })
 
-function mountView(
+/** Build the full composed props for one mount (the rerender path reuses it with a new session). */
+function viewProps(
   options: {
     chat?: ChatSnapshot
     running?: boolean
@@ -79,10 +81,12 @@ function mountView(
     runStatus?: ConversationViewProps['runStatus']
     steer?: ConversationViewProps['steer']
     sendChat?: ConversationViewProps['sendChat']
+    renderSlot?: (key: string, owner: object) => ReactNode
+    sessionId?: string
   } = {},
 ) {
   const session = {
-    sessionId: 's1' as SessionId, queue: [], pendingSubmissions: [], running: options.running ?? false,
+    sessionId: (options.sessionId ?? 's1') as SessionId, queue: [], pendingSubmissions: [], running: options.running ?? false,
     subagent: null, removed: false, openState: 'open' as const, openError: null, hasMore: false,
     loadingOlder: false, promptError: null, blank: false, lastAgentError: null,
     promptAttempted: false, awaitingFirstTurn: false,
@@ -99,20 +103,25 @@ function mountView(
   const useSessions: ConversationViewProps['useSessions'] = sel => sel({
     ids: Object.keys(byId) as SessionId[], byId, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
   })
-  const view = render(
-    <ConversationView
-      useSession={useSession} sessionId={session.sessionId} useProjection={neverHook}
-      useConversation={neverHook} useTrajectory={neverHook}
-      useInput={neverHook} inputActions={undefined as never}
-      useChat={useChat}
-      useSessionPendingInteraction={useSessionPendingInteraction}
-      useSessions={useSessions} useWorkspaces={neverHook}
-      sendNote={options.sendNote ?? (() => Promise.resolve())}
-      steer={options.steer ?? (() => Promise.resolve())}
-      sendChat={options.sendChat ?? (() => Promise.resolve())}
-      runStatus={options.runStatus} t={t}
-    />,
-  )
+  return {
+    useSession, sessionId: session.sessionId, useProjection: neverHook,
+    useConversation: neverHook, useTrajectory: neverHook,
+    useInput: neverHook, inputActions: undefined as never,
+    useChat,
+    useSessionPendingInteraction,
+    useSessions, useWorkspaces: neverHook,
+    sendNote: options.sendNote ?? (() => Promise.resolve()),
+    steer: options.steer ?? (() => Promise.resolve()),
+    sendChat: options.sendChat ?? (() => Promise.resolve()),
+    runStatus: options.runStatus, t,
+    renderSlot: (options.renderSlot ?? (() => null)) as ConversationViewProps['renderSlot'],
+  } as ConversationViewProps
+}
+
+function mountView(
+  options: Parameters<typeof viewProps>[0],
+) {
+  const view = render(<ConversationView {...viewProps(options)} />)
   return view
 }
 
@@ -296,5 +305,75 @@ describe('ConversationView', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '给 Agent 捎句话（可选）…' }), { target: { value: '先别删' } })
     fireEvent.click(screen.getByRole('button', { name: '确认拒绝' }))
     await waitFor(() => { expect(sendNote).toHaveBeenCalledWith('s1', '先别删') })
+  })
+
+  it('renders the business flow by default and hides the inspector ring (single-shell layering, #105)', () => {
+    const renderSlot = vi.fn(() => null)
+    mountView({ chat: chatWith([userNode('写一首诗')]), renderSlot })
+    // Both tabs are offered; the business pane is the default.
+    expect(screen.getByRole('tab', { name: '对话' })).toHaveProperty('getAttribute')
+    expect(screen.getByRole('tab', { name: '检查器' })).toBeTruthy()
+    expect(screen.getByText('写一首诗')).toBeTruthy()
+    expect(renderSlot).not.toHaveBeenCalled()
+  })
+
+  it('expands the inspector pane on demand and hides the business flow', () => {
+    const renderSlot = vi.fn(() => <div data-testid="ledger">账本</div>)
+    mountView({ chat: chatWith([userNode('写一首诗')]), renderSlot })
+    fireEvent.click(screen.getByRole('tab', { name: '检查器' }))
+    // The ring renders with the view-ring owner face; the business rows step aside.
+    expect(renderSlot).toHaveBeenCalledWith(
+      'inbox.workspace.conversation.inspector',
+      expect.objectContaining({ viewRequest: null }),
+      expect.anything(),
+    )
+    expect(screen.getByTestId('ledger')).toBeTruthy()
+    expect(screen.queryByText('写一首诗')).toBeNull()
+    // Switching back restores the business pane.
+    fireEvent.click(screen.getByRole('tab', { name: '对话' }))
+    expect(screen.getByText('写一首诗')).toBeTruthy()
+    expect(screen.queryByTestId('ledger')).toBeNull()
+  })
+
+  it('routes an inspector-bound view request from the conversation pane', () => {
+    const owners: object[] = []
+    const renderSlot = vi.fn((_key: string, owner: object) => {
+      owners.push(owner)
+      return <div data-testid="ledger">账本</div>
+    })
+    mountView({ renderSlot })
+    fireEvent.click(screen.getByRole('tab', { name: '检查器' }))
+    const owner = owners.at(-1) as { openView: (view: string, focus: string) => void }
+    // The fork seat originates no focus requests, but the ring's owner face
+    // stays real: a view-bound openView flips the pane open.
+    fireEvent.click(screen.getByRole('tab', { name: '对话' }))
+    expect(screen.queryByTestId('ledger')).toBeNull()
+    act(() => { owner.openView('trajectory', 'call-7') })
+    expect(screen.getByTestId('ledger')).toBeTruthy()
+  })
+
+  it('resets to the business pane when the selected session changes', () => {
+    const renderSlot = vi.fn(() => <div data-testid="ledger">账本</div>)
+    const first = mountView({ renderSlot })
+    fireEvent.click(screen.getByRole('tab', { name: '检查器' }))
+    expect(screen.getByTestId('ledger')).toBeTruthy()
+    first.rerender(<ConversationView {...viewProps({ renderSlot, sessionId: 's2' })} />)
+    expect(screen.queryByTestId('ledger')).toBeNull()
+    expect(screen.getByText('暂无对话内容')).toBeTruthy()
+  })
+
+  it('keeps the approval card and follow-up seat live in the inspector pane', () => {
+    const renderSlot = vi.fn(() => null)
+    mountView({
+      chat: chatWith([userNode('写一首诗')], [runningCall('call-1', '{}')]),
+      running: true,
+      pending: approvalWait({ callId: 'call-1', reason: '清理临时目录' }),
+      runStatus: 'running',
+      renderSlot,
+    })
+    fireEvent.click(screen.getByRole('tab', { name: '检查器' }))
+    expect(screen.getByText('请你确认：清理临时目录')).toBeTruthy()
+    const seat = screen.getByRole('textbox', { name: '追问…' })
+    expect(seat).toHaveProperty('disabled', false)
   })
 })

@@ -60,6 +60,13 @@ export interface WebBootEntry {
   immediately?: boolean
   /** Non-baseline module specifiers this row requests; omitted when it requests none. */
   external?: string[]
+  /**
+   * The loader row's cordis config, forwarded to the browser plugin's apply.
+   * JSON-serializable only (the boot wire is a JSON global): functions and
+   * other values JSON drops or mangles are rejected at host composition.
+   * Omitted when the row carries no config; edits take effect on restart.
+   */
+  config?: unknown
 }
 
 /** Initial scheduling phase for one content-addressed combo script. */
@@ -115,6 +122,8 @@ export interface BootPluginRow {
   inject: string[]
   /** Stage-one prefetch tier (false when the wire omits it). */
   immediately: boolean
+  /** The row's cordis config, passed to the mounted plugin's apply (absent when the wire omits it). */
+  config?: unknown
 }
 
 /** The parsed boot manifest: one wire, two consumer views. */
@@ -209,6 +218,7 @@ export function parseBootManifest(wire: unknown): BootManifest {
       id: row.id,
       inject: inject === undefined ? [] : [...inject],
       immediately: row.immediately === true,
+      ...(row.config === undefined ? {} : { config: row.config }),
     })
   }
 
