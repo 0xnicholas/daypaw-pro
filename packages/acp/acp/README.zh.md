@@ -52,7 +52,7 @@ kind: "package-reference"
 
 ### 启动服务器
 
-`pnpm dsh --profile acp` 会启动随附的 stdio 服务器。`acp` profile 会挂载会话持久化，因此客户端可以列出、恢复和关闭持久会话。[`@deepseek-ai/dsh-subagent-acp`](../../subagent/subagent-acp/README.zh.md) 会启动同一 profile 来执行进程外委派。
+`pnpm dsh --profile acp` 会启动随附的 stdio 服务器。`acp` profile 会挂载会话持久化，因此客户端可以列出、恢复和关闭持久会话。[`@deepseek-ai/dsh-subagent-acp`](../../subagent/subagent-acp/README.zh.md) 会启动同一 profile 来执行进程外委派。Loader 持有的启动只在插件树安定后应答首个请求，因此服务目录与能力描述的是完全组合后的应用。
 
 <a id="protocol-contract"></a><a id="standard-acp-v1-surface"></a>
 ### 协议约定

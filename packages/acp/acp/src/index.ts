@@ -71,6 +71,15 @@ function internalError(detail: string): RequestError {
   return RequestError.internalError(undefined, detail)
 }
 
+/**
+ * The Loader service's composition-settle barrier, read structurally so this
+ * package imports no Loader type. `await()` resolves once the owning loader
+ * tree has no in-flight import or lifecycle task.
+ */
+interface CompositionSettleBarrier {
+  await(): Promise<void>
+}
+
 /** Plugin config: the provider/model selection used for each ACP-created agent. */
 export interface AcpConfig {
   /** Provider route for created agents. */
@@ -124,12 +133,23 @@ export function apply(ctx: Context, config: AcpConfig): void {
   /** Send one ordered protocol update while containing transport-only failure. */
   const notify = async (notification: SessionNotification): Promise<void> => {
     try {
-      await conn.notify(methods.client.session.update, notification)
+      await wire().notify(methods.client.session.update, notification)
     /* v8 ignore start -- the ACP SDK contains notification-handler failures; only a transport write failure reaches this guard. */
     } catch (error: unknown) {
       logger.warn(`acp: session/update failed: ${String(error)}`)
     }
     /* v8 ignore stop */
+  }
+
+  /**
+   * The wire client, bound when serving starts below. Agents and their
+   * requests exist only for wire-created sessions, so every reachable caller
+   * runs after the binding.
+   */
+  const wire = (): AgentContext => {
+    /* v8 ignore next -- reachable only if a record outlives the start order */
+    if (conn === undefined) throw internalError('the ACP bridge has not started serving')
+    return conn
   }
 
   ctx.on('session/event', (session, event) => {
@@ -165,7 +185,7 @@ export function apply(ctx: Context, config: AcpConfig): void {
           { optionId: 'reject-once', name: 'Reject', kind: 'reject_once' },
         ],
       }
-      return conn.request(methods.client.session.requestPermission, params)
+      return wire().request(methods.client.session.requestPermission, params)
     }).then(({ outcome }) => {
       if (outcome.outcome === 'cancelled') return 'cancelled'
       return outcome.optionId === 'allow-once' ? 'allowed-once' : 'rejected'
@@ -388,8 +408,23 @@ export function apply(ctx: Context, config: AcpConfig): void {
     .onRequest(methods.agent.session.setConfigOption, ({ params, signal }) => implementation.setSessionConfigOption(params, signal))
     .onRequest(methods.agent.session.prompt, ({ params, signal }) => implementation.prompt(params, signal))
     .onNotification(methods.agent.session.cancel, ({ params }) => implementation.cancel(params))
-  const connection = app.connect(stream)
-  const conn: AgentContext = connection.client
+  let connection: ReturnType<typeof app.connect> | undefined
+  let conn: AgentContext | undefined
+  const start = (): void => {
+    if (closed) return
+    connection = app.connect(stream)
+    conn = connection.client
+    /* v8 ignore start -- production transport rejection and teardown failure. */
+    void connection.closed
+      .catch((error: unknown) => {
+        logger.warn(`acp: connection closed with an error: ${String(error)}`)
+      })
+      .then(quiesce)
+      .catch((error: unknown) => {
+        logger.warn(`acp: connection-close teardown failed: ${String(error)}`)
+      })
+    /* v8 ignore stop */
+  }
 
   let quiescing: Promise<void> | undefined
   const quiesce = (): Promise<void> => {
@@ -422,16 +457,16 @@ export function apply(ctx: Context, config: AcpConfig): void {
     return quiescing
   }
 
-  /* v8 ignore start -- production transport rejection and teardown failure. */
-  void connection.closed
-    .catch((error: unknown) => {
-      logger.warn(`acp: connection closed with an error: ${String(error)}`)
-    })
-    .then(quiesce)
-    .catch((error: unknown) => {
-      logger.warn(`acp: connection-close teardown failed: ${String(error)}`)
-    })
-  /* v8 ignore stop */
+  // The server answers for the composed application, so serving starts only
+  // once the owning Loader tree has settled; a sibling provider entry that
+  // registers its models after the first session would otherwise surface as a
+  // topology notification racing the session's own advertise. Outside a
+  // Loader tree (unit tests injecting config.stream) the composition is
+  // already final and serving starts immediately. A tree that failed to
+  // settle never serves; its composition failure owns the process outcome.
+  const barrier = ctx.get('loader') as CompositionSettleBarrier | undefined
+  if (barrier === undefined) start()
+  else void barrier.await().then(start, () => {})
 
   ctx.effect(() => quiesce, 'acp.connection')
 }

@@ -29,7 +29,7 @@ kind: "package-reference"
 
 ### 配置声明式 agent
 
-配置中声明的 agent 会在插件加载时自动启动。每个条目需要一个 `id` 标签；模型调用还同时需要 `provider` 与 `model`（`agent/request` 可以在分发前补齐缺失的这一对值）。
+配置中声明的 agent 会在插件加载时自动启动。每个条目需要一个 `id` 标签；模型调用还同时需要 `provider` 与 `model`（`agent/request` 可以在分发前补齐缺失的这一对值）。在 Loader 下，启动还会等待插件树安定，因此兄弟条目挂载的持久化后端无论导入时序如何都对每个配置 agent 可见；安定后仍无后端的组合启动纯内存 agent。
 
 ```yaml
 - name: '@deepseek-ai/dsh-agent-loop'

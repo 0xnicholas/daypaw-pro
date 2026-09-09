@@ -226,6 +226,8 @@ export async function makeBridgeHarness(options: {
   imageCapable?: boolean
   attachments?: boolean
   persistenceRoot?: string
+  /** Provide a Loader settle barrier the bridge defers serving behind. */
+  loaderAwait?: () => Promise<void>
 } = {}): Promise<BridgeHarness> {
   const adapter = new MockAdapter(options.script ?? [], options.imageCapable === true)
   const ctx = new Context()
@@ -292,6 +294,7 @@ export async function makeBridgeHarness(options: {
   const config = { stream: agentStream, ...options.config } as AcpConfig
   if (!(options.config && 'provider' in options.config)) config.provider = 'mock'
   if (!(options.config && 'model' in options.config)) config.model = 'mock'
+  if (options.loaderAwait !== undefined) ctx.provide('loader', { await: options.loaderAwait })
   harness.acpFiber = await ctx.plugin({
     name: 'acp-test',
     inject: [...AcpPlugin.inject],

@@ -266,6 +266,15 @@ export interface LauncherAgentIdentity {
 export interface ConfiguredAgentIdentities extends Readonly<Record<string, LauncherAgentIdentity>> {}
 
 /**
+ * The Loader service's composition-settle barrier, read structurally so this
+ * core package imports no Loader type. `await()` resolves once the owning
+ * loader tree has no in-flight import or lifecycle task.
+ */
+interface CompositionSettleBarrier {
+  await(): Promise<void>
+}
+
+/**
  * Context key a launcher sets before any Loader entry mounts
  * (`ctx.provide(CONFIGURED_AGENT_IDENTITIES_KEY, identities)`) to fix
  * configured agents' session identities without a config key, so an overlay
@@ -426,18 +435,11 @@ export class AgentLoop extends Service implements AgentFactory {
       const meta = cwd === undefined ? {} : { cwd }
       if (resumeSessionId === undefined || resumeSessionId === '') {
         const configuredId = sessionId ?? brandString<SessionId>(`${id}-session-${randomUUID()}`)
-        const persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
-        if (persistence === undefined) {
-          const startup = this.create(configuredId, options, meta).then(() => undefined, (error: unknown) => {
+        const startup = this.startConfiguredAgent(ctx, sessionId, configuredId, options, meta)
+          .then(() => undefined, (error: unknown) => {
             this.reportConfiguredStartupFailure(id, 'restore', configuredId, error)
           })
-          this.ownership.trackStartup(startup)
-        } else {
-          const startup = this.restoreOrCreateConfigured(ctx, persistence, configuredId, options, meta).catch((error: unknown) => {
-            this.reportConfiguredStartupFailure(id, 'restore', configuredId, error)
-          })
-          this.ownership.trackStartup(startup)
-        }
+        this.ownership.trackStartup(startup)
         continue
       }
       ctx.effect(() => {
@@ -473,6 +475,53 @@ export class AgentLoop extends Service implements AgentFactory {
       } catch (listenerError: unknown) {
         this.ctx.logger.warn(`agent "${configId}": config-start-failed listener threw: ${errorChain(listenerError)}`)
       }
+    }
+  }
+
+  /**
+   * Start one configured (non-resuming) agent against the settled composition.
+   *
+   * Loader entries apply concurrently, so a persistence backend mounted by a
+   * sibling entry is not visible to this constructor while the tree is still
+   * applying; whether a configured agent persists must not depend on sibling
+   * import timing. When a Loader owns this plugin and the backend is absent,
+   * the startup waits for the tree to settle and samples again — after that,
+   * absence is final and the agent runs unpersisted, exactly like a
+   * composition that mounts no backend. Outside a Loader tree the constructor
+   * sample is already final.
+   * @param ctx - the loop's own context, whose service visibility is sampled.
+   * @param sessionId - the configured exact session id, when present.
+   * @param configuredId - the session id the agent will run under.
+   * @param options - the agent options from the config row.
+   * @param meta - the fresh-session workspace metadata.
+   */
+  private async startConfiguredAgent(
+    ctx: Context,
+    sessionId: SessionId | undefined,
+    configuredId: SessionId,
+    options: AgentOptions,
+    meta: Pick<SessionHeader, 'cwd'>,
+  ): Promise<void> {
+    let persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
+    if (persistence === undefined) {
+      const barrier = ctx.get('loader') as CompositionSettleBarrier | undefined
+      if (barrier !== undefined) {
+        try {
+          await this.ownership.waitWhileActive(barrier.await())
+        } catch {
+          // Swallows only the settle barrier's rejection: a sibling entry
+          // that failed to apply, reported through the Loader's tree failure.
+          // Startup proceeds with current visibility; the composition failure
+          // owns the process outcome.
+        }
+        if (!this.ownership.isActive()) return
+        persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
+      }
+    }
+    if (persistence === undefined) {
+      await this.create(configuredId, options, meta)
+    } else {
+      await this.restoreOrCreateConfigured(ctx, persistence, configuredId, options, meta)
     }
   }
 

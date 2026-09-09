@@ -121,6 +121,85 @@ describe('config-driven session id', () => {
     expect(published).toBeUndefined()
   })
 
+  it('persists a configured agent whose backend mounts later in the same tree', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-cfg-settle-late-backend-'))
+    dirs.push(root)
+    const ctx = await makeCoreContext()
+    const settled: PromiseWithResolvers<void> = Promise.withResolvers()
+    ctx.provide('loader', { await: () => settled.promise })
+
+    await ctx.plugin(AgentLoop, { agents: [{ id: 'main', model: 'mock' }] })
+    // Loader entries apply concurrently, so a backend mounted by a sibling
+    // entry is not visible to the loop's constructor yet; the configured
+    // agent stays unstarted until the tree settles.
+    await new Promise<void>(resolve => setImmediate(resolve))
+    expect(ctx.agents.list()).toEqual([])
+
+    await ctx.plugin(JsonlSessionPersistence, { root })
+    settled.resolve()
+    await expect.poll(() => ctx.agents.list().length, { timeout: 5_000 }).toBe(1)
+    const agent = ctx.agents.list()[0]!
+    await expect.poll(() => ctx.sessionPersistence.stat(agent.session.id)).toBeDefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('creates a configured agent unpersisted once a loader tree settles without a backend', async () => {
+    const ctx = await makeCoreContext()
+    ctx.provide('loader', { await: () => Promise.resolve() })
+    await ctx.plugin(AgentLoop, { agents: [{ id: 'main', model: 'mock' }] })
+    await expect.poll(() => ctx.agents.list().length, { timeout: 5_000 }).toBe(1)
+    expect(ctx.get('sessionPersistence')).toBeUndefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('proceeds with visible services when the loader tree fails to settle', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-cfg-settle-failed-tree-'))
+    dirs.push(root)
+    const ctx = await makeCoreContext()
+    ctx.provide('loader', { await: () => Promise.reject(new Error('sibling entry failed to apply')) })
+    await ctx.plugin(JsonlSessionPersistence, { root })
+    await ctx.plugin(AgentLoop, { agents: [{ id: 'main', model: 'mock' }] })
+    await expect.poll(() => ctx.agents.list().length, { timeout: 5_000 }).toBe(1)
+    const agent = ctx.agents.list()[0]!
+    await expect.poll(() => ctx.sessionPersistence.stat(agent.session.id)).toBeDefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('abandons a settled-out configured agent whose loop unloaded before the tree settled', async () => {
+    const ctx = await makeCoreContext()
+    const settled: PromiseWithResolvers<void> = Promise.withResolvers()
+    ctx.provide('loader', { await: () => settled.promise })
+    const failures: unknown[] = []
+    ctx.on('agent-loop/config-start-failed', ({ error }) => { failures.push(error) })
+
+    const loop = await ctx.plugin(AgentLoop, { agents: [{ id: 'main', model: 'mock' }] })
+    await loop.dispose()
+    settled.resolve()
+    await new Promise<void>(resolve => setImmediate(resolve))
+    expect(ctx.agents.list()).toEqual([])
+    expect(failures).toEqual([])
+    await ctx.fiber.dispose()
+  })
+
+  it('restores an exact-id configured agent whose backend mounts later in the same tree', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-cfg-settle-late-exact-'))
+    dirs.push(root)
+    const ctx = await makeCoreContext()
+    const settled: PromiseWithResolvers<void> = Promise.withResolvers()
+    ctx.provide('loader', { await: () => settled.promise })
+
+    await ctx.plugin(AgentLoop, { agents: [{ id: 'main', sessionId: SessionId('config-exact-late'), model: 'mock' }] })
+    await new Promise<void>(resolve => setImmediate(resolve))
+    expect(ctx.agents.get(SessionId('config-exact-late'))).toBeUndefined()
+
+    await ctx.plugin(JsonlSessionPersistence, { root })
+    settled.resolve()
+    await expect.poll(() => ctx.agents.get(SessionId('config-exact-late')), { timeout: 5_000 }).toBeDefined()
+    const agent = ctx.agents.get(SessionId('config-exact-late'))!
+    await expect.poll(() => ctx.sessionPersistence.stat(agent.session.id)).toBeDefined()
+    await ctx.fiber.dispose()
+  })
+
   it('restores a materialized exact id across an AgentLoop-only reload', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-cfg-exact-reload-'))
     dirs.push(root)

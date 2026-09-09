@@ -29,7 +29,7 @@ Mount `dsh-agent-loop` in any composition that should run agents. It supplies th
 
 ### Configure declarative agents
 
-Agents declared in the config start automatically when the plugin loads. Each entry needs an `id` label; a model call additionally requires both `provider` and `model` (`agent/request` may supply a missing pair before dispatch).
+Agents declared in the config start automatically when the plugin loads. Each entry needs an `id` label; a model call additionally requires both `provider` and `model` (`agent/request` may supply a missing pair before dispatch). Under a Loader, startup additionally waits for the plugin tree to settle, so a persistence backend mounted by a sibling entry is visible to every configured agent regardless of import timing; a settled composition without a backend starts memory-only agents.
 
 ```yaml
 - name: '@deepseek-ai/dsh-agent-loop'
