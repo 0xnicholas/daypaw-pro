@@ -3,7 +3,7 @@
  * runs a `defineAgent`-compiled durable agent through `ctx.agent` over the
  * real dsh agent stack. The LLM route is served keylessly from a scripted
  * replay override (`--override`), so the demo runs without an API key; the
- * snapshot suite diffs the persisted session log — the model-visible surface
+ * replay spec diffs the persisted session log — the model-visible surface
  * (prompt section, `submit` schema, input message, and after a kill the
  * synthetic resume steer).
  * `--mode steer` drives the steerable definition directly (issue #53): a
@@ -43,7 +43,7 @@ if (dbPath === undefined || sessionsRoot === undefined || overridePath === undef
 }
 // Long-lived-host posture: a ref'd heartbeat keeps the event loop alive while
 // a run is mid-flight (a server host always has live handles), so the
-// snapshot's SIGKILL models the host dying mid-turn rather than the loop
+// replay's SIGKILL models the host dying mid-turn rather than the loop
 // draining out from under the driver. Cleared on clean completion.
 const keepAlive = process.argv.includes('--hold-open') ? setInterval(() => {}, 60_000) : undefined
 

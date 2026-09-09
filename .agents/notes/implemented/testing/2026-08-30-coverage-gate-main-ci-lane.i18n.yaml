@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-08-30-coverage-gate-main-ci-lane.md
-2026-08-30-coverage-gate-main-ci-lane.md: 21c88d40f053f2dd8d4a8ec859d17412b95c15d8
-2026-08-30-coverage-gate-main-ci-lane.zh.md: ec25f03097f0c2aaa36e2a31b10993003fcfd8a7
+2026-08-30-coverage-gate-main-ci-lane.md: 45d15238d99e0a932179952d72bc0587a14129e9
+2026-08-30-coverage-gate-main-ci-lane.zh.md: accea12cc1c9f2406c20cf32b7543c9dd8696c1b

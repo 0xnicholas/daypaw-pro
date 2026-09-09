@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-09-skeleton-agent-replay-dead-lane.md
+2026-09-09-skeleton-agent-replay-dead-lane.md: 149c5c1f15f087639514713a7b4396b1c6a0d144
+2026-09-09-skeleton-agent-replay-dead-lane.zh.md: 77070bfa56204ad1962cb4c2efadf417609c80a8

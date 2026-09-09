@@ -38,9 +38,9 @@ node --import tsx/esm examples/daypaw-skeleton/src/agent-main.ts \
   --run-id agent-demo-1
 ```
 
-[tests/agent.golden.ts](tests/agent.golden.ts) pins the model-visible surface: the persisted session log diffs against committed expected output (persona prompt section, injected `submit` schema, input message), and a second scenario SIGKILLs the host mid-turn, restarts, and pins the synthetic resume steer the revived model sees.
+[tests/agent.spec.ts](tests/agent.spec.ts) pins the model-visible surface: the persisted session log diffs against committed expected output (persona prompt section, injected `submit` schema, input message), and a second scenario SIGKILLs the host mid-turn, restarts, and pins the synthetic resume steer the revived model sees.
 
-A third scenario exercises the steer channel (issue #53) through `--mode steer`, which drives a separate steerable definition directly: [tests/sigkill.spec.ts](tests/sigkill.spec.ts) parks a run on a submit-less turn, SIGKILLs the host, and revives it from a `--steer` segment under the same runId, while the snapshot suite pins one session log carrying both the initial input and the steered follow-up.
+A third scenario exercises the steer channel (issue #53) through `--mode steer`, which drives a separate steerable definition directly: [tests/sigkill.spec.ts](tests/sigkill.spec.ts) parks a run on a submit-less turn, SIGKILLs the host, and revives it from a `--steer` segment under the same runId, while the replay spec pins one session log carrying both the initial input and the steered follow-up.
 
 ## Model Experience
 
@@ -68,7 +68,7 @@ None: the demo adds no request-prefix content.
 
 #### What the model sees
 
-The agent demo's model-visible surface is exactly what its snapshot pins; see above.
+The agent demo's model-visible surface is exactly what its replay spec pins; see above.
 
 ##### Agent-turn record
 
@@ -78,7 +78,7 @@ The agent demo drives a real dsh agent loop over the durable engine: the session
 
 #### Token effect
 
-Bounded by the single pinned snapshot turn.
+Bounded by the single pinned replay turn.
 
 #### KV Cache effect
 
@@ -90,4 +90,4 @@ None: the demo adds no request-prefix content.
 
 ### Dev Note
 
-**Runtime invariant:** No companion is published. The demo owns no independent event stream or mutable data; the SIGKILL and snapshot suites cover its durable behavior.
+**Runtime invariant:** No companion is published. The demo owns no independent event stream or mutable data; the SIGKILL and replay suites cover its durable behavior.

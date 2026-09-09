@@ -70,7 +70,7 @@ async function readSessionLog(sessionsRoot: string): Promise<string> {
   return readPersistedLog(join(sessionsRoot, files[0]!))
 }
 
-/** Wait until the persisted session log contains the marker (the hang entry's partial chunk). */
+/** Wait until the persisted session log contains the marker (a durable mid-attempt record). */
 async function untilSessionContains(sessionsRoot: string, marker: string): Promise<void> {
   const deadline = Date.now() + 10_000
   for (;;) {
@@ -113,7 +113,7 @@ async function expectSessionLog(sessionsRoot: string, expectedPath: string): Pro
   return normalized
 }
 
-describe('defineAgent compilation snapshots', () => {
+describe('defineAgent compilation replays', () => {
   it('compiles an agent into a durable child run of the workflow', async () => {
     const { db, sessions, cleanup } = await stage()
     try {
@@ -156,8 +156,11 @@ describe('defineAgent compilation snapshots', () => {
         '--run-id', 'agent-revive-1',
         '--hold-open',
       ])
-      // The hang entry's partial chunk must be durable before the kill.
-      await untilSessionContains(sessions, 'partial')
+      // The durable proof the kill lands mid-attempt: the folded-stream
+      // format persists chunks only when the attempt settles, and SIGKILL
+      // preempts settlement, so the last durable pre-hang event is the
+      // request/context record — the model call provably in flight.
+      await untilSessionContains(sessions, '"request/context"')
       await new Promise(resolve => setTimeout(resolve, 100))
       process.kill(first.pid, 'SIGKILL')
       await first.exit

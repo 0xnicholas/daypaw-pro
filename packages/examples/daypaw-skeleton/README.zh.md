@@ -38,9 +38,9 @@ node --import tsx/esm examples/daypaw-skeleton/src/agent-main.ts \
   --run-id agent-demo-1
 ```
 
-[tests/agent.golden.ts](tests/agent.golden.ts) 钉住模型可见面：持久化 session log 与提交的期望输出对 diff（persona prompt 段、注入的 `submit` schema、输入消息）；第二个场景在轮中 SIGKILL 宿主、重启，并钉住复活后模型看到的合成续跑 steer。
+[tests/agent.spec.ts](tests/agent.spec.ts) 钉住模型可见面：持久化 session log 与提交的期望输出对 diff（persona prompt 段、注入的 `submit` schema、输入消息）；第二个场景在轮中 SIGKILL 宿主、重启，并钉住复活后模型看到的合成续跑 steer。
 
-第三个场景经 `--mode steer` 走 steer 通道（issue #53），直接驱动一个独立的 steerable 定义：[tests/sigkill.spec.ts](tests/sigkill.spec.ts) 让 run 在无 submit 的轮次后停泊，SIGKILL 宿主，再以 `--steer` 段在同一 runId 下复活并完成；快照套件则钉住同一份同时承载初始输入与被 steer 追问的 session log。
+第三个场景经 `--mode steer` 走 steer 通道（issue #53），直接驱动一个独立的 steerable 定义：[tests/sigkill.spec.ts](tests/sigkill.spec.ts) 让 run 在无 submit 的轮次后停泊，SIGKILL 宿主，再以 `--steer` 段在同一 runId 下复活并完成；回放 spec 则钉住同一份同时承载初始输入与被 steer 追问的 session log。
 
 ## Model Experience
 
@@ -68,7 +68,7 @@ The skeleton workflow executes three chained durable steps (first, second, third
 
 #### 模型可见面
 
-agent 演示的模型可见面即其快照所钉内容，见上。
+agent 演示的模型可见面即其回放 spec 所钉内容，见上。
 
 ##### agent 轮次记录
 
@@ -78,7 +78,7 @@ The agent demo drives a real dsh agent loop over the durable engine: the session
 
 #### Token 效果
 
-由单一钉住的快照轮次限定。
+由单一钉住的回放轮次限定。
 
 #### KV Cache 效果
 
@@ -90,4 +90,4 @@ The agent demo drives a real dsh agent loop over the durable engine: the session
 
 ### 开发备注
 
-**运行时 invariant：**不发布 companion。demo 不持有独立事件流或可变数据；其 durable 行为由 SIGKILL 与快照套件覆盖。
+**运行时 invariant：**不发布 companion。demo 不持有独立事件流或可变数据；其 durable 行为由 SIGKILL 与回放套件覆盖。
