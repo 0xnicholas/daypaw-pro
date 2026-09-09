@@ -485,8 +485,8 @@ export class AgentLoop extends Service implements AgentFactory {
    * sibling entry is not visible to this constructor while the tree is still
    * applying; whether a configured agent persists must not depend on sibling
    * import timing. When a Loader owns this plugin and the backend is absent,
-   * the startup waits for the tree to settle and samples again — after that,
-   * absence is final and the agent runs unpersisted, exactly like a
+   * the startup waits for the tree to settle before choosing the create path —
+   * after that, absence is final and the agent runs unpersisted, exactly like a
    * composition that mounts no backend. Outside a Loader tree the constructor
    * sample is already final.
    * @param ctx - the loop's own context, whose service visibility is sampled.
@@ -502,8 +502,7 @@ export class AgentLoop extends Service implements AgentFactory {
     options: AgentOptions,
     meta: Pick<SessionHeader, 'cwd'>,
   ): Promise<void> {
-    let persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
-    if (persistence === undefined) {
+    if (ctx.get('sessionPersistence') === undefined) {
       const barrier = ctx.get('loader') as CompositionSettleBarrier | undefined
       if (barrier !== undefined) {
         try {
@@ -515,9 +514,12 @@ export class AgentLoop extends Service implements AgentFactory {
           // owns the process outcome.
         }
         if (!this.ownership.isActive()) return
-        persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
       }
     }
+    // An exact id restores-or-creates through a visible backend; a fresh id
+    // takes the plain create path, whose stored-session step samples the
+    // backend again now that the composition has settled.
+    const persistence = sessionId === undefined ? undefined : ctx.get('sessionPersistence')
     if (persistence === undefined) {
       await this.create(configuredId, options, meta)
     } else {

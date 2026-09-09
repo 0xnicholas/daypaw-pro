@@ -462,11 +462,16 @@ export function apply(ctx: Context, config: AcpConfig): void {
   // registers its models after the first session would otherwise surface as a
   // topology notification racing the session's own advertise. Outside a
   // Loader tree (unit tests injecting config.stream) the composition is
-  // already final and serving starts immediately. A tree that failed to
-  // settle never serves; its composition failure owns the process outcome.
+  // already final and serving starts immediately.
   const barrier = ctx.get('loader') as CompositionSettleBarrier | undefined
   if (barrier === undefined) start()
-  else void barrier.await().then(start, () => {})
+  else {
+    void barrier.await().then(start, (error: unknown) => {
+      // A tree that failed to settle never serves; its composition failure
+      // owns the process outcome, and this warn names the dropped serving.
+      logger.warn(`acp: the loader tree failed to settle; serving never starts: ${String(error)}`)
+    })
+  }
 
   ctx.effect(() => quiesce, 'acp.connection')
 }

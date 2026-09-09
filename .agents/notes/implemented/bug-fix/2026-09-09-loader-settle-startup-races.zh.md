@@ -11,7 +11,7 @@ Loader 以并发方式应用同一棵树里的兄弟条目（`EntryGroup.update`
 - `dsh-agent-loop` 在构造器里创建配置 agent 并立即采样 `ctx.sessionPersistence`。当 `dsh-session-persistence-jsonl` 条目尚未注册时，`createStoredSession` 拿不到写句柄，配置 agent 以纯内存运行，`.sessions` 永不落盘；进程仍以完整事件流 exit 0（ticket #106，macOS src 模式 6 例 `test:expected` 恒红）。
 - `dsh-acp` 在 `apply` 里连接 stdio 传输，客户端因此能在 provider 条目仍在导入时创建会话。`llm/adapters-updated` 随后在首个会话记录存在之后触发，发出录制夹具（录制于 adapter 先于服务注册的组合）不携带的 `config_option_update` 通知。
 
-构建后的 `lib` 启动导入足够快，两个竞争都按录制方向落定，因此 CI（`DSH_EXAMPLE_MODE=lib`）保持绿，而 src 模式在较慢的转译下确定性变红。
+构建后的 `lib` 启动导入足够快，两个竞争都按录制方向落定，因此 CI（`DSH_EXAMPLE_MODE=lib`）保持绿，而 src 模式在较慢的转译下确定性变红。插桩排除了票面另一个假设——preset realm 里 `sessionPersistence` 实例分裂：后端实例只构造一个，同一上下文可解析到它——未命中是注册时序而非身份分裂。
 
 ## Decision
 
@@ -32,4 +32,4 @@ Loader 以并发方式应用同一棵树里的兄弟条目（`EntryGroup.update`
 
 只要组合挂载了后端，配置 agent 无论兄弟导入时序如何都确定性地持久化；不挂载时确定性地纯内存启动——src 模式 6 例 `test:expected` 转绿，lib 模式夹具原样回放。ACP 只在组合应用安定后应答首个请求，服务出的目录与能力因此是定局——Loader 持有启动的客户端在 `initialize` 应答前看到有界的启动延迟，而非竞态的拓扑通知。两个等待都是浮动启动（经 `FactoryOwnership` / 插件 effect 追踪），等待期间树拆除会放弃它们，不会死锁 Loader 自身的任务排空。
 
-`packages/core/agent-loop/tests/config-session-id.spec.ts` 钉住四类安定臂（后端迟到仍持久化、安定而无后端则纯内存、安定失败继续、等待中拆除放弃，另有精确 id 后端迟到臂）；`packages/acp/acp/tests/startup.spec.ts` 钉住服务延迟。两个被改源文件在所属测试套件下保持 100% 覆盖。上游携带缺陷与修复已登记 `docs/fork/CORE_TOUCHES.md`，标记为下次 sync 的上游 PR 候选。
+`packages/core/agent-loop/tests/config-session-id.spec.ts` 钉住各安定臂（后端迟到时新 id 与精确 id 均持久化、安定而无后端则纯内存、安定失败继续、等待中拆除放弃）；`packages/acp/acp/tests/startup.spec.ts` 钉住服务延迟（屏障未决、屏障已决、安定失败、安定前拆除）。两个被改源文件在所属测试套件下保持 100% 覆盖。上游携带缺陷与修复已登记 `docs/fork/CORE_TOUCHES.md`，标记为下次 sync 的上游 PR 候选。
