@@ -95,6 +95,14 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
+      # The full-suite lanes load built faces — coverage heals isolated profiles
+      # from the install anchor (agent-plane, the web-app roster, the skeleton
+      # replay) and the browser replays serve the built frontend dist — so a
+      # job's environment preparation is owned by the gates it runs: without
+      # this step every lane after install starves on a clean checkout.
+      - name: Build workspace artifacts
+        run: pnpm run build
+
       - name: Prepare bubblewrap (unrestrict userns)
         run: bash scripts/prepare-ci-bubblewrap.sh
 

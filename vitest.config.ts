@@ -213,6 +213,10 @@ export default defineConfig({
         // Dynamic Host/Client composition is covered by its focused lifecycle
         // tests and assembled application checks rather than per-file coverage.
         'packages/self-modification/*/src/**/*.{ts,tsx}',
+        // The runnable example executes only as spawned tsx children vitest
+        // cannot instrument; its behavior is pinned by the default-lane
+        // replay specs, not the per-file unit gate.
+        'packages/examples/daypaw-skeleton/src/**',
         // A killed executable lint-contract test can leave a non-product source probe behind.
         'packages/*/*/src/oxlint-contract-*.ts',
         // Client/web UI files whose remaining branches need a browser-grade

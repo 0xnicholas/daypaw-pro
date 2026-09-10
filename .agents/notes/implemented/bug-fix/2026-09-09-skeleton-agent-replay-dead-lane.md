@@ -26,6 +26,6 @@ The revive scenario waits for the durable `request/context` record before killin
 
 `pnpm exec vitest run packages/examples/daypaw-skeleton` runs both spec files (six tests) green in the default lane with no explicit path, and the file joins the coverage lane's include, which the fork's advisory CI job executes in full. The `.golden.ts` suffix now maps one-to-one onto the assembled web lane.
 
-Pre-existing and unchanged: `packages/examples/daypaw-skeleton/src/**` scores 0% under the v8 per-file gate because those sources execute only as spawned tsx children vitest cannot instrument, so the fork's advisory coverage job has carried that red since the package landed. Closing it means excluding the runnable example's `src` in `vitest.config.ts` — an upstream-file touch needing its own `docs/fork/CORE_TOUCHES.md` row — and stays outside this fix.
+Pre-existing and closed by #111: `packages/examples/daypaw-skeleton/src/**` scores 0% under the v8 per-file gate because those sources execute only as spawned tsx children vitest cannot instrument, so the fork's advisory coverage job carried that red from the package's landing until the `vitest.config.ts` exclusion ([the CI lane note](../testing/2026-08-30-coverage-gate-main-ci-lane.md), registered core touch).
 
 Operational note for reruns: the spawned hosts load `fs-ext` (the POSIX session-lease face), so the lane must run under the Node major that built the workspace's native modules; a mismatched ABI fails every scenario with `ERR_DLOPEN_FAILED` before any assertion.

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-09-skeleton-agent-replay-dead-lane.md
-2026-09-09-skeleton-agent-replay-dead-lane.md: 7fd7678a1c9298e8935fa07ebef4945b692205d5
-2026-09-09-skeleton-agent-replay-dead-lane.zh.md: bb601d855cc7a5c3978ef2ab8f37e512c766091b
+2026-09-09-skeleton-agent-replay-dead-lane.md: 8024cb1c0655f8e1f79e642f728fa7511ab8f9bb
+2026-09-09-skeleton-agent-replay-dead-lane.zh.md: e4c09f04ab9b3758a600b9e523740953875b60d9

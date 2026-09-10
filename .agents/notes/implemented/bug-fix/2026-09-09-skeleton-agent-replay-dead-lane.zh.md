@@ -26,6 +26,6 @@ Status: implemented
 
 `pnpm exec vitest run packages/examples/daypaw-skeleton` 在默认道无需显式路径即运行两个 spec 文件（六例）全绿；文件进入覆盖率车道的 include，fork 的 advisory CI 作业全量执行它。`.golden.ts` 后缀从此与装配 web 车道一一对应。
 
-既存且未变：`packages/examples/daypaw-skeleton/src/**` 在 v8 逐文件门下计 0%，因为这些源码只作为 vitest 无法插桩的 tsx 子进程执行，fork 的 advisory 覆盖率作业自该包落地起就带着这条红。收掉它需要在 `vitest.config.ts` 排除可运行示例的 `src`——一次上游文件改动、需自登记 `docs/fork/CORE_TOUCHES.md` 行——不在本修复范围内。
+既存且已由 #111 收口：`packages/examples/daypaw-skeleton/src/**` 在 v8 逐文件门下计 0%，因为这些源码只作为 vitest 无法插桩的 tsx 子进程执行；fork 的 advisory 覆盖率作业自该包落地起带着这条红，直至 `vitest.config.ts` 的排除落地（见[CI 车道 note](../testing/2026-08-30-coverage-gate-main-ci-lane.zh.md)，已登记 core touch）。
 
 重跑操作注记：被杀宿主加载 `fs-ext`（POSIX session 租约面），车道必须在构建了工作区原生模块的 Node 大版本下运行；ABI 不匹配时每个场景在断言前即以 `ERR_DLOPEN_FAILED` 失败。
