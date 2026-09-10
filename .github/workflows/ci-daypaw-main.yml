@@ -59,6 +59,12 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
+      # The built-bin smoke gate's headless keyless profile drives the production
+      # shell tool in workspace-write sandbox mode, which refuses to run unconfined
+      # when no sandbox backend is usable; hosted runners need bubblewrap for it.
+      - name: Prepare bubblewrap (unrestrict userns)
+        run: bash scripts/prepare-ci-bubblewrap.sh
+
       - name: Run the deterministic gate aggregate
         env:
           # Gates run one at a time so a 4-vCPU runner never juggles two lanes;
