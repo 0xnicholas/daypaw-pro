@@ -390,8 +390,15 @@ export function normalizeSessionLog(
 /**
  * Canonicalize projected v2 body records. Compact streams are nested event data,
  * so persistence flush boundaries cannot change the row layout.
+ *
+ * Unlike {@link normalizeSessionSnapshot}, request-header payloads (system
+ * prompt, tool schemas) pass through verbatim — callers that pin those
+ * surfaces inline compose this with {@link normalizeSessionLog} directly.
+ *
+ * @param rawLog - persisted or already-projected session JSONL.
+ * @returns the same records with persistence-only envelopes omitted, one record per event.
  */
-function projectSessionSnapshot(rawLog: string): string {
+export function projectSessionSnapshot(rawLog: string): string {
   const lines = rawLog.split('\n').filter(line => line.trim().length > 0)
   const header = lines.shift() as string
 

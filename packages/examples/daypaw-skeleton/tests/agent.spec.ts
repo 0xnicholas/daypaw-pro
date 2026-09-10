@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
-import { normalizeSessionLog } from '@deepseek-ai/dsh-session-snapshot'
+import { normalizeSessionLog, projectSessionSnapshot } from '@deepseek-ai/dsh-session-snapshot'
 import {
   decompressZstdFrame,
   scanZstdFrames,
@@ -104,10 +104,15 @@ function readRuns(dbPath: string): Array<Record<string, unknown>> {
 
 /** Diff the persisted session log (the model-visible surface) against its committed expected output. */
 async function expectSessionLog(sessionsRoot: string, expectedPath: string): Promise<string> {
-  const normalized = normalizeSessionLog(await readSessionLog(sessionsRoot), {
+  // The committed fixtures live in the canonical packed layout (seq/time
+  // envelopes projected away — scripts/session-fixture-layout.ts). The spec
+  // composes the projection with bare log normalization — not the full
+  // fixture pipeline — because it pins the request-header payloads (persona
+  // section, submit schema) inline instead of tokenizing them to sidecars.
+  const normalized = projectSessionSnapshot(normalizeSessionLog(await readSessionLog(sessionsRoot), {
     sessionIds: [],
     cwd: process.cwd(),
-  })
+  }))
   if (refreshing) await writeFile(expectedPath, normalized)
   expect(normalized).toBe(await readFile(expectedPath, 'utf8'))
   return normalized
@@ -129,7 +134,7 @@ describe('defineAgent compilation replays', () => {
       // The whole model-visible surface of the compiled agent is pinned by the
       // persisted session log: the persona prompt section text, the injected
       // `submit` tool schema, and the input message.
-      const log = await expectSessionLog(sessions, join(happyDir, 'session.jsonl'))
+      const log = await expectSessionLog(sessions, join(happyDir, 'session.v2.jsonl'))
       expect(log).toContain('You review code and report a numeric score from 0 to 100.')
       expect(log).toContain('"name":"submit"')
       expect(log).toContain('Submission accepted; the run is complete.')
@@ -175,7 +180,7 @@ describe('defineAgent compilation replays', () => {
       expect(restart.stdout).toBe('{"verdict":7}\n')
 
       // The revived session's log pins the synthetic resume steer the model sees.
-      const log = await expectSessionLog(sessions, join(reviveDir, 'session.jsonl'))
+      const log = await expectSessionLog(sessions, join(reviveDir, 'session.v2.jsonl'))
       expect(log).toContain('The host process restarted')
       expect(log).toContain('REVIEW RESUMED')
 
@@ -204,7 +209,7 @@ describe('defineAgent compilation replays', () => {
 
       // One session log carries both user messages: the initial input and the
       // steered follow-up, with no synthetic resume steer in between.
-      const log = await expectSessionLog(sessions, join(steerDir, 'session.jsonl'))
+      const log = await expectSessionLog(sessions, join(steerDir, 'session.v2.jsonl'))
       expect(log).toContain('You review code iteratively and report a numeric score from 0 to 100 once the review is complete.')
       expect(log).toContain('export const answer = 42')
       expect(log).toContain('export const extra = 1')

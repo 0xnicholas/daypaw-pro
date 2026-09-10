@@ -336,7 +336,8 @@ describe('client bundle activation', () => {
     ]) {
       expect(() => constructWithRoute([packageName], {
         entryConfigs: { [packageName]: mangled },
-      }), JSON.stringify(mangled, (_k, v) => typeof v === 'number' && !Number.isFinite(v) ? 'non-finite' : v)).toThrow('config is not JSON-serializable')
+      }), JSON.stringify(mangled, (_k: string, v: unknown) =>
+        typeof v === 'number' && !Number.isFinite(v) ? 'non-finite' : v)).toThrow('config is not JSON-serializable')
     }
   })
 

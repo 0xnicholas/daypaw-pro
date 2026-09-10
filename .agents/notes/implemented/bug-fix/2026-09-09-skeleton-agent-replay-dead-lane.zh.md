@@ -12,7 +12,7 @@ Status: implemented
 
 回放以 `packages/examples/daypaw-skeleton/tests/agent.spec.ts` 之名在默认道执行，即金样文件的 `git mv`。它与同目录 `sigkill.spec.ts` 共享执行形态——tsx 源启动子进程、真实 `SIGKILL`、持久化 session log 与台账断言——不需要浏览器引导、不依赖构建产物，且 `docs/testing.md` 本就把包属预期输出指派给 `test`。web-daypaw 车道从此独占 `.golden.ts` 后缀，只载装配浏览器回放。
 
-三份提交的 `session.jsonl` 金样已刷新（`DSH_SNAPSHOT=refresh`）为 v2 归一格式：`seq`/`time` 封套、折叠 `stream` 数组取代 `assistant/chunk` 事件、`isSeeded` 头字段、`sourceEventSeqs` 指向新序号。三个场景的事件类型次序此外不变。
+三份提交的金样已刷新（`DSH_SNAPSHOT=refresh`），以仓规 canonical packed 夹具布局（`scripts/session-fixture-layout.ts`）落为 `session.v2.jsonl`：按文件名/头版本规则带版本命名、持久化 `seq`/`time` 封套投影去除、chunk 折叠进落定 `assistant/message` 事件的 `stream` 数组、`isSeeded` 头字段。三个场景的事件类型次序此外不变。因 spec 内联钉住 request/header 负载（persona 段、`submit` schema），其比较以新导出的 `projectSessionSnapshot` 组合裸 `normalizeSessionLog`（同出 `dsh-session-snapshot`）——完整的 `normalizeSessionSnapshot` 管线会把负载换成 `{{system}}`/`{{tools}}` 令牌（已登记 `docs/fork/CORE_TOUCHES.md`）。
 
 复活场景在杀宿主前等待持久的 `request/context` 记录。折叠流下该记录是模型调用在飞的最后持久证据；同样的持久日志标记惯用法本就治理 `sigkill.spec.ts` 的驻留等待（`turn/end`）。若 hang 条目行为异常、宿主提前退出，随后的 `process.kill` 以 `ESRCH` 失败，场景大声红。
 
