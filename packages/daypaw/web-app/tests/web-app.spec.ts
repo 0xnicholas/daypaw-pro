@@ -190,10 +190,12 @@ describe('web-app runtime glue', () => {
     await settled.fiber.dispose()
 
     // Failed path: Loader reports the sibling failure; the app prints no URL
-    // for a process that is about to exit.
+    // for a process that is about to exit. The connection row is present so
+    // the deferred line actually attaches its rejection handler.
     log.mockClear()
     const failed = new Context()
     failed.provide('webServer', fakeHttpServer().server)
+    failed.provide('connection', fakeConnection())
     provideLoader(failed, async () => { throw new Error('boot failed') })
     apply(failed, new Config({ printUrl: true, surfaceContext: true, trustedHosts: [], agentsDir: 'daypaw/agents' }))
     await new Promise(resolve => setTimeout(resolve, 0))
@@ -201,9 +203,11 @@ describe('web-app runtime glue', () => {
     await failed.fiber.dispose()
 
     // Torn-down path: settlement resolves after the webserver is gone — no
-    // line, no crash.
+    // line, no crash. The connection row stays on the root so the deferred
+    // line survives the webserver child's disposal and evaluates the guard.
     log.mockClear()
     const torn = new Context()
+    torn.provide('connection', fakeConnection())
     const child = torn.plugin((childCtx: Context) => {
       childCtx.provide('webServer', fakeHttpServer().server)
     })
@@ -305,8 +309,12 @@ describe('web-app agents roster wiring', () => {
   })
 
   it('defaults agentsDir to daypaw/agents and logs nothing for the legal empty roster', async () => {
-    // A nonexistent default directory stays empty and quiet.
+    // The default directory value is asserted on Config; the boot points at
+    // an explicit empty directory so the quiet-roster path is hermetic
+    // against a developer checkout whose runtime daypaw/agents carries
+    // seeded agents.
     stageDist()
+    const emptyDir = mkdtempSync(join(tmpdir(), 'daypaw-web-agents-empty-'))
     const lines: string[] = []
     const log = vi.spyOn(console, 'log').mockImplementation((line: string) => { lines.push(line) })
     try {
@@ -316,7 +324,7 @@ describe('web-app agents roster wiring', () => {
       await ctx.plugin(DurableEngine, { path: ':memory:', pollMs: 20 })
       await ctx.plugin({
         name: 'web-app',
-        apply: (inner) => { apply(inner, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: 'daypaw/agents' })) },
+        apply: (inner) => { apply(inner, new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: emptyDir })) },
       })
       const config = new Config({ printUrl: false, surfaceContext: false, trustedHosts: [], agentsDir: 'daypaw/agents' })
       expect(config.agentsDir).toBe('daypaw/agents')
