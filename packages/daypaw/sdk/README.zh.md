@@ -18,11 +18,11 @@ daypaw durable 引擎的类型化 facade：`defineWorkflow` 声明代码编排 r
 ## 安装
 
 ```sh
-npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 zod@^4.4.3
+npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 @deepseek-ai/dsh-attachment@~0.1.3-alpha.2 zod@^4.4.3
 npm i -D @types/node
 ```
 
-tarball 自包含：`@daypaw/engine` 与 `@daypaw/store` 随包 vendored（[ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)）。peer 是消费方自备的单例——`@deepseek-ai/cordis` 从上游 npm 发布解析，`zod` 为定义契约提供类型。typecheck 需要 `@types/node`：vendored 的 engine/store 声明引用了 `node:sqlite`。
+tarball 自包含：`@daypaw/engine` 与 `@daypaw/store` 随包 vendored（[ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)）。peer 是消费方自备的包——`@deepseek-ai/cordis` 从上游 npm 发布解析，`zod` 为定义契约提供类型，`@deepseek-ai/dsh-attachment` 承载 vendored `@deepseek-ai/dsh-llm` 声明所 import 的附件类型（仅类型引用；npm ≥7 随 peer 一并安装）。typecheck 需要 `@types/node`：vendored 的 engine/store 声明引用了 `node:sqlite`。
 
 ## API
 

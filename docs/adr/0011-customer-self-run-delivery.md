@@ -32,6 +32,8 @@
 > **补记（2026-08-22）——SDK peer 分发**：`@daypaw/sdk` 的 `@deepseek-ai/cordis` 与 `@deepseek-ai/dsh-invariants` peer 指向上游 npm 发布而非 vendored 副本。前提成立：fork 的 `vendor/` 与上游 main 字节一致（`docs/fork/CORE_TOUCHES.md` 无 vendor/ 条目），上游已公开发布 `@deepseek-ai/cordis@4.0.1` 与 `@deepseek-ai/dsh-invariants` rc 线。peer range 收窄到 `~` 级（cordis `~4.0.1`；dsh-invariants 取下限为不超过 vendored 版本的最新已发布 rc，当前 `~0.1.0-rc.3`）。同步仪式检查项：当一次 sync 把 vendored 副本抬过 npm 已发布版本时，peer range 停留在最新已发布版本，直到上游发布覆盖。
 >
 > **补记（2026-09-03）——dsh-invariants peer 退役**（[#87](https://github.com/0xnicholas/daypaw-pro/issues/87)）：随空壳 invariant companion 一并移除，sdk 的 peer 只余 `@deepseek-ai/cordis` 与 `zod`；dsh-invariants 改由闭包内 vendored 成员的 peer 需求带入 tarball（上游同步删除成员 peer 后自然退出）。
+>
+> **补记（2026-09-10）——dsh-attachment 入列消费方自备 peer**（[#110](https://github.com/0xnicholas/daypaw-pro/issues/110)）：上游把 dsh-attachment 从 dsh-llm 的 peer 挪进 devDep 后，`--prod` 打包闭包不再含它，而闭包内 dsh-llm 公开声明仍 import 它的类型——SDK 消费方的解析链两头皆空（TS2307）。attachment 改按 cordis/zod 同款消费方自备 peer 处理（仅类型引用，无运行时单例面）：闭包完整性与打包集合均按外部 peer 排除，不随闭包 bundle。peer range 取 `~0.1.3-alpha.2`：闭包内 dsh-llm 声明 import 的 `FileAttachmentRef` / `RequestImageAttachment` 仅存在于已发布的 ≥0.1.3-alpha.2 面（0.0.1-rc 线与 0.1.2 线均缺），其面与 vendored 0.1.3-alpha.1 逐项一致。同步仪式检查项：vendored attachment 类型面变动时，peer range 随「承载该面的最小已发布版本」走；sdk 冒烟的 typecheck 即门。
 
 ### 3. 自用立场修订
 

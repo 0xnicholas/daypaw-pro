@@ -46,10 +46,11 @@ const OUT_DIR = resolve(root, 'dist-daypaw')
 
 /**
  * Peer packages the published `@daypaw/sdk` deliberately does NOT bundle:
- * the consumer supplies them (the cordis singleton, zod contracts),
+ * the consumer supplies them (the cordis singleton, zod contracts, the
+ * dsh-attachment type chain behind the bundled dsh-llm declarations),
  * resolved from upstream's npm releases (ADR 0011 §2 addendum).
  */
-const SDK_EXTERNAL_PEERS = ['@deepseek-ai/cordis', 'zod'] as const
+const SDK_EXTERNAL_PEERS = ['@deepseek-ai/cordis', '@deepseek-ai/dsh-attachment', 'zod'] as const
 
 /** The two publishable packages and their deploy filters. */
 const PACKAGES = [
@@ -57,7 +58,9 @@ const PACKAGES = [
   { key: 'sdk', filter: '@daypaw/sdk', externalPeers: SDK_EXTERNAL_PEERS },
 ] as const
 
-type PackageKey = (typeof PACKAGES)[number]['key']
+type ReleasePackage = (typeof PACKAGES)[number]
+
+type PackageKey = ReleasePackage['key']
 
 /** Validated CLI configuration; construction owns help and parse-error exits. */
 class ReleaseCli {
@@ -369,15 +372,12 @@ class DaypawRelease {
    * then patch the root manifest for publication: the CLI bundles its entire
    * closure, the SDK bundles the closure minus its consumer-supplied peers.
    * @param staging - the edit-safe staging tree.
-   * @param key - which package is being rewritten.
+   * @param pkg - the package being rewritten.
    */
-  private async rewriteManifests(staging: string, key: PackageKey): Promise<void> {
+  private async rewriteManifests(staging: string, pkg: ReleasePackage): Promise<void> {
     const installed = await installedPackages(staging)
     const rootManifestPath = join(staging, 'package.json')
-    // Consumer-facing peer ranges for the packages the SDK does not bundle,
-    // sourced from the SDK's own manifest so there is one home for the ranges.
-    const sdkSource = await readManifest(resolve(root, 'packages', 'daypaw', 'sdk', 'package.json'))
-    const externalPeerRanges = sdkSource.peerDependencies ?? {}
+    const externalPeerRanges = await this.sdkPeerRanges()
     const pins = externalPeerPins(root)
     const rewriteSpecs = async (manifestPath: string): Promise<void> => {
       const manifest = await readManifest(manifestPath)
@@ -389,7 +389,7 @@ class DaypawRelease {
           // a bundled package declaring it as a dependency gets its own nested
           // zod install, a second identity whose types no longer unify with
           // the consumer's. Peers resolve against the consumer's copy.
-          if (field === 'dependencies' && key === 'sdk' && pins[name] !== undefined) {
+          if (field === 'dependencies' && pkg.key === 'sdk' && pins[name] !== undefined) {
             const peers = manifest.peerDependencies ?? {}
             manifest.peerDependencies = { ...peers, [name]: pins[name] }
             manifest.dependencies = Object.fromEntries(Object.entries(deps).filter(([entry]) => entry !== name))
@@ -425,18 +425,19 @@ class DaypawRelease {
     await rewriteSpecs(rootManifestPath)
 
     const rootManifest = await readManifest(rootManifestPath)
-    // zod ships unbundled even when staged (the consumer supplies it, per the
-    // ADR 0011 addendum): a bundled copy beside the consumer's install is a
-    // second zod identity whose identical-looking types no longer unify. The
-    // cordis singleton keeps its staged workspace copy bundled — the facade's
-    // declarations type against it — and dsh-invariants arrives through the
-    // vendored closure members' peers (retired from the sdk's own peers with
-    // its invariant companion, ticket #87); the 2026-08-29 release proved the
-    // bundled-external-peer shape against a registry consumer.
-    const bundled = key === 'cli'
-      ? [...installed.keys()].sort()
-      : [...installed.keys()].filter(name => name !== 'zod').sort()
-    if (key === 'cli') {
+    // The consumer-supplied peers (pkg.externalPeers) ship unbundled except
+    // the cordis singleton, which keeps its staged workspace copy bundled —
+    // the facade's declarations type against it. A bundled copy of the rest
+    // beside the consumer's install is a second identity of the same name:
+    // zod's identical-looking types stop unifying, and a bundled dsh-attachment
+    // would shadow the consumer's own resolution of the published peer range
+    // (#110). dsh-invariants arrives through the vendored closure members'
+    // peers (retired from the sdk's own peers with its invariant companion,
+    // ticket #87); the 2026-08-29 release proved the bundled-external-peer
+    // shape against a registry consumer.
+    const unbundled = pkg.externalPeers.filter(name => name !== '@deepseek-ai/cordis')
+    const bundled = [...installed.keys()].filter(name => !unbundled.includes(name)).sort()
+    if (pkg.key === 'cli') {
       // Everything the CLI needs is vendored; peer ranges would only mislead
       // npm at install time.
       delete rootManifest.peerDependencies
@@ -451,7 +452,7 @@ class DaypawRelease {
     rootManifest.dependencies = Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b)))
     rootManifest.bundleDependencies = bundled
     await writeManifest(rootManifestPath, rootManifest)
-    console.log(`release-daypaw: ${key}: rewrote ${installed.size} closure manifests; bundleDependencies=${bundled.length}`)
+    console.log(`release-daypaw: ${pkg.key}: rewrote ${installed.size} closure manifests; bundleDependencies=${bundled.length}`)
   }
 
   /** Version of a workspace package absent from this host's staging (platform-optional natives). */
@@ -461,6 +462,15 @@ class DaypawRelease {
       if (dir !== undefined) return (await readManifest(join(dir, 'package.json'))).version
     }
     return undefined
+  }
+
+  /**
+   * The SDK source manifest's peer ranges: the one home for the consumer-facing
+   * ranges, so the rewrite and the smoke consumer never carry a second copy.
+   * @returns the peer name to published npm range map.
+   */
+  private async sdkPeerRanges(): Promise<Record<string, string>> {
+    return (await readManifest(resolve(root, 'packages', 'daypaw', 'sdk', 'package.json'))).peerDependencies ?? {}
   }
 
   /** Pack one staged package and return the tarball path inside {@link OUT_DIR}. */
@@ -555,18 +565,20 @@ class DaypawRelease {
    */
   private async smokeSdk(tarball: string): Promise<void> {
     const consumer = await mkdtemp(join(tmpdir(), 'daypaw-sdk-smoke-'))
-    // The consumer installs the facade's published peer ranges (the
-    // customer shape) with zod pinned to the version the closure was built
-    // and typed against.
+    // The consumer installs the facade's published peer ranges (the customer
+    // shape) with drift-prone peers pinned to the versions the closure was
+    // built and typed against.
     const pins = externalPeerPins(root)
+    const peerInstalls = Object.fromEntries(
+      Object.entries(await this.sdkPeerRanges()).map(([name, range]) => [name, pins[name] ?? range]),
+    )
     await writeFile(join(consumer, 'package.json'), `${JSON.stringify({
       name: 'daypaw-sdk-smoke',
       private: true,
       type: 'module',
       dependencies: {
         '@daypaw/sdk': `file:${tarball}`,
-        '@deepseek-ai/cordis': '~4.0.1',
-        'zod': pins.zod ?? '',
+        ...peerInstalls,
       },
       devDependencies: {
         '@types/node': '^24.13.3',
@@ -627,7 +639,7 @@ try {
     for (const pkg of PACKAGES) {
       const staging = await this.deploy(pkg.filter, pkg.key)
       await completeClosure(staging, resolve(root, 'packages', 'daypaw', pkg.key), pkg.externalPeers, root)
-      await this.rewriteManifests(staging, pkg.key)
+      await this.rewriteManifests(staging, pkg)
       tarballs.set(pkg.key, await this.pack(staging))
       // The tarball is the artifact; spent staging trees carry README pairs
       // that repo documentation gates would otherwise scan.

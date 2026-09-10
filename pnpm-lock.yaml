@@ -4712,6 +4712,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: workspace:^
         version: link:../../core/agent
+      '@deepseek-ai/dsh-attachment':
+        specifier: ~0.1.3-alpha.2
+        version: 0.1.3-alpha.2(@deepseek-ai/cordis@vendor+cordis)(@deepseek-ai/dsh-brand@packages+util+brand)
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
@@ -11599,6 +11602,12 @@ packages:
     resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
     engines: {node: '>=20.19.0'}
 
+  '@deepseek-ai/dsh-attachment@0.1.3-alpha.2':
+    resolution: {integrity: sha512-6v2BnsOqjTqlklv1qj/EX0KZSrQL04ZAbz0gIDvz7z3rOBUHPk0F6epdd4TmGHKN8nycaEjTODkwfh/c26e76A==}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.2
+      '@deepseek-ai/dsh-brand': ^0.1.3-alpha.2
+
   '@docsearch/css@3.8.2':
     resolution: {integrity: sha512-y05ayQFyUmCXze79+56v/4HpycYF3uFqB78pLPrSV5ZKAlDuIAAJNhaRi8tTdRNXh05yxX/TyNnzD6LwSM89vQ==}
 
@@ -17712,6 +17721,11 @@ snapshots:
       css-tree: 3.2.1
 
   '@csstools/css-tokenizer@4.0.0': {}
+
+  '@deepseek-ai/dsh-attachment@0.1.3-alpha.2(@deepseek-ai/cordis@vendor+cordis)(@deepseek-ai/dsh-brand@packages+util+brand)':
+    dependencies:
+      '@deepseek-ai/cordis': link:vendor/cordis
+      '@deepseek-ai/dsh-brand': link:packages/util/brand
 
   '@docsearch/css@3.8.2': {}
 

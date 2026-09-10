@@ -18,11 +18,11 @@ The typed facade over the daypaw durable engine: `defineWorkflow` declares a cod
 ## Install
 
 ```sh
-npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 zod@^4.4.3
+npm i @daypaw/sdk @deepseek-ai/cordis@~4.0.1 @deepseek-ai/dsh-attachment@~0.1.3-alpha.2 zod@^4.4.3
 npm i -D @types/node
 ```
 
-The tarball is self-contained: `@daypaw/engine` and `@daypaw/store` ship vendored inside it ([ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)). The peers are the consumer-supplied singletons — `@deepseek-ai/cordis` resolves from upstream's npm releases, and `zod` types the definition contracts. `@types/node` is required for typechecking: the vendored engine and store declarations reference `node:sqlite`.
+The tarball is self-contained: `@daypaw/engine` and `@daypaw/store` ship vendored inside it ([ADR 0011](../../../docs/adr/0011-customer-self-run-delivery.md)). The peers are the consumer-supplied packages — `@deepseek-ai/cordis` resolves from upstream's npm releases, `zod` types the definition contracts, and `@deepseek-ai/dsh-attachment` carries the attachment types that the vendored `@deepseek-ai/dsh-llm` declarations import (type-only; npm ≥7 installs it with the peers). `@types/node` is required for typechecking: the vendored engine and store declarations reference `node:sqlite`.
 
 ## API
 

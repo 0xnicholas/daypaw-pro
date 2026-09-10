@@ -524,8 +524,8 @@ function checkWorkspaceProtocol(manifests: readonly WorkspaceManifest[]): string
         if (!members.has(name) || range.startsWith('workspace:')) continue
         // ADR 0011: a publishable daypaw package's peerDependencies name
         // upstream's published npm releases for the consumer-supplied
-        // singletons (cordis, dsh-invariants); its dependencies and
-        // devDependencies keep the workspace protocol.
+        // peers; its dependencies and devDependencies keep the workspace
+        // protocol.
         if (section === 'peerDependencies' && publishableDaypawPackages.has(manifest.name ?? '')) continue
         errors.push(`${manifest.name ?? dir}: ${section}.${name} must use the workspace: protocol, got ${range}`)
       }
