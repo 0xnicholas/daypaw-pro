@@ -416,6 +416,16 @@
     - id: tool-ask-user
       name: '@deepseek-ai/dsh-tool-ask-user'
 
+# Upstream removed str_replace_editor from the default tools (2026-09-05,
+# 36a4665144); the daypaw product keeps the literal-replace editor in its
+# open capability base (ticket #103), so the row remounts here — the fork's
+# own layer, not the upstream base bundle.
+- insert:
+    - id: tool-str-replace-editor
+      name: '@deepseek-ai/dsh-tool-str-replace-editor'
+      config:
+        maxOutputChars: 16000
+
 # The preset roster (ADR 0012 §4: the upstream compatibility layer).
 # Shell-started tasks are engine runs that never compose a preset, and
 # sessions created here compose the host plane above, so mounting `standard`

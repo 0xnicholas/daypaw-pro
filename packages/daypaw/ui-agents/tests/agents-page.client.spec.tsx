@@ -25,6 +25,7 @@ function mountPage(api: CatalogApi = CARDS_API) {
   render(
     <AgentsPage
       sessionId={undefined}
+      usePanelInfo={neverHook} useResource={neverHook}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}

@@ -38,7 +38,7 @@ async function boot(): Promise<Context> {
   await ctx.plugin(DurableEngine, { path: join(root, `ledger-${contexts.length}.db`), pollMs: 20 })
   await ctx.plugin(LlmRuntime)
   await ctx.plugin(SessionStore)
-  await ctx.plugin(SystemPrompt, { persona: '' })
+  await ctx.plugin(SystemPrompt, { personaPrefix: '' })
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)

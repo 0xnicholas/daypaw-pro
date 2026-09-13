@@ -22,7 +22,8 @@ function mountList(rows: TaskListProps['rows']) {
   const openRun = vi.fn()
   render(
     <TaskList
-      rows={rows} now={NOW} openTask={openTask} openRun={openRun}
+            usePanelInfo={neverHook} useResource={neverHook}
+rows={rows} now={NOW} openTask={openTask} openRun={openRun}
       useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook} t={t}
     />,
   )

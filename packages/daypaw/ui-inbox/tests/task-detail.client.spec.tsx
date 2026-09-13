@@ -51,6 +51,8 @@ function mountDetail({ selection = DEFAULT_SELECTION, state = detailState() }: {
   }) as never
   render(
     <TaskDetail
+      width={360} viewportWidth={1024} canShow={true}
+      usePanelInfo={neverHook} useResource={neverHook}
       sessionId={'session-1' as never}
       SessionProvider={(() => null) as never}
       useSession={neverHook} useProjection={neverHook} useConversation={neverHook} useChat={neverHook} useTrajectory={neverHook}

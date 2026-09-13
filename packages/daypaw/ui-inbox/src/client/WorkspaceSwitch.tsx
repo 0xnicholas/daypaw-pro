@@ -44,7 +44,7 @@ type WorkspaceChildren = 'inbox.workspace.banner' | 'inbox.settings.page' | 'inb
 
 /** Full component props: runtime share + child-slot render share + injected face + locale seat. */
 export type WorkspaceSwitchProps =
-  PropsRuntime<'conversation'>
+  PropsRuntime<'main.conversation'>
   & PropsRenderSlots<WorkspaceChildren>
   & InjectFace<WorkspaceSwitchInjected>
   & PropsLocale<'inbox'>

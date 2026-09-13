@@ -108,7 +108,8 @@ function mountBody(detail: TaskDetailView, opts: MountOptions = {}) {
   const useProjection = ((key: string) => key === 'approvalHistory' ? opts.approvals : undefined) as DetailBodyProps['useProjection']
   return render(
     <DetailBody
-      detail={detail} useSession={useSession} useChat={useChat} useProjection={useProjection}
+            usePanelInfo={neverHook} useResource={neverHook}
+detail={detail} useSession={useSession} useChat={useChat} useProjection={useProjection}
       sessionId={(opts.seatSessionId ?? 's1') as SessionId}
       useConversation={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}

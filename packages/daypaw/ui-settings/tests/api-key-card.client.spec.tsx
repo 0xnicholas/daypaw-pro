@@ -26,7 +26,8 @@ function mountCard(options: { sessionId?: SessionId; configured?: boolean } = {}
   const setInputBlock = vi.fn()
   const view = render(
     <ApiKeyCard
-      sessionId={options.sessionId}
+            usePanelInfo={neverHook} useResource={neverHook}
+sessionId={options.sessionId}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook} useSessionPendingInteraction={neverHook}

@@ -61,8 +61,10 @@ async function bench(declare = true) {
         name: 'root',
         children: {
           'sidebar': { kind: 'single', scope: 'root' },
-          'conversation': { kind: 'single', scope: 'session-maybe' },
-          'details': { kind: 'single', scope: 'session' },
+          'main': { kind: 'keyed', scope: 'root' },
+          'rightbar': { kind: 'single', scope: 'root' },
+          'main.conversation': { kind: 'single', scope: 'session-maybe' },
+          'rightbar.session': { kind: 'single', scope: 'session' },
         },
       } as never,
       () => null,
@@ -79,9 +81,9 @@ async function flush(): Promise<void> {
 /** The inject faces of the three shadow occupants. */
 function faces(b: Awaited<ReturnType<typeof bench>>) {
   const navFace = (b.slots.entries('sidebar')[0]!.inject as unknown as () => InboxNavInjected)()
-  const workspaceEntry = b.slots.entries('conversation').find(e => e.options.priority === -1)!
+  const workspaceEntry = b.slots.entries('main.conversation').find(e => e.options.priority === -1)!
   const workspaceFace = (workspaceEntry.inject as unknown as () => WorkspaceSwitchInjected)()
-  const detailEntry = b.slots.entries('details').find(e => e.options.priority === -1)!
+  const detailEntry = b.slots.entries('rightbar.session').find(e => e.options.priority === -1)!
   const detailFace = (detailEntry.inject as unknown as () => TaskDetailInjected)()
   return { navFace, workspaceFace, detailFace }
 }
@@ -100,21 +102,21 @@ describe('ui-inbox apply', () => {
   it('occupies the three columns, shadowing the priority-0 placeholder occupants', async () => {
     const b = await bench()
     // Placeholder occupants at the default priority, as ui-conversation registers them.
-    b.slots.register({ name: 'conversation' } as never, () => null)
-    b.slots.register({ name: 'details' } as never, () => null)
+    b.slots.register({ name: 'main.conversation' } as never, () => null)
+    b.slots.register({ name: 'rightbar.session' } as never, () => null)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     expect(b.slots.entries('sidebar')).toHaveLength(1)
-    expect(b.slots.entries('conversation')).toHaveLength(2)
-    expect(b.slots.entries('details')).toHaveLength(2)
+    expect(b.slots.entries('main.conversation')).toHaveLength(2)
+    expect(b.slots.entries('rightbar.session')).toHaveLength(2)
     // Lowest live priority renders: the -1 occupants win both cells.
-    expect(b.slots.entriesOfSlot('conversation')[0]?.options.priority).toBe(-1)
-    expect(b.slots.entriesOfSlot('details')[0]?.options.priority).toBe(-1)
+    expect(b.slots.entriesOfSlot('main.conversation')[0]?.options.priority).toBe(-1)
+    expect(b.slots.entriesOfSlot('rightbar.session')[0]?.options.priority).toBe(-1)
     // The nav occupant declares the new-task dialog hole it renders.
     const navEntry = b.slots.entriesOfSlot('sidebar')[0]!
     expect(Object.keys(navEntry.children ?? {})).toEqual(['inbox.new-task.dialog'])
     expect(b.slots.snapshot('inbox.new-task.dialog')).toMatchObject([{ kind: 'single', scope: 'root' }])
     // The workspace occupant declares the five child holes it renders.
-    const workspaceEntry = b.slots.entriesOfSlot('conversation')[0]!
+    const workspaceEntry = b.slots.entriesOfSlot('main.conversation')[0]!
     expect(Object.keys(workspaceEntry.children ?? {})).toEqual([
       'inbox.workspace.banner', 'inbox.settings.page', 'inbox.agents.page', 'inbox.workspace.tasks', 'inbox.workspace.conversation',
     ])
@@ -124,14 +126,14 @@ describe('ui-inbox apply', () => {
     expect(b.slots.snapshot('inbox.workspace.tasks')).toMatchObject([{ kind: 'single', scope: 'root' }])
     expect(b.slots.snapshot('inbox.workspace.conversation')).toMatchObject([{ kind: 'single', scope: 'session' }])
     // The detail occupant declares the detail body hole it renders.
-    const detailEntry = b.slots.entriesOfSlot('details')[0]!
+    const detailEntry = b.slots.entriesOfSlot('rightbar.session')[0]!
     expect(Object.keys(detailEntry.children ?? {})).toEqual(['inbox.detail.body'])
     expect(b.slots.snapshot('inbox.detail.body')).toMatchObject([{ kind: 'single', scope: 'session' }])
     // Copy rides the standard locale seat on our three occupants (the
     // placeholder dummies above carry none).
     expect(b.slots.entries('sidebar')[0]?.locale).toBe('inbox')
-    expect(b.slots.entriesOfSlot('conversation')[0]?.locale).toBe('inbox')
-    expect(b.slots.entriesOfSlot('details')[0]?.locale).toBe('inbox')
+    expect(b.slots.entriesOfSlot('main.conversation')[0]?.locale).toBe('inbox')
+    expect(b.slots.entriesOfSlot('rightbar.session')[0]?.locale).toBe('inbox')
   })
 
   it('shares one selection source and one board source across the three inject faces', async () => {
@@ -310,8 +312,8 @@ describe('ui-inbox apply', () => {
     await vi.advanceTimersByTimeAsync(0)
     await fiber.dispose()
     expect(b.slots.entries('sidebar')).toHaveLength(0)
-    expect(b.slots.entries('conversation')).toHaveLength(0)
-    expect(b.slots.entries('details')).toHaveLength(0)
+    expect(b.slots.entries('main.conversation')).toHaveLength(0)
+    expect(b.slots.entries('rightbar.session')).toHaveLength(0)
     expect(b.slots.snapshot('inbox.new-task.dialog')).toEqual([])
     expect(b.slots.snapshot('inbox.workspace.banner')).toEqual([])
     expect(b.slots.snapshot('inbox.settings.page')).toEqual([])

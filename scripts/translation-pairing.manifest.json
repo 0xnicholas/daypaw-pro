@@ -10,7 +10,6 @@
     "docs/i18n/terminology.md",
     "docs/i18n/translation-prompt.md",
     "CONTEXT.md",
-    "README.md",
     "docs/adr/",
     "docs/spec/",
     "docs/agents/",

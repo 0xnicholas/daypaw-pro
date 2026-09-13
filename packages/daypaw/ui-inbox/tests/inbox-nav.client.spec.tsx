@@ -71,6 +71,7 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
     <InboxNav
       collapsed={collapsed} width={collapsed ? 56 : 300}
       useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
+      usePanelInfo={neverHook} useResource={neverHook}
       useSessions={bindSnapshotSelector(sessionsStore(rows))} useWorkspaces={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
       useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
@@ -161,6 +162,7 @@ describe('InboxNav', () => {
       <InboxNav
         collapsed={false} width={300}
         useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
+        usePanelInfo={neverHook} useResource={neverHook}
         useSessions={bindSnapshotSelector(sessionsStore([]))} useWorkspaces={neverHook}
         useSelection={bindSnapshotSelector(controller.store)}
         useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs: [] }))}

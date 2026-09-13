@@ -26,6 +26,13 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls ui-layout's SlotMap merge ('sidebar'/'conversation'/'details').
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+// The shadow targets live in other packages' slot contracts: ui-conversation
+// owns `main.conversation` (the conversation shell beneath its root-scoped
+// main-panel entry) and ui-sidebar-right owns `rightbar.session` (the strict
+// per-Session rightbar subtree); both merges must be in this program for the
+// registration names to type-check.
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 // Type-only: pulls this package's own SlotMap merge (the child slots the nav
 // and workspace occupants declare) into the program. The type re-export also
 // keeps the merge reachable from the built d.ts entry — downstream fork
@@ -163,7 +170,7 @@ export function apply(ctx: ClientContext): void {
       }),
     }, InboxNav)
     const workspace = ctx.slots.register({
-      name: 'conversation',
+      name: 'main.conversation',
       priority: SHADOW_PRIORITY,
       locale: NS,
       children: {
@@ -183,7 +190,7 @@ export function apply(ctx: ClientContext): void {
       }),
     }, WorkspaceSwitch)
     const detailEntry = ctx.slots.register({
-      name: 'details',
+      name: 'rightbar.session',
       priority: SHADOW_PRIORITY,
       locale: NS,
       children: {

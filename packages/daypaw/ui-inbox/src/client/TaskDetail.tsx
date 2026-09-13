@@ -36,7 +36,7 @@ export interface TaskDetailInjected {
 
 /** Full component props: runtime share + child render share + injected face + locale seat. */
 export type TaskDetailProps =
-  PropsRuntime<'details'>
+  PropsRuntime<'rightbar.session'>
   & PropsRenderSlots<'inbox.detail.body'>
   & InjectFace<TaskDetailInjected>
   & PropsLocale<'inbox'>

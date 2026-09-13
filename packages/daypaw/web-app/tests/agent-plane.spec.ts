@@ -67,6 +67,8 @@ const WEB_TRANSPORT_OFF = `- id: session-log-download
   disabled: true
 - id: connection
   disabled: true
+- id: ui-deliverables
+  disabled: true
 - id: file-upload
   disabled: true
 - id: api-remotes

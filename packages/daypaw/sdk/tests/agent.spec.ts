@@ -824,7 +824,7 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     // re-deliver the segment (model-visible ⟺ logged ordinal dedup).
     await until(async () => {
       const handle = await first.ctx.sessionPersistence.open(SessionId('agent-steer-repark-1'), 'read')
-      const events = await handle.read()
+      const { events } = await handle.read()
       await handle.close()
       return events.some(event => event.type === 'turn/end' && event.data.turn === 2)
     })

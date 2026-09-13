@@ -46,7 +46,6 @@ export {
   normalizeStdout,
   projectSessionSnapshot,
   scrubModelRequestBulk,
-  scrubRequestHeaders,
   scrubSessionSnapshot,
   scrubSystemPrompts,
   scrubToolSchemas,

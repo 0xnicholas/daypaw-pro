@@ -21,6 +21,12 @@
       "path": "../../client/ui-layout"
     },
     {
+      "path": "../../client/ui-conversation"
+    },
+    {
+      "path": "../../client/ui-sidebar-right"
+    },
+    {
       "path": "../../client/locale"
     },
     {
