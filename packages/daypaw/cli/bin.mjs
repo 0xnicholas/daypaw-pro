@@ -4,7 +4,9 @@
 // launcher's profile to it so a bare `daypaw` boots the product shell, then
 // run the dsh bin from the bundled closure. The argv rewrite happens before
 // the dynamic import so the dsh bin never sees the raw arguments, and that
-// import keeps the dsh bin from evaluating before seeding completes.
+// import keeps the dsh bin from evaluating before seeding completes. The
+// dsh bin guards its self-execution behind import.meta.main (2026-10-09
+// sync), so the vendored front door calls the exported runCli explicitly.
 import { seedDaypawProfile, seedStarterAgent, withDefaultProfile } from './lib/index.js'
 
 await seedDaypawProfile().catch((error) => {
@@ -15,4 +17,5 @@ seedStarterAgent()
 
 process.argv = [...process.argv.slice(0, 2), ...withDefaultProfile(process.argv.slice(2))]
 
-await import('@deepseek-ai/dsh/lib/bin.js')
+const { runCli } = await import('@deepseek-ai/dsh/lib/bin.js')
+await runCli()

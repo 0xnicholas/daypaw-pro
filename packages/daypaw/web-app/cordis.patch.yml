@@ -114,6 +114,12 @@
     - id: workspace-controller
       name: '@deepseek-ai/dsh-api-workspace-controller'
 
+    # Workspace file service (upstream web bundle parity): bounded read,
+    # directory listing, and the agent-write change feed inside the session
+    # workspace root; ui-deliverables' host half waits on its service.
+    - id: workspace-files
+      name: '@deepseek-ai/dsh-api-workspace-files'
+
     - id: cordis-host-runner
       name: '@deepseek-ai/dsh-cordis-host-runner'
 
