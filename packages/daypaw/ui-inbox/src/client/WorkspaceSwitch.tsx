@@ -9,9 +9,14 @@
  * 'inbox.agents.page' occupant, or the 设置 page rendered from the
  * 'inbox.settings.page' occupant (placeholder fallbacks while no occupant is
  * registered). A session-less workflow-run selection renders the run
- * placeholder (its progress lives in the detail column).
+ * placeholder (its progress lives in the detail column). The column top
+ * carries the connection-recovery notice (issue #93) above every selection:
+ * an outage is visible wherever the user stands, conversation and settings
+ * page alike.
  */
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'conversation' entry) in so
@@ -25,6 +30,7 @@ import { projectInboxBoard } from './task-projection.ts'
 import type { RunsBoardState } from './runs-store.ts'
 import type { WireRunStatus } from './runs-api.ts'
 import type { InboxKey } from './locales.ts'
+import { ConnectionNotice } from './ConnectionNotice.tsx'
 import css from './WorkspaceSwitch.module.css'
 
 /** Registration-side business face for the workspace column. */
@@ -34,7 +40,11 @@ export interface WorkspaceSwitchInjected {
     selection: SnapshotStore<InboxSelection>
     /** The run-board poll snapshot, bound by the renderer as useBoard. */
     board: SnapshotStore<RunsBoardState>
+    /** Connection-owned recovery lifecycle of the wire, bound as useConnectionState. */
+    connectionState: HostObservable<ConnectionState | undefined>
   }
+  /** Request an immediate reconnect attempt (the connection notice's click command). */
+  reconnect: () => void
   /** Select an inbox group, a task, or a secondary page. */
   select: (next: InboxSelection) => void
 }
@@ -69,8 +79,8 @@ const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
  * @returns the workspace element tree.
  */
 export function WorkspaceSwitch({
-  useSelection, useBoard, useSessions, useSessionPendingInteraction, sessionId,
-  select, renderSlot, t,
+  useSelection, useBoard, useConnectionState, useSessions, useSessionPendingInteraction, sessionId,
+  reconnect, select, renderSlot, t,
 }: WorkspaceSwitchProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
@@ -84,77 +94,63 @@ export function WorkspaceSwitch({
   const runStatusOf = (sessionId: SessionId): WireRunStatus | undefined =>
     runs.find(run => run.defKind === 'agent' && run.runId === sessionId)?.status
 
+  let body: React.ReactNode
   if (selection.kind === 'agents') {
-    return (
-      <div className={css.root}>
-        {renderSlot('inbox.agents.page', {}, {
-          fallback: (
-            <>
-              <header className={css.header}><h1 className={css.title}>{t('nav.agents')}</h1></header>
-              <div className={css.empty}>{t('workspace.agents.placeholder')}</div>
-            </>
-          ),
-        })}
-      </div>
-    )
-  }
-  if (selection.kind === 'settings') {
-    return (
-      <div className={css.root}>
-        {renderSlot('inbox.settings.page', {
-          close: () => { select({ kind: 'group', group: 'running' }) },
-        }, {
-          fallback: (
-            <>
-              <header className={css.header}><h1 className={css.title}>{t('nav.settings')}</h1></header>
-              <div className={css.empty}>{t('workspace.settings.placeholder')}</div>
-            </>
-          ),
-        })}
-      </div>
-    )
-  }
-  if (selection.kind === 'task') {
+    body = renderSlot('inbox.agents.page', {}, {
+      fallback: (
+        <>
+          <header className={css.header}><h1 className={css.title}>{t('nav.agents')}</h1></header>
+          <div className={css.empty}>{t('workspace.agents.placeholder')}</div>
+        </>
+      ),
+    })
+  } else if (selection.kind === 'settings') {
+    body = renderSlot('inbox.settings.page', {
+      close: () => { select({ kind: 'group', group: 'running' }) },
+    }, {
+      fallback: (
+        <>
+          <header className={css.header}><h1 className={css.title}>{t('nav.settings')}</h1></header>
+          <div className={css.empty}>{t('workspace.settings.placeholder')}</div>
+        </>
+      ),
+    })
+  } else if (selection.kind === 'task') {
     // The conversation child seat is strict-session: a task selection whose
     // session left the list (the reconcile window after an engine twin's
     // removal) must render the placeholder, never the strict slot — an
     // outlet without a scope binding crashes its seat until a remount.
-    if (sessionId === undefined) {
-      return (
-        <div className={css.root}>
-          <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>
-        </div>
-      )
-    }
-    return (
-      <div className={css.root}>
-        {renderSlot('inbox.workspace.conversation', { runStatus: runStatusOf(selection.sessionId) }, {
-          fallback: <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>,
-        })}
-      </div>
-    )
-  }
-  if (selection.kind === 'run') {
+    body = sessionId === undefined
+      ? <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>
+      : renderSlot('inbox.workspace.conversation', { runStatus: runStatusOf(selection.sessionId) }, {
+        fallback: <div className={css.empty}>{t('workspace.conversation.placeholder')}</div>,
+      })
+  } else if (selection.kind === 'run') {
     // A session-less workflow run: no conversation occupant, ever — the
     // detail column carries its progress and outputs.
-    return (
-      <div className={css.root}>
-        <div className={css.empty}>{t('workspace.run.placeholder')}</div>
-      </div>
+    body = <div className={css.empty}>{t('workspace.run.placeholder')}</div>
+  } else {
+    body = (
+      <>
+        <header className={css.header}><h1 className={css.title}>{t(GROUP_TITLE[selection.group])}</h1></header>
+        {renderSlot('inbox.workspace.banner', { openSettings: () => { select({ kind: 'settings' }) } })}
+        {renderSlot('inbox.workspace.tasks', {
+          rows: projectInboxBoard(list, runs, pending).rows[selection.group],
+          now: Date.now(),
+          openTask,
+          openRun: (runId: string): void => { select({ kind: 'run', runId }) },
+        }, {
+          fallback: <div className={css.empty}>{t(GROUP_EMPTY[selection.group])}</div>,
+        })}
+      </>
     )
   }
   return (
     <div className={css.root}>
-      <header className={css.header}><h1 className={css.title}>{t(GROUP_TITLE[selection.group])}</h1></header>
-      {renderSlot('inbox.workspace.banner', { openSettings: () => { select({ kind: 'settings' }) } })}
-      {renderSlot('inbox.workspace.tasks', {
-        rows: projectInboxBoard(list, runs, pending).rows[selection.group],
-        now: Date.now(),
-        openTask,
-        openRun: (runId: string): void => { select({ kind: 'run', runId }) },
-      }, {
-        fallback: <div className={css.empty}>{t(GROUP_EMPTY[selection.group])}</div>,
-      })}
+      <div className={css.notice}>
+        <ConnectionNotice useConnectionState={useConnectionState} reconnect={reconnect} t={t} />
+      </div>
+      {body}
     </div>
   )
 }

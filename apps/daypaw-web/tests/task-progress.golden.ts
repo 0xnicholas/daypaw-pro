@@ -50,7 +50,7 @@ function pick(root: ParentNode, name: string): Element[] {
 }
 
 /** One shell column by its AppFrame module class. */
-function column(name: 'sidebarCol' | 'centerCol' | 'detailsCol'): HTMLElement {
+function column(name: 'sidebarCol' | 'centerCol' | 'rightbarCol'): HTMLElement {
   const el = pick(document.body, name)[0]
   if (el === undefined) throw new Error(`assembled frame column ${name} is not rendered`)
   return el as HTMLElement
@@ -85,7 +85,7 @@ function boardShape(): string {
 
 /** Normalize the right column: header (title, status, retry affordance) then one block per detail section. */
 function detailShape(): string {
-  const details = column('detailsCol')
+  const details = column('rightbarCol')
   const lines: string[] = []
   const header = pick(details, 'header')[0]
   lines.push(`header=${header === undefined ? 'none' : (textOf(header, 'title') ?? 'none')}`)
@@ -172,7 +172,7 @@ describe('assembled task progress', () => {
     }, { timeout: 10_000 })
     // The detail column's 审批历史 section arrives with the session baseline.
     await screen.findByText('写入工作区外路径', undefined, { timeout: 10_000 })
-    const detail = column('detailsCol')
+    const detail = column('rightbarCol')
     expect(detail.textContent ?? '').not.toMatch(FORBIDDEN)
     await snap('open-agent-task', `conversation\n${conversationShape()}\ndetail\n${detailShape()}`)
 
@@ -181,7 +181,7 @@ describe('assembled task progress', () => {
     await waitFor(() => { expect(listButtons()).toHaveLength(4) }, { timeout: 10_000 })
     fireEvent.click(within(column('centerCol')).getByRole('button', { name: /release-digest/ }))
     await screen.findByText('Collect team updates', undefined, { timeout: 10_000 })
-    const runDetail = column('detailsCol')
+    const runDetail = column('rightbarCol')
     expect(runDetail.textContent ?? '').not.toMatch(FORBIDDEN)
     await snap('workflow-run-detail', `conversation\n${conversationShape()}\ndetail\n${detailShape()}`)
 
@@ -194,7 +194,7 @@ describe('assembled task progress', () => {
     fireEvent.click(within(column('centerCol')).getByRole('button', { name: /invoice-checker/ }))
     // The failed child subtask row carries the failed status text.
     await screen.findByText('Something went wrong', undefined, { timeout: 10_000 })
-    const failedDetail = column('detailsCol')
+    const failedDetail = column('rightbarCol')
     expect(failedDetail.textContent ?? '').not.toMatch(FORBIDDEN)
     const retry = within(failedDetail).getByRole('button', { name: 'Retry' })
     const failedShape = `conversation\n${conversationShape()}\ndetail\n${detailShape()}`

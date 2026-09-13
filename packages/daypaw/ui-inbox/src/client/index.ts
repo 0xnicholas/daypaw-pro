@@ -4,13 +4,17 @@
  * ui-sidebar roster row), WorkspaceSwitch into 'conversation' and TaskDetail
  * into 'details', both at priority -1 so they shadow ui-conversation's
  * priority-0 placeholder occupants while its declared seats stay live for the
- * dormant ecosystem. The cordis fiber inject waits on the `layout` service,
- * which ui-layout provides in the same effect that declares the four slots,
- * so direct `ctx.slots.register` is safe here (the ui-sidebar precedent).
- * Shared selection crosses the three scopes through the inject hooks
- * compartments of one apply-closure controller; task selection also drives
- * the runtime current session one-way through `ctx.sessions.open`, so the
- * session-maybe conversation seat resolves the selected task's session.
+ * dormant ecosystem. The workspace column top carries the connection-recovery
+ * notice (issue #93) over the wire service's own recovery surface
+ * (`connection.state` / `connection.reconnect`, business-language port of
+ * upstream's settings-shell indicator). The cordis fiber inject waits on the
+ * `layout` service, which ui-layout provides in the same effect that
+ * declares the four slots, so direct `ctx.slots.register` is safe here (the
+ * ui-sidebar precedent). Shared selection crosses the three scopes through
+ * the inject hooks compartments of one apply-closure controller; task
+ * selection also drives the runtime current session one-way through
+ * `ctx.sessions.open`, so the session-maybe conversation seat resolves the
+ * selected task's session.
  *
  * The board is engine-fed: RunsBoardStore polls `durable/listRuns` through
  * the connection's generic RPC channel, board ticks refresh the selected
@@ -47,6 +51,7 @@ export type {
   TaskDetailView,
   TaskRow,
 } from './contract.ts'
+export type { ConnectionNoticeProps } from './ConnectionNotice.tsx'
 export type { RunsApi, WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from './runs-api.ts'
 export { isUnfinishedWireRun } from './runs-api.ts'
 export type { RunsBoardState, TaskDetailState } from './runs-store.ts'
@@ -169,7 +174,15 @@ export function apply(ctx: ClientContext): void {
         startChat,
       }),
     }, InboxNav)
-    const workspace = ctx.slots.register({
+    // The two shadowed seats are declared by their upstream occupants
+    // (ui-conversation's 'main' entry and ui-sidebar-right's root), whose
+    // fiber activation is unordered against this plugin's own service set —
+    // so these registrations pend on the seat declarations themselves (the
+    // ui-sidebar inject precedent). 'sidebar' is different: ui-layout
+    // declares it in the same effect that provides the 'layout' service this
+    // apply waits on, so the direct register above is ordered and keeps the
+    // absent-frame failure loud.
+    const workspace = ctx.slots.inject('main.conversation', () => ctx.slots.register({
       name: 'main.conversation',
       priority: SHADOW_PRIORITY,
       locale: NS,
@@ -185,11 +198,12 @@ export function apply(ctx: ClientContext): void {
         'inbox.workspace.conversation': { kind: 'single', scope: 'session' },
       },
       inject: (): WorkspaceSwitchInjected => ({
-        hooks: { selection: selection.store, board: board.store },
+        hooks: { selection: selection.store, board: board.store, connectionState: connection.state },
+        reconnect: () => { connection.reconnect() },
         select: (next) => { selection.select(next) },
       }),
-    }, WorkspaceSwitch)
-    const detailEntry = ctx.slots.register({
+    }, WorkspaceSwitch))
+    const detailEntry = ctx.slots.inject('rightbar.session', () => ctx.slots.register({
       name: 'rightbar.session',
       priority: SHADOW_PRIORITY,
       locale: NS,
@@ -202,7 +216,7 @@ export function apply(ctx: ClientContext): void {
         hooks: { selection: selection.store, detail: detail.store },
         retry,
       }),
-    }, TaskDetail)
+    }, TaskDetail))
     return () => {
       nav()
       workspace()

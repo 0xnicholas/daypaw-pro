@@ -2,9 +2,11 @@
 /** WorkspaceSwitch: the middle column follows the shared selection and delegates the banner/settings/tasks/conversation holes. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
+import { useEffect, useState } from 'react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { WorkspaceSwitch, type WorkspaceSwitchProps } from '../src/client/WorkspaceSwitch.tsx'
 import type {
@@ -56,9 +58,37 @@ function mountWorkspace(
   renderChild?: (call: RenderedCall) => React.ReactNode,
   runs: readonly WireRun[] = [],
   sessionId?: SessionId,
+  connectionState: ConnectionState | undefined = 'connected',
 ) {
   const controller = new InboxSelectionController(vi.fn())
   const calls: RenderedCall[] = []
+  // Mutable connection source standing in for the bound useConnectionState
+  // hook; setState plays a wire outcome through the same observable contract.
+  const connection: {
+    current: ConnectionState | undefined
+    listeners: Set<() => void>
+    reconnect: ReturnType<typeof vi.fn<() => void>>
+    setState(next: ConnectionState | undefined): void
+  } = {
+    current: connectionState,
+    listeners: new Set<() => void>(),
+    reconnect: vi.fn<() => void>(),
+    setState(next: ConnectionState | undefined): void {
+      act(() => {
+        connection.current = next
+        for (const fn of [...connection.listeners]) fn()
+      })
+    },
+  }
+  const useConnectionState: WorkspaceSwitchProps['useConnectionState'] = (select) => {
+    const [, force] = useState(0)
+    useEffect(() => {
+      const listener = (): void => { force(n => n + 1) }
+      connection.listeners.add(listener)
+      return () => { connection.listeners.delete(listener) }
+    }, [])
+    return select(connection.current)
+  }
   const renderSlot: WorkspaceSwitchProps['renderSlot'] = ((key: string, owner: object, opts?: { fallback?: unknown }) => {
     const call: RenderedCall = { key, owner: owner as Record<string, unknown>, opts }
     calls.push(call)
@@ -76,12 +106,14 @@ function mountWorkspace(
       SessionProvider={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
       useBoard={bindSnapshotSelector(createSnapshotStore<RunsBoardState>({ status: 'ready', runs }))}
+      useConnectionState={useConnectionState}
+      reconnect={connection.reconnect}
       select={(next) => { controller.select(next) }}
       renderSlot={renderSlot}
       t={t}
     />,
   )
-  return { controller, calls }
+  return { controller, calls, connection }
 }
 
 describe('WorkspaceSwitch', () => {
@@ -233,5 +265,37 @@ describe('WorkspaceSwitch', () => {
     // No conversation seat, no group container.
     expect(calls.every(call => call.key !== 'inbox.workspace.conversation')).toBe(true)
     expect(screen.queryByRole('heading')).toBeNull()
+  })
+
+  it('carries the connection notice atop every selection kind and reconnects on click (issue #93)', () => {
+    const { controller, connection } = mountWorkspace(undefined, [], 'a' as SessionId)
+    // Healthy wire: no notice chrome anywhere in the column.
+    expect(screen.queryByRole('button', { name: zh['connection.reconnect-action'] })).toBeNull()
+    connection.setState('disconnected')
+    const pill = screen.getByRole('button', { name: zh['connection.reconnect-action'] })
+    expect(pill.textContent).toContain(zh['connection.disconnected'])
+    // The pill stays when the selection moves through every middle-column kind.
+    act(() => { controller.select({ kind: 'group', group: 'pending' }) })
+    expect(screen.getByRole('heading', { name: '等待你确认' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: zh['connection.reconnect-action'] })).toBe(pill)
+    act(() => { controller.select({ kind: 'task', sessionId: 'a' as SessionId }) })
+    expect(screen.getByRole('button', { name: zh['connection.reconnect-action'] })).toBe(pill)
+    act(() => { controller.select({ kind: 'settings' }) })
+    expect(screen.getByRole('button', { name: zh['connection.reconnect-action'] })).toBe(pill)
+    act(() => { controller.select({ kind: 'agents' }) })
+    expect(screen.getByRole('button', { name: zh['connection.reconnect-action'] })).toBe(pill)
+    // The pill's click command is the injected reconnect dispatcher.
+    pill.click()
+    expect(connection.reconnect).toHaveBeenCalledOnce()
+  })
+
+  it('rides the recovery confirmation through selection changes without remounting the pill', () => {
+    const { controller, connection } = mountWorkspace()
+    connection.setState('disconnected')
+    connection.setState('connected')
+    expect(screen.getByRole('status', { name: zh['connection.recovered'] })).toBeTruthy()
+    // A selection change re-renders the column, never the recovery window.
+    act(() => { controller.select({ kind: 'group', group: 'done' }) })
+    expect(screen.getByRole('status', { name: zh['connection.recovered'] })).toBeTruthy()
   })
 })

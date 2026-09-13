@@ -1,0 +1,5 @@
+healthy=none
+workspace=In progress
+outage=Connection lost
+after-click=Connection restored
+settled=none

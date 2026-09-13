@@ -10,6 +10,18 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* Connection-recovery notice seat: present in the box only while the wire
+   is unhealthy or inside its two-second recovery confirmation, so a healthy
+   column never reserves a row. */
+.notice {
+  flex: none;
+  padding: var(--dp-space-3) var(--dp-space-6) 0;
+}
+
+.notice:empty {
+  display: none;
+}
+
 .header {
   flex: none;
   padding: var(--dp-space-5) var(--dp-space-6);

@@ -215,6 +215,21 @@
     - id: ui-session
       name: '@deepseek-ai/dsh-client-ui-session'
 
+    # Unified resource model: protocol providers behind the useResource hook.
+    # Kept upstream rows hard-require its service since the 2026-10-09 sync
+    # (api-workspace-files waits on `resources`; ui-sidebar-right chains it to
+    # `sidebarRight`, which ui-chat/ui-skill/ui-reference wait on) — the fork
+    # roster mirror must carry the provider rows its kept rows inject.
+    - id: resources
+      name: '@deepseek-ai/dsh-client-resources'
+
+    # The right Sidebar's service host: provides `sidebarRight` and declares
+    # the 'rightbar.session' seat the fork's TaskDetail shadows at priority
+    # -1 (the same shadow-not-remove pattern as ui-conversation below). Its
+    # document/file-tab occupants stay unshipped fork trims.
+    - id: ui-sidebar-right
+      name: '@deepseek-ai/dsh-client-ui-sidebar-right'
+
     # daypaw brand theme (spec 05 §7): stacks the warm-orange accent /
     # warm-neutral base token layer and the --dp-space-* density scale onto
     # the reused ui-theme base; the light/dark preference keeps driving both

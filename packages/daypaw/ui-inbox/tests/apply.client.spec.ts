@@ -52,7 +52,22 @@ async function bench(declare = true) {
   const sessions = { open: vi.fn(), create: vi.fn() }
   ctx.provide('sessions', sessions as never)
   const rpc = fakeRpc()
-  ctx.provide('connection', { rpc } as never)
+  // The wire face the shell consumes for transport health (issue #93): the
+  // recovery state source and the immediate-reconnect command.
+  const stateSubscribers = new Set<() => void>()
+  const connectionState = { current: undefined as unknown }
+  const reconnect = vi.fn()
+  ctx.provide('connection', {
+    rpc,
+    reconnect,
+    state: {
+      getSnapshot: () => connectionState.current,
+      subscribe: (listener: () => void) => {
+        stateSubscribers.add(listener)
+        return () => { stateSubscribers.delete(listener) }
+      },
+    },
+  } as never)
   const slots = ctx.get('slots') as SlotRegistry
   if (declare) {
     // The frame's declarations, as ui-layout's root registration makes them.
@@ -70,7 +85,7 @@ async function bench(declare = true) {
       () => null,
     )
   }
-  return { ctx, slots, layout, sessions, rpc }
+  return { ctx, slots, layout, sessions, rpc, reconnect, connectionState, stateSubscribers }
 }
 
 /** Let the stores' fetch microtask chains settle. */
@@ -151,6 +166,22 @@ describe('ui-inbox apply', () => {
     expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'settings' })
     navFace.toggleSidebar()
     expect(b.layout.toggleSidebar).toHaveBeenCalledOnce()
+  })
+
+  it('wires the workspace face to the connection recovery surface (issue #93)', async () => {
+    const b = await bench()
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const { workspaceFace } = faces(b)
+    // The state hook rides the wire service's own observable (the hardened
+    // ConnectionStateSource export), not a package-local mirror.
+    const snapshot = workspaceFace.hooks.connectionState.getSnapshot()
+    expect(snapshot).toBeUndefined()
+    b.connectionState.current = 'disconnected'
+    for (const fn of [...b.stateSubscribers]) fn()
+    expect(workspaceFace.hooks.connectionState.getSnapshot()).toBe('disconnected')
+    // The notice's click command is the wire service's reconnect.
+    workspaceFace.reconnect()
+    expect(b.reconnect).toHaveBeenCalledOnce()
   })
 
   it('drives the runtime current session one-way when a task is selected', async () => {
