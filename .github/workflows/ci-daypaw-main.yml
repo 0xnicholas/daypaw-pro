@@ -112,8 +112,12 @@ jobs:
       - name: Coverage suite (full)
         run: pnpm exec vitest run --coverage
 
+      # Each lane reports its own verdict: a red lane never starves the lanes
+      # behind it, or one marginal lane would silence the rest (issue #111).
       - name: Recorded-session snapshot replays
+        if: ${{ !cancelled() }}
         run: pnpm run test:snapshot
 
       - name: Web browser snapshot replays
+        if: ${{ !cancelled() }}
         run: DSH_SNAPSHOT=replay pnpm run test:web:built

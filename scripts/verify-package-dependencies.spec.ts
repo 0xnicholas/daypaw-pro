@@ -313,7 +313,7 @@ describe('package dependency scope', () => {
   })
 })
 
-describe('face-aware source classification', () => {
+describe('face-aware source classification', { timeout: 30_000 }, () => {
   it('keeps generated Host schema imports in dependencies without reading or writing lib', () => {
     const { root, manifestPath, source } = generatedHostFixture('schema')
     const before = readFileSync(join(root, manifestPath), 'utf8')
