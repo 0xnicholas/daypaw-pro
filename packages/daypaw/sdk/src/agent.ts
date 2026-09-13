@@ -254,6 +254,7 @@ async function awaitQuiescence(agent: Agent, signal: AbortSignal): Promise<void>
  * session resume itself.
  */
 async function journalSteps(stepCtx: EngineStepCtx, session: Session): Promise<void> {
+  // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
   const events: readonly SessionEvent[] = session.snapshotEvents()
   let open: { turn: number; step: number; from: number } | undefined
   let index = 0
@@ -381,6 +382,7 @@ function compileBody(def: AgentDefinition, host: Context): EngineDefinition['bod
       // one turn to quiescence, so a revived run whose history already holds
       // `maxTurns` turns must fail instead of being steered into another.
       const wake = async (deliver: () => void): Promise<void> => {
+        // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
         if (countTurns(agent.session.snapshotEvents()) >= def.maxTurns) {
           throw new Error(`agent run ${stepCtx.runId} exceeded maxTurns (${def.maxTurns}) without calling submit`)
         }
@@ -391,12 +393,14 @@ function compileBody(def: AgentDefinition, host: Context): EngineDefinition['bod
       // Steered segments already in the durable log count as delivered; a
       // re-drive must not re-steer them (model-visible ⟺ logged: the log is
       // the replay source for the conversation flow).
+      // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
       let delivered = countDeliveredSteers(agent.session.snapshotEvents())
       if (!resumed) {
         await wake(() =>{  agent.followup(userText(JSON.stringify(input))) })
       } else if (steerable && delivered < stepCtx.steers().length) {
         // Segments recorded while no process drove the run are the wake; the
         // loop below delivers them in record order.
+        // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
       } else if (!steerable || lastTurnInterrupted(agent.session.snapshotEvents())) {
         // Continue a crash-interrupted turn. A steerable run parked at a
         // segment boundary quiesced cleanly, so its revival re-parks instead
@@ -409,6 +413,7 @@ function compileBody(def: AgentDefinition, host: Context): EngineDefinition['bod
           return def.output.parse(capture.value)
         }
         if (!steerable) {
+          // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
           throw new Error(`agent run ${stepCtx.runId} ended (last turn: ${lastTurnEndKind(agent.session.snapshotEvents())}) without calling submit`)
         }
         const segments = stepCtx.steers()

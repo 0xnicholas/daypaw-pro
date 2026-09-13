@@ -42,8 +42,8 @@ function mountDialog(api: FakeTaskApi, sessions: NewTaskSessions = sessionsDoubl
   const close = vi.fn()
   const view = render(
     <NewTaskDialog
-            usePanelInfo={neverHook} useResource={neverHook}
-close={close} openTask={openTask}
+      usePanelInfo={neverHook} useResource={neverHook}
+      close={close} openTask={openTask}
       useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook}
       useNewTask={bindSnapshotSelector(owned.store)}
       store={owned} t={t}

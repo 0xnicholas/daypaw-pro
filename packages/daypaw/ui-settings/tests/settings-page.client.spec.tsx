@@ -48,8 +48,8 @@ function mountPage(api: FakeHostApi) {
   }) as never
   const view = render(
     <SettingsPage
-            usePanelInfo={neverHook} useResource={neverHook}
-sessionId={undefined}
+      usePanelInfo={neverHook} useResource={neverHook}
+      sessionId={undefined}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}

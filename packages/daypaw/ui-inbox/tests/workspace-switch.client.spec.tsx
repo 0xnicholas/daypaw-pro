@@ -66,8 +66,8 @@ function mountWorkspace(
   }) as never
   render(
     <WorkspaceSwitch
-            usePanelInfo={neverHook} useResource={neverHook}
-sessionId={sessionId}
+      usePanelInfo={neverHook} useResource={neverHook}
+      sessionId={sessionId}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
