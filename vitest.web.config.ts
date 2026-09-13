@@ -23,6 +23,12 @@ export default defineConfig({
   ],
   test: {
     execArgv: vitestExecArgv,
+    // The recorded-session corpus carries the recording zone in every client
+    // message source (clientTimeZone) and in time-rendering UI goldens; the
+    // browsers this lane launches derive their timezone from the inherited
+    // TZ, so runners outside the corpus zone pin it here (the canonical
+    // schedule-after page pins the same zone itself).
+    env: { TZ: 'Asia/Shanghai' },
     include: [
       'apps/web/tests/**/*.e2e.ts',
       'apps/web/tests/**/*.snapshot.ts',
