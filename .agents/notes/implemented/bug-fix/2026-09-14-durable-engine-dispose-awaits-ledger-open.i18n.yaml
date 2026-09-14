@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-14-durable-engine-dispose-awaits-ledger-open.md
+2026-09-14-durable-engine-dispose-awaits-ledger-open.md: be5d45823b43d93658faf3694da022ab1e395a53
+2026-09-14-durable-engine-dispose-awaits-ledger-open.zh.md: 8196f1478369ca78a1cad7ff62c19bb599d303e4

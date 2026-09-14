@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { Context } from '@deepseek-ai/cordis'
 import DurableEngine from '@daypaw/engine'
@@ -335,6 +335,21 @@ describe('durable engine service', () => {
     expect(effects.filter(effect => effect === 'two').length).toBeGreaterThanOrEqual(1)
     const [row] = readRuns(path)
     expect(row?.status).toBe('done')
+  })
+
+  it('awaits the ledger open on disposal, so no ledger file lands after the fiber is disposed (issue #115)', async () => {
+    const path = await tmpPath('daypaw-engine-dispose-open-')
+    const ctx = new Context()
+    await ctx.plugin(DurableEngine, { path })
+    // Deliberately touch nothing on `ctx.durable` before disposing: disposal
+    // must quiesce even when the async ledger open is still in flight. The
+    // window below only bounds the negative observation (no writer may run
+    // once disposal resolved), it never gates the assertion on timing.
+    await ctx.fiber.dispose()
+    const settled = await readdir(dirname(path))
+    await new Promise(resolve => setTimeout(resolve, 500))
+    expect(await readdir(dirname(path))).toEqual(settled)
+    expect(settled.some(name => name.endsWith('-wal') || name.endsWith('-shm'))).toBe(false)
   })
 
   it('resolves idle() when nothing is being driven', async () => {

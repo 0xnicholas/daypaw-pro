@@ -43,7 +43,7 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 
 ## 执行模型
 
-run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键 `name#occurrence`（或显式 key）；已完成 step 直接返回已记录结果不再执行，未完成的（重）执行并记录——执行 at-least-once，step 提交 exactly-once。取消先写终态行，在下一 step 边界生效。销毁停止驱动且不写终态：未完 run 保持可复活。
+run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键 `name#occurrence`（或显式 key）；已完成 step 直接返回已记录结果不再执行，未完成的（重）执行并记录——执行 at-least-once，step 提交 exactly-once。取消先写终态行，在下一 step 边界生效。销毁停止驱动且不写终态：未完 run 保持可复活。销毁还会先等待 ledger 打开、再关闭数据库，fiber 销毁返回后不会再有 ledger 落笔（含 WAL 边车，issue #115）。
 
 `ctx.waitFor(gate, { schema?, timeout? })` 是 HITL 挂起原语（spec 第 1 章 §6）：登记 `(runId, gate)` 键的 pending promise 行、run 转 `waiting` 并让出驱动——等待零算力，进程死掉由 boot 扫描复活，重驱动在同一 `waitFor` 读到已落账的结局直接返回。终态以 `GateResolution` 联合值返回（`resolved` / `rejected` / `timedout` / `cancelled`），超时、拒绝、取消是可编程分支而非异常。`timeout` 为毫秒时长；进程内 `setTimeout` 到点 first-wins 写 `timedout`，进程错过则由 boot 扫描先扫 overdue 再续跑。
 

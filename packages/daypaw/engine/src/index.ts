@@ -65,8 +65,10 @@ export const Config: z<Config> = z.object({
 /**
  * The `ctx.durable` service. Opens the ledger on construction (methods await
  * readiness), runs the boot scan once the database is open, and on context
- * disposal stops driving without writing terminal run states — unfinished
- * runs stay revivable by the next process. `listDefinitions` doubles as the
+ * disposal awaits the open, stops driving, and closes the database without
+ * writing terminal run states — unfinished runs stay revivable by the next
+ * process, and fiber disposal resolves only once no ledger write can still
+ * land. `listDefinitions` doubles as the
  * browser catalog's wire face: the TypertRemoteService binding lets the API
  * gateway claim `durable/listDefinitions` (spec 05 §5; the GoalService
  * precedent) without any upstream apiproxy edit.
@@ -96,7 +98,9 @@ export default class DurableEngine extends TypertRemoteService {
     // A rejection with no caller yet must not crash the process; every
     // public method re-awaits `ready` and maps the failure itself.
     this.ready.catch(() => {})
-    ctx.effect(() => () =>{  this.shutdown() })
+    // The async disposer keeps fiber disposal from resolving before
+    // shutdown() quiesces the engine (issue #115).
+    ctx.effect(() => async () => { await this.shutdown() })
   }
 
   /**
@@ -309,7 +313,25 @@ export default class DurableEngine extends TypertRemoteService {
     }
   }
 
-  private shutdown(): void {
+  /**
+   * Quiesce the engine: stop driving in the disposer's synchronous prefix,
+   * then await the ledger open and close the database. Aborting drivers
+   * without a first `await` keeps driver cancellation ahead of the sibling
+   * teardown continuations a yield would admit; awaiting the open before
+   * the close is what makes fiber disposal resolve only once no ledger
+   * write can still land (the teardown ENOTEMPTY of issue #115). A core
+   * created by an open that resolved after disposal started owns no
+   * drivers or timers, and the idempotent second dispose closes that case
+   * explicitly. An open that failed owns nothing to release.
+   */
+  private async shutdown(): Promise<void> {
+    this.core?.dispose()
+    try {
+      await this.ready
+    } catch {
+      // The open itself failed: no core or database handle to release.
+      return
+    }
     this.core?.dispose()
     this.db?.close()
     this.core = undefined

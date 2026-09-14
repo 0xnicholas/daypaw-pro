@@ -90,7 +90,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.durable` — `DurableEngine`
 
-The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal stops driving without writing terminal run states — unfinished runs stay revivable by the next process. `listDefinitions` doubles as the browser catalog's wire face: the TypertRemoteService binding lets the API gateway claim `durable/listDefinitions` (spec 05 §5; the GoalService precedent) without any upstream apiproxy edit.
+The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal awaits the open, stops driving, and closes the database without writing terminal run states — unfinished runs stay revivable by the next process, and fiber disposal resolves only once no ledger write can still land. `listDefinitions` doubles as the browser catalog's wire face: the TypertRemoteService binding lets the API gateway claim `durable/listDefinitions` (spec 05 §5; the GoalService precedent) without any upstream apiproxy edit.
 
 ```ts cordis-catalog
 /**
