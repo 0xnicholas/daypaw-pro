@@ -320,16 +320,34 @@ function ciSharedStaticGates(): Gate[] {
 }
 
 /**
- * The fork's main-push aggregate for hosted 4-vCPU runners: every
- * deterministic gate of {@link ciPrimaryGates} minus the three full-suite
- * test lanes (coverage, recorded-session snapshot, web browser snapshot).
- * Those lanes' timing-sensitive tests measure the host on this hardware class
- * (upstream runs them on 16-core enterprise runners and keeps its own hosted
- * serial reference disabled); the fork's main workflow runs them as a
- * separately reported advisory job instead of a blocking gate.
+ * The fork's main-push aggregate for hosted 4-vCPU runners: every gate of
+ * {@link ciPrimaryGates} minus the coverage and recorded-session snapshot
+ * gates, plus the fork's assembled daypaw golden lane. The excluded lanes'
+ * timing-sensitive tests measure the host on this hardware class (upstream
+ * runs them on 16-core enterprise runners and keeps its own hosted serial
+ * reference disabled); the fork's main workflow runs them, with the web
+ * browser snapshot lane, as a separately reported advisory job instead of
+ * blocking gates.
  */
 function ciDaypawHostedGates(): Gate[] {
-  return ciPrimaryGates().filter(gate => !['coverage', 'coverage-exempt-heavy', 'snapshot'].includes(gate.id))
+  return [
+    ...ciPrimaryGates().filter(gate => !['coverage', 'coverage-exempt-heavy', 'snapshot'].includes(gate.id)),
+    daypawWebGoldensGate(),
+  ]
+}
+
+/**
+ * The fork's assembled daypaw golden lane: the daypaw browser roster's real
+ * built `lib/client.js` bundles booted in jsdom against the keyless fixture
+ * transport, compared with the committed goldens. The lane's boot assertions
+ * are deterministic, so it gates in this aggregate rather than advising
+ * (issue #113).
+ */
+function daypawWebGoldensGate(): Gate {
+  return pnpmScript('daypaw-web-goldens', 'test:web:daypaw:built', {
+    label: 'daypaw assembled goldens',
+    needs: ['build'],
+  })
 }
 
 function ciPrimaryGates(): Gate[] {

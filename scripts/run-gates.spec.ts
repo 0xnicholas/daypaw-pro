@@ -620,6 +620,34 @@ describe('Linux primary graph', () => {
   })
 })
 
+describe('daypaw hosted graph', () => {
+  it('runs the assembled daypaw golden lane as a required gate behind the build', () => {
+    const subject = withPnpmEntrypoint(() => gatesForMode('ci-daypaw-hosted'))
+    const goldens = subject.find(item => item.id === 'daypaw-web-goldens')
+
+    expect(goldens).toMatchObject({
+      label: 'daypaw assembled goldens',
+      displayCommand: 'pnpm run test:web:daypaw:built',
+      args: ['/private/pnpm.cjs', 'run', 'test:web:daypaw:built'],
+      needs: ['build'],
+    })
+  })
+
+  it('keeps the fork lane additive to the upstream primary aggregate', () => {
+    const ids = withPnpmEntrypoint(() => gatesForMode('ci-primary').map(item => item.id))
+
+    expect(ids).not.toContain('daypaw-web-goldens')
+  })
+
+  it('keeps the timing-sensitive full-suite lanes out of the required aggregate', () => {
+    const ids = withPnpmEntrypoint(() => gatesForMode('ci-daypaw-hosted').map(item => item.id))
+
+    expect(ids).not.toContain('coverage')
+    expect(ids).not.toContain('coverage-exempt-heavy')
+    expect(ids).not.toContain('snapshot')
+  })
+})
+
 describe('gate process outcomes', () => {
   it('streams selected gate output without retaining it', async () => {
     const write = vi.spyOn(process.stdout, 'write').mockReturnValue(true)

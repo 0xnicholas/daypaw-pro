@@ -8,9 +8,14 @@ name: CI (daypaw main)
 # - linux / deterministic gates (required): the ci-daypaw-hosted aggregate —
 #   every gate of upstream's primary aggregate whose verdict is deterministic
 #   across the lane's runs (static checks, typert contracts, typecheck, lint,
-#   duplication, node smokes, doc-sync, module graph, knip, build, publint,
-#   node-next types, built-package invariants, bin smoke). Four real defects
-#   were caught by exactly these gates during the lane's first runs.
+#   duplication, node smokes, doc-sync, module graph, build, publint,
+#   node-next types, built-package invariants, bin smoke; four real defects
+#   were caught by exactly these gates during the lane's first runs), plus the
+#   fork's assembled daypaw golden lane: jsdom boot of the built roster
+#   against the keyless fixture transport is deterministic, so it gates rather
+#   than advises (issue #113 — the 2026-10-09 sync dropped the
+#   resources/ui-sidebar-right roster rows and broke daypaw boot at HEAD
+#   undetected because no lane ran it).
 # - linux / timing-sensitive lanes (advisory): the three full-suite lanes —
 #   coverage, recorded-session snapshot replays, web browser snapshot. Their
 #   process and browser timing tests measure the host on this hardware class —
