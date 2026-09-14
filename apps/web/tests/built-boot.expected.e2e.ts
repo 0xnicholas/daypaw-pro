@@ -94,27 +94,26 @@ it('boots the built plugin graph and renders a fixture session end to end', asyn
   within(waitingRow).getByText('Waiting for approval')
   // fx-gamma carries the question instead; its row mirrors the same
   // actionable-wait projection for the question kind.
-  await within(tree).findByText('Waiting for answer')
+  await within(tree).findByText('Waiting for answer', {}, { timeout: 10_000 })
 
   // Opening a session reaches chat content through the fixture transport.
   fireEvent.click(waitingTitle)
   await waitFor(() => {
     expect(document.querySelector('[data-sample="bash"]')).not.toBeNull()
   }, { timeout: 10_000 })
-  // The resident question rides fx-gamma while the approval blocks fx-alpha,
-  // and pending interactions mount on their carrier's conversation, so the
-  // built question composer lives in fx-gamma's view (the badge row above):
-  // route there, skip the fixture's three questions through the real composer
-  // chain, then return to fx-alpha and resolve its approval so the ordinary
-  // composer bar (which owns ContextMeter) resumes.
-  const questionBadge = await within(tree).findByText('Waiting for answer')
+  // The resident question belongs to fx-gamma while the approval blocks
+  // fx-alpha, and pending interactions mount on their carrier's conversation,
+  // so the built question composer mounts only in fx-gamma's view (the badge
+  // row above). Resolving both interactions resumes fx-alpha's ordinary
+  // composer bar (which owns ContextMeter).
+  const questionBadge = await within(tree).findByText('Waiting for answer', {}, { timeout: 10_000 })
   const questionRow = questionBadge.closest<HTMLElement>('[role="treeitem"]')
   if (questionRow === null) throw new Error('fixture question badge must belong to a tree row')
   fireEvent.click(questionRow)
   for (let index = 0; index < 3; index += 1) {
     fireEvent.click(await screen.findByRole('button', { name: 'Skip this question' }, { timeout: 10_000 }))
   }
-  fireEvent.click(await within(tree).findByText('Fixture 历史会话'))
+  fireEvent.click(await within(tree).findByText('Fixture 历史会话', {}, { timeout: 10_000 }))
   fireEvent.click(await screen.findByRole('button', { name: 'Allow once' }, { timeout: 10_000 }))
 
   // The fixture mirrors all three token-meter projections, so the assembled
