@@ -856,6 +856,21 @@ describe('fault injection at gate append points', () => {
     await expect(handle.result).rejects.toSatisfy((error: unknown) => (error as { code?: string }).code === 'ENGINE_DISPOSED')
   })
 
+  it('fails an abandoned gate wait when the body settles without awaiting it', async () => {
+    const f = await fixture()
+    let parked: Promise<unknown> | undefined
+    const { handle } = await startWaiting(f, 'gf-15', async (run) => {
+      parked = run.waitFor('approval')
+      return 'done-anyway'
+    })
+    await expect(handle.result).resolves.toBe('done-anyway')
+    // The wait the body left behind ends with its driver instead of outliving it.
+    await expect(parked).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('settled while a gate wait was still pending')
+    })
+  })
+
   it('rejects resolveGate after disposal', async () => {
     const f = await fixture()
     const core = f.makeCore()
@@ -997,11 +1012,17 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('fails an abandoned parked wait when the body settles without awaiting it', async () => {
     const f = await fixture()
+    let parked: Promise<unknown> | undefined
     const { handle } = await startParked(f, 'sf-10', async (run) => {
-      void run.awaitSteer(0)
+      parked = run.awaitSteer(0)
       return 'done-anyway'
     })
     await expect(handle.result).resolves.toBe('done-anyway')
+    // The wait the body left behind ends with its driver instead of outliving it.
+    await expect(parked).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('settled while a steer wait was still pending')
+    })
   })
 
   it('revives a run that died parked with an unconsumed segment through the boot scan', async () => {

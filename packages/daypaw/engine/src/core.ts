@@ -294,24 +294,179 @@ interface PollEntry {
   stop(error: EngineRunError): void
 }
 
-/** One in-process gate waiter, keyed by `runId` + gate name. */
-interface GateWaiterEntry {
-  /** Live value contract held while this process waits; enables write-side validation of same-process settlements. */
-  readonly schema: GateSchema<unknown> | undefined
-  /** Deliver a terminal outcome to the waiting body. */
-  deliver(resolution: GateResolution): void
-  /** Reject the body's wait (engine disposal, ledger loss). */
+/**
+ * The terminal outcome of one run row, decoded once by
+ * {@link DurableEngineCore.settledOutcome}: the recorded output a `done` run
+ * resolves with, and the payload the two failing states report.
+ */
+type SettledOutcome =
+  | { readonly state: 'done'; readonly output: unknown }
+  | { readonly state: 'failed'; readonly error: unknown }
+  | { readonly state: 'cancelled'; readonly cause?: string }
+
+/** A settled run that did not succeed: what its result rejects with. */
+type RunFailure = Extract<SettledOutcome, { readonly state: 'failed' } | { readonly state: 'cancelled' }>
+
+/** The two endings of one parked wait. The first one to run tears the wait down. */
+interface WaitEndings<T> {
+  /** Hand the parked body its outcome. */
+  deliver(outcome: T): void
+  /** Reject the parked body's wait (cancellation, engine disposal, ledger loss). */
   fail(error: unknown): void
 }
 
-/** One in-process parked steer wait, keyed by `runId`. */
-interface SteerWaiterEntry {
+/**
+ * What one parked wait's ledger read says: `wait` keeps the body parked,
+ * `deliver` hands it the recorded outcome, `fail` rejects its wait.
+ */
+type WaitVerdict<T> =
+  | { readonly state: 'wait' }
+  | { readonly state: 'deliver'; readonly outcome: T }
+  | { readonly state: 'fail'; readonly error: unknown }
+
+/**
+ * One parked wait's registration.
+ * @typeParam T - what a delivery hands the parked body.
+ * @typeParam E - the entry external writers end this wait through.
+ */
+interface WaitSpec<T, E extends WaitEndings<T>> {
+  /** Table key: the run and the recorded fact the body parks on. */
+  readonly key: string
+  /** Driver signal whose abort ends the wait (cancellation or engine disposal). */
+  readonly signal: AbortSignal
+  /** Message a second park under a live key throws: one body per parked fact, per process. */
+  readonly duplicateMessage: string
+  /** Build the entry external writers end this wait through, wrapping the table's endings with what this suspension adds. */
+  readonly entry: (endings: WaitEndings<T>) => E
+  /** Read the recorded fact; runs on the poll interval and after a deadline write. A read that throws fails the wait. */
+  readonly poll: () => WaitVerdict<T>
+  /** End an aborted wait. */
+  readonly abort: (waiter: E) => void
+  /** Deadline in epoch ms; its expiry runs `expire`, which records the timeout and ends the wait. */
+  readonly deadline?: { readonly at: number; readonly expire: (waiter: E) => void }
+}
+
+/** One parked gate wait. */
+interface GateWaiter extends WaitEndings<GateResolution> {
+  /** The parked run; the driver-exit sweep fails one run's leftovers by it. */
+  readonly runId: string
+  /** Live value contract held while this process waits; enables write-side validation of same-process settlements. */
+  readonly schema: GateSchema<unknown> | undefined
+}
+
+/** One parked steer wait. */
+interface SteerWaiter extends WaitEndings<void> {
   /** Segments the body already consumed; wake only when the recorded count exceeds it. */
   readonly known: number
-  /** Wake the parked body. */
-  deliver(): void
-  /** Reject the body's wait (cancellation, engine disposal, ledger loss). */
-  fail(error: unknown): void
+}
+
+/**
+ * Bodies parked in this process on a recorded fact, keyed by that fact's
+ * identity. Owns the parking mechanics both suspensions share — the single
+ * delivery-or-failure ending, the abandonment marker, the cross-process poll,
+ * the deadline, the abort wiring, and teardown of the entry, its interval, its
+ * deadline timer, and its listener with the first ending — so a suspension
+ * supplies only its own ledger read, its abort meaning, and its entry.
+ * @typeParam T - what a delivery hands the parked body.
+ * @typeParam E - the entry external writers end this wait through.
+ */
+class WaitTable<T, E extends WaitEndings<T>> {
+  private readonly parked = new Map<string, E>()
+
+  /** @param pollMs - cross-process fallback interval. */
+  constructor(private readonly pollMs: number) {}
+
+  /**
+   * @param key - park identity.
+   * @returns the entry parked under `key`, or `undefined` when no body parks there.
+   */
+  get(key: string): E | undefined {
+    return this.parked.get(key)
+  }
+
+  /**
+   * Fail every parked wait a predicate selects, for the driver-exit sweep of
+   * one run's leftovers.
+   * @param matches - entry predicate.
+   * @param error - the rejection each matching body receives.
+   */
+  failWhere(matches: (waiter: E) => boolean, error: unknown): void {
+    for (const waiter of [...this.parked.values()]) {
+      if (matches(waiter)) waiter.fail(error)
+    }
+  }
+
+  /**
+   * Park one body until its poll verdict, its deadline, or its driver abort
+   * ends it.
+   * @param spec - the wait's key, entry, ledger read, abort meaning, and deadline.
+   * @returns the parked promise.
+   */
+  park(spec: WaitSpec<T, E>): Promise<T> {
+    if (this.parked.has(spec.key)) throw new Error(spec.duplicateMessage)
+    let resolveBody!: (outcome: T) => void
+    let rejectBody!: (error: unknown) => void
+    const waiting = new Promise<T>((resolve, reject) => {
+      resolveBody = resolve
+      rejectBody = reject
+    })
+    // A body that abandons its wait (floating call, or death by a sibling
+    // branch) holds no consumer; mark handled so the abandonment rejection
+    // never crashes the process. Real awaiters still receive it.
+    waiting.catch(() => {})
+    let deadlineTimer: NodeJS.Timeout | undefined
+    let ended = false
+    // Settling is idempotent, so repeated deliver/fail after the first
+    // outcome is a no-op; cleanup is idempotent too.
+    const cleanup = (): void => {
+      this.parked.delete(spec.key)
+      clearInterval(pollTimer)
+      if (deadlineTimer !== undefined) clearTimeout(deadlineTimer)
+      spec.signal.removeEventListener('abort', onAbort)
+    }
+    const end = (settle: () => void): void => {
+      if (ended) return
+      ended = true
+      cleanup()
+      settle()
+    }
+    const waiter = spec.entry({
+      deliver: (outcome) => { end(() => { resolveBody(outcome) }) },
+      fail: (error) => { end(() => { rejectBody(error) }) },
+    })
+    const apply = (verdict: WaitVerdict<T>): void => {
+      switch (verdict.state) {
+        case 'wait': return
+        case 'deliver': waiter.deliver(verdict.outcome); return
+        case 'fail': waiter.fail(verdict.error); return
+      }
+    }
+    const pollTimer = setInterval(() => {
+      try {
+        apply(spec.poll())
+      } catch (error) {
+        // A store outage mid-poll is the wait's outcome, not the process's.
+        waiter.fail(error)
+      }
+    }, this.pollMs)
+    const onAbort = (): void => {
+      spec.abort(waiter)
+    }
+    spec.signal.addEventListener('abort', onAbort, { once: true })
+    if (spec.deadline !== undefined) {
+      const { at, expire } = spec.deadline
+      // A past deadline arms an immediate timeout; setTimeout clamps negatives.
+      deadlineTimer = setTimeout(() => {
+        try {
+          expire(waiter)
+        } catch (error) {
+          waiter.fail(error)
+        }
+      }, at - Date.now())
+    }
+    this.parked.set(spec.key, waiter)
+    return waiting
+  }
 }
 
 function gateWaiterKey(runId: string, gate: string): string {
@@ -341,8 +496,8 @@ export class DurableEngineCore {
   private readonly definitions = new Map<string, EngineDefinition>()
   private readonly drivers = new Map<string, DriverEntry>()
   private readonly polls = new Map<string, PollEntry>()
-  private readonly gateWaiters = new Map<string, GateWaiterEntry>()
-  private readonly steerWaiters = new Map<string, SteerWaiterEntry>()
+  private readonly gateWaiters: WaitTable<GateResolution, GateWaiter>
+  private readonly steerWaiters: WaitTable<void, SteerWaiter>
   private disposed = false
 
   /**
@@ -352,7 +507,10 @@ export class DurableEngineCore {
   constructor(
     private readonly store: JournalStore,
     private readonly options: DurableEngineCoreOptions,
-  ) {}
+  ) {
+    this.gateWaiters = new WaitTable(options.pollMs)
+    this.steerWaiters = new WaitTable(options.pollMs)
+  }
 
   /**
    * Register a definition for execution and boot-time revival. Registering
@@ -400,8 +558,8 @@ export class DurableEngineCore {
     this.assertSameDefinition(existing, def)
     const driving = this.drivers.get(runId)
     if (driving !== undefined) return driving.handle
-    if (isTerminal(existing.status)) return this.settledHandle(existing)
-    return this.pollUntilSettled(runId)
+    const settled = this.settledOutcome(existing)
+    return settled === undefined ? this.pollUntilSettled(runId) : this.settledHandle(existing, settled)
   }
 
   /**
@@ -805,14 +963,16 @@ export class DurableEngineCore {
     return entry
   }
 
-  /** Fail every gate waiter one run still has registered. */
+  /** Fail every gate waiter one run still has registered, plus its steer wait. */
   private abandonGateWaiters(runId: string): void {
-    for (const [key, waiter] of this.gateWaiters) {
-      if (key.startsWith(gateWaiterKey(runId, ''))) {
-        waiter.fail(new EngineRunError('RUN_FAILED', runId,
-          new Error(`run ${runId} settled while a gate wait was still pending`)))
-      }
-    }
+    // A body that died mid-wait (or returned with a gate still pending)
+    // leaves its waiter registered; fail it so no timer or poll outlives
+    // the driver.
+    this.gateWaiters.failWhere(
+      waiter => waiter.runId === runId,
+      new EngineRunError('RUN_FAILED', runId,
+        new Error(`run ${runId} settled while a gate wait was still pending`)),
+    )
     // A body that died mid-park (or returned with a steer wait still pending)
     // leaves its waiter registered; fail it so no poll outlives the driver.
     this.steerWaiters.get(runId)?.fail(new EngineRunError('RUN_FAILED', runId,
@@ -914,8 +1074,8 @@ export class DurableEngineCore {
   }
 
   /**
-   * Suspend the driver on a pending gate: register the in-process waiter and
-   * wake on the first of a same-process resolve push, the cross-process poll
+   * Suspend the driver on a pending gate: park the in-process waiter and wake
+   * on the first of a same-process resolve push, the cross-process poll
    * fallback, the timeout, or driver abort (cancellation / disposal).
    * @param entry - the driver waiting.
    * @param signal - driver abort signal.
@@ -932,82 +1092,51 @@ export class DurableEngineCore {
     timeoutAt: number | undefined,
   ): Promise<GateResolution> {
     const runId = entry.handle.id
-    const key = gateWaiterKey(runId, gate)
-    if (this.gateWaiters.has(key)) {
-      throw new Error(`durable engine: run ${runId} already waits on gate ${gate} in this process`)
-    }
-    let deliver!: (resolution: GateResolution) => void
-    let fail!: (error: unknown) => void
-    const waiting = new Promise<GateResolution>((resolve, reject) => {
-      deliver = resolve
-      fail = reject
-    })
-    // A body that abandons its wait (floating call, or death by a sibling
-    // branch) holds no consumer; mark handled so the abandonment rejection
-    // never crashes the process. Real awaiters still receive it.
-    waiting.catch(() => {})
-    let timeoutTimer: NodeJS.Timeout | undefined
-    // Settling a promise is idempotent, so repeated deliver/fail after the
-    // first outcome is a no-op; cleanup is idempotent too.
-    const waiter: GateWaiterEntry = {
-      schema,
-      deliver: (resolution) => {
-        cleanup()
-        // A no-op unless the row still reads `waiting` (cancelled runs are
-        // terminal already), so every outcome can take the same path.
-        this.store.resumeRun(runId, Date.now())
-        deliver(resolution)
-      },
-      fail: (error) => {
-        cleanup()
-        fail(error)
-      },
-    }
-    const cleanup = () => {
-      this.gateWaiters.delete(key)
-      clearInterval(pollTimer)
-      if (timeoutTimer !== undefined) clearTimeout(timeoutTimer)
-      signal.removeEventListener('abort', onAbort)
-    }
-    const onAbort = () => {
-      if (this.disposed) {
-        waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
-      } else {
-        waiter.deliver({ state: 'cancelled' })
-      }
-    }
-    const pollTimer = setInterval(() => {
-      try {
+    return this.gateWaiters.park({
+      key: gateWaiterKey(runId, gate),
+      signal,
+      duplicateMessage: `durable engine: run ${runId} already waits on gate ${gate} in this process`,
+      entry: endings => ({
+        ...endings,
+        runId,
+        schema,
+        deliver: (resolution) => {
+          // A no-op unless the row still reads `waiting` (cancelled runs are
+          // terminal already), so every outcome can take the same path.
+          this.store.resumeRun(runId, Date.now())
+          endings.deliver(resolution)
+        },
+      }),
+      poll: () => {
         const row = this.store.selectPromise(runId, gate)
         if (row === undefined) {
-          waiter.fail(new Error(`durable engine: ledger lost promise ${runId}/${gate}`))
-          return
+          return { state: 'fail', error: new Error(`durable engine: ledger lost promise ${runId}/${gate}`) }
         }
-        if (row.state !== 'pending') this.deliverRecordedResolution(runId, gate, waiter)
-      } catch (error) {
-        waiter.fail(error)
-      }
-    }, this.options.pollMs)
-    signal.addEventListener('abort', onAbort, { once: true })
-    if (timeoutAt !== undefined) {
-      // A past deadline arms an immediate timeout; setTimeout clamps negatives.
-      timeoutTimer = setTimeout(() => {
-        try {
-          // First-wins against a concurrent resolver: the recorded row decides.
-          this.store.settlePromise(runId, gate, {
-            state: 'timedout',
-            payloadJson: undefined,
-            source: undefined,
-            resolvedAt: Date.now(),
-          })
-          this.deliverRecordedResolution(runId, gate, waiter)
-        } catch (error) {
-          waiter.fail(error)
-        }
-      }, timeoutAt - Date.now())
-    }
-    this.gateWaiters.set(key, waiter)
-    return waiting
+        // A pending row is the one read that keeps parking: every delivery
+        // path settles the row before it delivers.
+        if (row.state === 'pending') return { state: 'wait' }
+        return { state: 'deliver', outcome: this.resolutionFromRow(row, schema) }
+      },
+      abort: (waiter) => {
+        if (this.disposed) waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
+        else waiter.deliver({ state: 'cancelled' })
+      },
+      ...timeoutAt === undefined ? {} : {
+        deadline: {
+          at: timeoutAt,
+          expire: (waiter) => {
+            // First-wins against a concurrent resolver: the recorded row decides.
+            this.store.settlePromise(runId, gate, {
+              state: 'timedout',
+              payloadJson: undefined,
+              source: undefined,
+              resolvedAt: Date.now(),
+            })
+            this.deliverRecordedResolution(runId, gate, waiter)
+          },
+        },
+      },
+    })
   }
 
   /**
@@ -1015,78 +1144,45 @@ export class DurableEngineCore {
    * the first of a same-process steer push, the cross-process poll fallback,
    * or driver abort (cancellation / disposal). The poll also observes a row
    * settled by another writer, so a cross-process cancel cannot strand the
-   * wait. Mirrors {@link suspendOnGate} minus schema and timeout — a parked
-   * steer wait has neither.
+   * wait. A parked steer wait differs from a gate wait in kind, not in
+   * mechanism: it holds no value contract, times out never, and an abort wakes
+   * its body with a rejection rather than a `cancelled` outcome.
    * @param entry - the driver parking.
    * @param signal - driver abort signal.
    * @param known - count of segments the body already consumed.
    */
   private suspendOnSteer(entry: DriverEntry, signal: AbortSignal, known: number): Promise<void> {
     const runId = entry.handle.id
-    if (this.steerWaiters.has(runId)) {
-      throw new Error(`durable engine: run ${runId} already parks for steer in this process`)
-    }
-    let deliver!: () => void
-    let fail!: (error: unknown) => void
-    const waiting = new Promise<void>((resolve, reject) => {
-      deliver = resolve
-      fail = reject
-    })
-    // A body that abandons its wait (floating call, or death by a sibling
-    // branch) holds no consumer; mark handled so the abandonment rejection
-    // never crashes the process. Real awaiters still receive it.
-    waiting.catch(() => {})
-    // Delivery is idempotent, so repeated deliver/fail after the first
-    // outcome is a no-op; cleanup is idempotent too.
-    const waiter: SteerWaiterEntry = {
-      known,
-      deliver: () => {
-        cleanup()
-        deliver()
-      },
-      fail: (error) => {
-        cleanup()
-        fail(error)
-      },
-    }
-    const cleanup = () => {
-      this.steerWaiters.delete(runId)
-      clearInterval(pollTimer)
-      signal.removeEventListener('abort', onAbort)
-    }
-    const onAbort = () => {
-      if (this.disposed) {
-        waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
-      } else {
-        waiter.fail(new EngineRunError('RUN_CANCELLED', runId))
-      }
-    }
-    const pollTimer = setInterval(() => {
-      try {
+    return this.steerWaiters.park({
+      key: runId,
+      signal,
+      duplicateMessage: `durable engine: run ${runId} already parks for steer in this process`,
+      entry: endings => ({ ...endings, known }),
+      poll: () => {
         const row = this.store.selectRun(runId)
-        if (row === undefined) {
-          waiter.fail(new Error(`durable engine: ledger lost run ${runId}`))
-          return
-        }
+        if (row === undefined) return { state: 'fail', error: new Error(`durable engine: ledger lost run ${runId}`) }
         if (row.status === 'cancelled') {
           // Mirror assertDrivable: abort first so the driver codes the
           // rejection RUN_CANCELLED instead of wrapping it as a failure.
           entry.abort(row.cancel_cause ?? undefined)
-          waiter.fail(new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined))
-          return
+          return { state: 'fail', error: new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined) }
         }
         if (isTerminal(row.status)) {
-          waiter.fail(new Error(`durable engine: run ${runId} reached terminal state ${row.status} while parked for steer`))
-          return
+          return {
+            state: 'fail',
+            error: new Error(`durable engine: run ${runId} reached terminal state ${row.status} while parked for steer`),
+          }
         }
-        if (this.store.selectJournalSegments(runId).length > known) waiter.deliver()
-      } catch (error) {
-        waiter.fail(error)
-      }
-    }, this.options.pollMs)
-    signal.addEventListener('abort', onAbort, { once: true })
-    this.steerWaiters.set(runId, waiter)
-    return waiting
+        if (this.store.selectJournalSegments(runId).length > known) return { state: 'deliver', outcome: undefined }
+        return { state: 'wait' }
+      },
+      abort: (waiter) => {
+        // Disposal leaves the run revivable, so its body must not read it as a
+        // cancellation.
+        if (this.disposed) waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
+        else waiter.fail(new EngineRunError('RUN_CANCELLED', runId))
+      },
+    })
   }
 
   /**
@@ -1118,7 +1214,7 @@ export class DurableEngineCore {
    * whose payload fails validation rejects the wait instead (the body's step
    * fails loud rather than consuming an unchecked value).
    */
-  private deliverRecordedResolution(runId: string, gate: string, waiter: GateWaiterEntry): void {
+  private deliverRecordedResolution(runId: string, gate: string, waiter: GateWaiter): void {
     const row = this.store.selectPromise(runId, gate)
     if (row === undefined) {
       waiter.fail(new Error(`durable engine: ledger lost promise ${runId}/${gate}`))
@@ -1131,11 +1227,17 @@ export class DurableEngineCore {
     }
   }
 
-  /** Build the rejection for a driver whose run reached a terminal row before its own completion write. */
+  /**
+   * Build the rejection for a driver whose run left `running` before its own
+   * completion write. A cancelled row hands over its recorded cause; every
+   * other row rejects with the first-terminal-wins message — including a
+   * `done` row, whose output was never this driver's to report.
+   */
   private terminalRejection(runId: string): EngineRunError {
     const row = this.store.selectRun(runId)
-    if (row?.status === 'cancelled') {
-      return new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined)
+    if (row !== undefined) {
+      const settled = this.settledOutcome(row)
+      if (settled?.state === 'cancelled') return this.rejectionOf(runId, settled)
     }
     return new EngineRunError('RUN_FAILED', runId,
       new Error(`run ${runId} reached terminal state ${row?.status ?? 'unknown'} before completion`))
@@ -1213,46 +1315,74 @@ export class DurableEngineCore {
     return this.statusFromRow(row)
   }
 
-  private statusFromRow(row: RunRow): EngineRunStatus {
+  /**
+   * Decode one run row into its settled outcome — the one table for what the
+   * ledger's terminal states mean (spec 01 §5): `done` carries the recorded
+   * output, `failed` and `cancelled` the payload a rejection reports. A row
+   * still in flight has no settled outcome yet.
+   * @param row - the run row.
+   * @returns the decoded outcome, or `undefined` while the run is unfinished.
+   */
+  private settledOutcome(row: RunRow): SettledOutcome | undefined {
     switch (row.status) {
-      case 'running': return { state: 'running' }
-      case 'done': return { state: 'done' }
+      case 'done': return { state: 'done', output: JSON.parse(row.output_json ?? 'null') }
       case 'failed': return { state: 'failed', error: row.error_json === null ? undefined : JSON.parse(row.error_json) }
-      case 'cancelled': return row.cancel_cause === null
-        ? { state: 'cancelled' }
-        : { state: 'cancelled', cause: row.cancel_cause }
-      case 'waiting': {
-        if (row.waiting_gate === null) {
-          throw new Error(`durable engine: run ${row.run_id} is waiting with no gate recorded`)
-        }
-        return { state: 'waiting', gate: row.waiting_gate }
-      }
+      case 'cancelled': return row.cancel_cause === null ? { state: 'cancelled' } : { state: 'cancelled', cause: row.cancel_cause }
+      case 'running':
+      case 'waiting': return undefined
     }
   }
 
-  private settledHandle(row: RunRow): EngineRunHandle {
-    const settledStatus = this.statusFromRow(row)
+  /**
+   * Project one settled outcome onto the public status face, which reports
+   * `done` without the recorded output.
+   * @param settled - a settled run outcome.
+   * @returns the status handle callers read.
+   */
+  private statusFromSettled(settled: SettledOutcome): EngineRunStatus {
+    return settled.state === 'done' ? { state: 'done' } : settled
+  }
+
+  /**
+   * Build the rejection one failing run reports: the recorded error for
+   * `failed`, the recorded cause for `cancelled`.
+   * @param runId - run identity, carried on the rejection.
+   * @param failure - the run's decoded failing outcome.
+   * @returns the rejection carrier.
+   */
+  private rejectionOf(runId: string, failure: RunFailure): EngineRunError {
+    return failure.state === 'failed'
+      ? new EngineRunError('RUN_FAILED', runId, failure.error)
+      : new EngineRunError('RUN_CANCELLED', runId, failure.cause)
+  }
+
+  private statusFromRow(row: RunRow): EngineRunStatus {
+    const settled = this.settledOutcome(row)
+    if (settled !== undefined) return this.statusFromSettled(settled)
+    if (row.status === 'running') return { state: 'running' }
+    if (row.waiting_gate === null) {
+      throw new Error(`durable engine: run ${row.run_id} is waiting with no gate recorded`)
+    }
+    return { state: 'waiting', gate: row.waiting_gate }
+  }
+
+  private settledHandle(row: RunRow, settled: SettledOutcome): EngineRunHandle {
+    const settledStatus = this.statusFromSettled(settled)
     return {
       id: row.run_id,
-      result: this.settledResult(row),
+      result: this.settledResult(row, settled),
       status: () => settledStatus,
       cancel: () => Promise.resolve(),
     }
   }
 
-  private settledResult(row: RunRow): Promise<unknown> {
-    if (row.status === 'done') return Promise.resolve(JSON.parse(row.output_json ?? 'null'))
+  private settledResult(row: RunRow, settled: SettledOutcome): Promise<unknown> {
+    if (settled.state === 'done') return Promise.resolve(settled.output)
     // Marked handled: an attach caller may take only status() and drop the
     // result; the promise itself still delivers to real consumers.
-    if (row.status === 'failed') {
-      const failed = Promise.reject(new EngineRunError('RUN_FAILED', row.run_id,
-        row.error_json === null ? undefined : JSON.parse(row.error_json)))
-      failed.catch(() => {})
-      return failed
-    }
-    const cancelled = Promise.reject(new EngineRunError('RUN_CANCELLED', row.run_id, row.cancel_cause ?? undefined))
-    cancelled.catch(() => {})
-    return cancelled
+    const failed = Promise.reject(this.rejectionOf(row.run_id, settled))
+    failed.catch(() => {})
+    return failed
   }
 
   private pollUntilSettled(runId: string): EngineRunHandle {
@@ -1285,14 +1415,14 @@ export class DurableEngineCore {
         entry.stop(new EngineRunError('RUN_FAILED', runId, new Error(`durable engine: ledger lost run ${runId}`)))
         return
       }
-      if (!isTerminal(row.status)) return
-      clearInterval(timer)
-      this.polls.delete(runId)
-      if (row.status === 'done') settle(JSON.parse(row.output_json ?? 'null'))
-      else if (row.status === 'failed') {
-        reject(new EngineRunError('RUN_FAILED', runId, row.error_json === null ? undefined : JSON.parse(row.error_json)))
+      const settled = this.settledOutcome(row)
+      if (settled === undefined) return
+      if (settled.state === 'done') {
+        clearInterval(timer)
+        this.polls.delete(runId)
+        settle(settled.output)
       } else {
-        reject(new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined))
+        entry.stop(this.rejectionOf(runId, settled))
       }
     }, this.options.pollMs)
     this.polls.set(runId, entry)

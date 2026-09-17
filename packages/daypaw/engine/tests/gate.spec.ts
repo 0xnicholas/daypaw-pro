@@ -121,6 +121,30 @@ describe('durable gates (ctx.waitFor)', () => {
     expect(doneRow?.waiting_gate).toBeNull()
   })
 
+  it('releases the run out of waiting when its gate delivers, before the body moves on', async () => {
+    const path = await tmpPath('daypaw-gate-release-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    let release!: () => void
+    const held = new Promise<void>((resolve) => { release = resolve })
+    const def = workflowDef(async (run) => {
+      const resolution = await run.waitFor('approval')
+      await run.step('after', async () => { await held; return 1 })
+      return resolution.state
+    })
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'gate-22' })
+    await until(() => handle.status().state === 'waiting')
+    await engine.resolveGate('gate-22', 'approval', { state: 'resolved', value: 'ok' }, 'sdk')
+    // Delivery releases the row while the body's next step is still in flight:
+    // a run parked behind a settled gate is not waiting on it any more.
+    const [released] = readRuns(path)
+    expect(released?.status).toBe('running')
+    expect(released?.waiting_gate).toBeNull()
+    release()
+    await expect(handle.result).resolves.toBe('resolved')
+  })
+
   it('settles first-wins: a later resolve is a no-op and the body sees the first value', async () => {
     const path = await tmpPath('daypaw-gate-firstwins-')
     const { ctx, engine } = await boot(path)
