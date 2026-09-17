@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { TaskList, type TaskListProps } from '../src/client/task-list.tsx'
 import { zh } from '../src/client/locales.ts'
+import { zh as durableZh } from '@daypaw/durable-client/src/client/locales.ts'
 
 afterEach(cleanup)
 
@@ -14,6 +15,7 @@ const t: TaskListProps['t'] = (key, params) => {
   for (const [name, value] of Object.entries(params ?? {})) text = text.replace(`{${name}}`, String(value))
   return text
 }
+const tStatus: TaskListProps['tStatus'] = key => (durableZh as Record<string, string>)[key] ?? key
 const neverHook = (() => { throw new Error('the list must not read framework hooks') }) as never
 const NOW = 400 * 86_400_000
 
@@ -23,7 +25,7 @@ function mountList(rows: TaskListProps['rows']) {
   render(
     <TaskList
       usePanelInfo={neverHook} useResource={neverHook}
-      rows={rows} now={NOW} openTask={openTask} openRun={openRun}
+      rows={rows} now={NOW} openTask={openTask} openRun={openRun} tStatus={tStatus}
       useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook} t={t}
     />,
   )

@@ -1,4 +1,8 @@
-/** `inbox` namespace dictionaries: the daypaw shell IA skeleton copy (nav, workspace placeholders, detail placeholder). */
+/**
+ * `inbox` namespace dictionaries: the daypaw shell IA skeleton copy (nav,
+ * workspace placeholders, detail placeholder); run-status copy lives in
+ * `@daypaw/durable-client`.
+ */
 
 /** Simplified Chinese dictionary (the key-set source of truth; product copy). */
 export const zh = {
@@ -29,11 +33,6 @@ export const zh = {
   'connection.recovered': '连接已恢复',
   'connection.reconnect-action': '网络连接已断开，点击立即重连',
   'connection.restart-action': '正在重连，点击重新开始连接',
-  'status.running': '进行中',
-  'status.waiting': '等待确认',
-  'status.done': '已完成',
-  'status.failed': '出错了',
-  'status.cancelled': '已取消',
   'detail.title': '任务详情',
   'detail.empty': '选择任务查看详情',
   'detail.retry': '重试',
@@ -71,11 +70,6 @@ export const en = {
   'connection.recovered': 'Connection restored',
   'connection.reconnect-action': 'Connection lost, reconnect now',
   'connection.restart-action': 'Reconnecting, restart now',
-  'status.running': 'In progress',
-  'status.waiting': 'Awaiting confirmation',
-  'status.done': 'Completed',
-  'status.failed': 'Failed',
-  'status.cancelled': 'Cancelled',
   'detail.title': 'Task details',
   'detail.empty': 'Select a task to see its details',
   'detail.retry': 'Retry',

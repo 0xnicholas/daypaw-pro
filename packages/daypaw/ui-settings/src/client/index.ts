@@ -4,8 +4,8 @@
  * upstream 'settings.section' child slot so the dormant ui-settings-models
  * section wakes — plus the first-run API-key banner in
  * 'inbox.workspace.banner'. Credential/host facts come through the Client
- * Remote namespaces and the engine roster through the connection's generic
- * RPC channel; invalidations ride the forwarded `credentials/reference-updated`
+ * Remote namespaces and the engine roster through the durable wire face;
+ * invalidations ride the forwarded `credentials/reference-updated`
  * event and `connection/reset`.
  * Export discipline: packages/client/AGENTS.md.
  */
@@ -21,7 +21,9 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls ui-conversation's Context merge (ctx.get('conversation')
 // .blocks — the composer-block face this plugin pushes into).
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-// Type-only: pulls ui-inbox's SlotMap merge (the two target seats).
+// Type-only: pulls ui-inbox's SlotMap merge (the two target seats) into
+// this package's program — module augmentations are program-global, so this
+// one import carries the slot-name typing for every file in the package.
 import type {} from '@daypaw/ui-inbox/client'
 // Type-only: pulls ui-theme's Context merge (ctx.theme) and the
 // `theme/change` event key into this program.
@@ -37,6 +39,7 @@ import { AboutStore } from './about-store.ts'
 import { createThemeRowStore, themeRowOf } from './theme-row.ts'
 import { refreshIfLoaded } from './lazy-refresh.ts'
 import { ApiKeyCardStore } from './card-store.ts'
+import { createDurableClient } from '@daypaw/durable-client/client'
 import { en, zh, type DaypawSettingsKey } from './locales.ts'
 
 export type { ApiKeyCardInjected, ApiKeyCardProps } from './api-key-card.tsx'
@@ -84,7 +87,7 @@ export function apply(ctx: ClientContext): void {
   const card = new ApiKeyCardStore({
     credentials: remote.credentials,
     session: remote.session,
-  }, (ctx.get('connection') as ConnectionHandle).rpc)
+  }, createDurableClient((ctx.get('connection') as ConnectionHandle).rpc))
   // The theme row mirror: seeded at apply, then advanced by every service
   // publish (preference switch, registry change, or an OS flip under
   // `system`).

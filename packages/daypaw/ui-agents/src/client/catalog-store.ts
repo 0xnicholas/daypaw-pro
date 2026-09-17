@@ -9,7 +9,7 @@
  */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { CatalogApi } from './definitions-api.ts'
+import type { DurableClient } from '@daypaw/durable-client/client'
 
 /** One catalog card (agents only; broken or non-agent definitions never list). */
 export interface CatalogCard {
@@ -46,9 +46,9 @@ export class CatalogStore {
   private generation = 0
 
   /**
-   * @param api - the wire face (durable/listDefinitions).
+   * @param api - the durable wire face (durable/listDefinitions).
    */
-  constructor(private readonly api: CatalogApi) {}
+  constructor(private readonly api: DurableClient) {}
 
   /**
    * Fetch the registry view and project the agent cards. Safe to call again;

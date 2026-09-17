@@ -52,8 +52,6 @@ export type {
   TaskRow,
 } from './contract.ts'
 export type { ConnectionNoticeProps } from './ConnectionNotice.tsx'
-export type { RunsApi, WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from './runs-api.ts'
-export { isUnfinishedWireRun } from './runs-api.ts'
 export type { RunsBoardState, TaskDetailState } from './runs-store.ts'
 import type { InboxNavInjected } from './InboxNav.tsx'
 import { InboxNav } from './InboxNav.tsx'
@@ -61,7 +59,7 @@ import type { WorkspaceSwitchInjected } from './WorkspaceSwitch.tsx'
 import { WorkspaceSwitch } from './WorkspaceSwitch.tsx'
 import { TaskDetail, type TaskDetailInjected } from './TaskDetail.tsx'
 import { InboxSelectionController } from './selection.ts'
-import { createRunsApi } from './runs-api.ts'
+import { createDurableClient } from '@daypaw/durable-client/client'
 import { RunsBoardStore, TaskDetailStore } from './runs-store.ts'
 import { en, zh, type InboxKey } from './locales.ts'
 
@@ -93,7 +91,10 @@ export function apply(ctx: ClientContext): void {
   const selection = new InboxSelectionController((id) => { ctx.sessions.open(id) })
 
   const connection = ctx.get('connection') as ConnectionHandle
-  const api = createRunsApi(connection.rpc)
+  // The durable wire face (the single home of the engine's Remote vocabulary);
+  // the status vocabulary's translate rides the detail column's inject face.
+  const api = createDurableClient(connection.rpc)
+  const tStatus = ctx.locale.bind('durable')
   const board = new RunsBoardStore({ api })
   const detail = new TaskDetailStore({ api })
 
@@ -215,6 +216,7 @@ export function apply(ctx: ClientContext): void {
       inject: (): TaskDetailInjected => ({
         hooks: { selection: selection.store, detail: detail.store },
         retry,
+        tStatus,
       }),
     }, TaskDetail))
     return () => {

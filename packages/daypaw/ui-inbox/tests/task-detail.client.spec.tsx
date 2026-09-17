@@ -9,12 +9,14 @@ import { TaskDetail, type TaskDetailProps } from '../src/client/TaskDetail.tsx'
 import type { InboxDetailBodyOwnerProps } from '../src/client/contract.ts'
 import { DEFAULT_SELECTION, type InboxSelection } from '../src/client/selection.ts'
 import type { TaskDetailState } from '../src/client/runs-store.ts'
-import type { WireRun } from '../src/client/runs-api.ts'
-import { zh } from '../src/client/locales.ts'
+import type { WireRun } from '@daypaw/durable-client/client'
+import { zh } from '@daypaw/durable-client/src/client/locales.ts'
+import { zh as inboxZh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
-const t: TaskDetailProps['t'] = key => (zh as Record<string, string>)[key] ?? key
+const t: TaskDetailProps['t'] = key => (inboxZh as Record<string, string>)[key] ?? key
+const tStatus: TaskDetailProps['tStatus'] = key => (zh as Record<string, string>)[key] ?? key
 const neverHook = (() => { throw new Error('detail must not read framework hooks') }) as never
 
 function run(overrides: Partial<WireRun> = {}): WireRun {
@@ -61,6 +63,7 @@ function mountDetail({ selection = DEFAULT_SELECTION, state = detailState() }: {
       useSelection={bindSnapshotSelector(createSnapshotStore<InboxSelection>(selection))}
       useDetail={bindSnapshotSelector(createSnapshotStore<TaskDetailState>(state))}
       retry={retry}
+      tStatus={tStatus}
       renderSlot={renderSlot}
       t={t}
     />,

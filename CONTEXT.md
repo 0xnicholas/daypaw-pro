@@ -59,6 +59,10 @@ CLI 首跑幂等播种 starter agent 到工作区 `daypaw/agents/starter-assista
 
 dsh agent preset 机制在 daypaw 壳内的终局定位：上游机制保留（仅影响旧会话——存量 preset 会话照常可开，组合在会话创建时已装载），新任务弹窗与 agent 目录只读引擎定义注册表（ADR 0012「引擎定义即名册」）；壳内 `ui-agent-preset` 面（设置行、新会话 chip、名册管理节）随 patch 禁用，首跑黄卡命名源改读名册首 agent；双名册 Known Limitation（#60）随之解除。
 
+### durable 客户端 face（Durable Client Face）
+
+浏览器平面对 engine Remote 面的唯一客户端词汇家（`@daypaw/durable-client`）：`durable/*` 端点调用、wire 行类型、状态词表（含 zh/en 文案）与失败折叠一处声明，四个 ui-* 包经它读 Engine Ledger、不 import engine。wire 类型手声明而非 alias engine 类型——独立声明正是 wire 边界校验的对象，序列化漂移由活网关 spec 的执行证明兑底。
+
 ## 编排（Durable Engine 域）
 
 ### Durable Engine（参照系名 Orchestrator）

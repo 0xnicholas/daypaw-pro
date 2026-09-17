@@ -3498,6 +3498,7 @@ export interface Config {
 这些插件通过 `cordis.yml` 中不含 `config:` 块的条目加载；它们未声明任何配置接口。
 
 - `@daypaw/approval-history` —— 依赖 `sessionProjections`（[`packages/daypaw/approval-history/src/index.ts`](../packages/daypaw/approval-history/src/index.ts)）
+- `@daypaw/durable-client`（[`packages/daypaw/durable-client/src/index.ts`](../packages/daypaw/durable-client/src/index.ts)）
 - `@daypaw/ui-agents`（[`packages/daypaw/ui-agents/src/index.ts`](../packages/daypaw/ui-agents/src/index.ts)）
 - `@daypaw/ui-brand`（[`packages/daypaw/ui-brand/src/index.ts`](../packages/daypaw/ui-brand/src/index.ts)）
 - `@daypaw/ui-inbox`（[`packages/daypaw/ui-inbox/src/index.ts`](../packages/daypaw/ui-inbox/src/index.ts)）

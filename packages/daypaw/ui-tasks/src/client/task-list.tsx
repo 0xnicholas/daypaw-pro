@@ -8,16 +8,23 @@
  * (the owner's per-group copy is the no-occupant fallback).
  */
 import clsx from 'clsx'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls ui-inbox's SlotMap merge (the tasks seat) in so
-// PropsRuntime<'inbox.workspace.tasks'> resolves.
-import type {} from '@daypaw/ui-inbox/client'
-import { runStatusKey } from './run-status.ts'
+import type { InjectFace, PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+// Type-only: pulls the 'durable' LocaleNamespaceMap merge in so the injected
+// status translate types.
+import type {} from '@daypaw/durable-client/client'
+import { runStatusKey } from '@daypaw/durable-client/client'
 import css from './task-list.module.css'
 
-/** Full component props: owner share (projected rows + now + openTask/openRun) + locale seat. */
+/** Registration-side business face for the task list. */
+export interface TaskListInjected {
+  /** The durable status vocabulary's translate (the row status copy). */
+  tStatus: TranslateNS<'durable'>
+}
+
+/** Full component props: owner share (projected rows + now + openTask/openRun) + injected face + locale seat. */
 export type TaskListProps =
   PropsRuntime<'inbox.workspace.tasks'>
+  & InjectFace<TaskListInjected>
   & PropsLocale<'daypaw-tasks'>
 
 /** Last-activity age bucket for a row's 最近动态 label. */
@@ -77,7 +84,7 @@ function rowKey(row: TaskListProps['rows'][number]): string {
  * @param props - composed slot props (owner share + locale seat).
  * @returns the list element tree.
  */
-export function TaskList({ rows, now, openTask, openRun, t }: TaskListProps) {
+export function TaskList({ rows, now, openTask, openRun, tStatus, t }: TaskListProps) {
   if (rows.length === 0) return <div className={css.empty}>{t('list.empty')}</div>
   return (
     <ul className={css.list}>
@@ -97,10 +104,10 @@ export function TaskList({ rows, now, openTask, openRun, t }: TaskListProps) {
             {row.awaitingApproval === true
               // The pending-group status reads 等待确认 whatever the run says;
               // run-less session rows (no run status to show) carry it too.
-              ? <span className={css.status}>{t('list.status.waiting')}</span>
+              ? <span className={css.status}>{tStatus(runStatusKey('waiting'))}</span>
               : row.run !== undefined && (
                 <span className={clsx(css.status, row.run.status === 'failed' && css.statusFailed)}>
-                  {t(runStatusKey(row.run.status))}
+                  {tStatus(runStatusKey(row.run.status))}
                 </span>
               )}
             <span className={css.activity}>{activityLabel(row.updatedAt, now, t)}</span>

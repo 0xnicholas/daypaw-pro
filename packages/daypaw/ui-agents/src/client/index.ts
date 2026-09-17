@@ -13,16 +13,17 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the SlotRegistry service merge (ctx.slots).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-// Type-only: pulls ui-inbox's SlotMap merge (the catalog seat) in.
+// Type-only: pulls ui-inbox's SlotMap merge (the catalog seat) into this
+// package's program — module augmentations are program-global, so this one
+// import carries the slot-name typing for every file in the package.
 import type {} from '@daypaw/ui-inbox/client'
 import { AgentsPage, type AgentsPageInjected } from './agents-page.tsx'
 import { CatalogStore } from './catalog-store.ts'
-import { createCatalogApi } from './definitions-api.ts'
+import { createDurableClient } from '@daypaw/durable-client/client'
 import { en, zh, type DaypawAgentsKey } from './locales.ts'
 
 export type { AgentsPageInjected, AgentsPageProps } from './agents-page.tsx'
 export type { CatalogCard, CatalogState } from './catalog-store.ts'
-export type { CatalogApi, WireDefinition } from './definitions-api.ts'
 export type { DaypawAgentsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -50,7 +51,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'daypaw-ui-agents: dictionaries')
 
   const connection = ctx.get('connection') as ConnectionHandle
-  const catalog = new CatalogStore(createCatalogApi(connection.rpc))
+  const catalog = new CatalogStore(createDurableClient(connection.rpc))
 
   ctx.slots.inject('inbox.agents.page', () => ctx.slots.register({
     name: 'inbox.agents.page',

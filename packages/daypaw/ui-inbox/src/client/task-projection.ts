@@ -21,8 +21,8 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { TaskRow } from './contract.ts'
-import type { WireRun } from './runs-api.ts'
-import { isUnfinishedWireRun } from './runs-api.ts'
+import type { WireRun } from '@daypaw/durable-client/client'
+import { isUnfinishedWireRun } from '@daypaw/durable-client/client'
 import type { InboxGroup } from './selection.ts'
 
 /** Per-group counts and rows, one projection pass. */

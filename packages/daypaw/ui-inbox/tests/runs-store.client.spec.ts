@@ -1,6 +1,6 @@
 /** RunsBoardStore (poll lifecycle, latest-wins, error-keeps-polling, refresh) and TaskDetailStore (select/latest-wins/refresh). */
 import { describe, expect, it, vi } from 'vitest'
-import type { RunsApi, WireJournalEntry, WireRun, WireRunLineage } from '../src/client/runs-api.ts'
+import type { DurableClient, WireJournalEntry, WireRun, WireRunLineage } from '@daypaw/durable-client/client'
 import { RUNS_BOARD_POLL_MS, RunsBoardStore, TaskDetailStore } from '../src/client/runs-store.ts'
 
 const RUN: WireRun = {
@@ -20,12 +20,17 @@ const TIMELINE: readonly WireJournalEntry[] = [{
   sessionId: null, startedAt: 10, finishedAt: 20,
 }]
 
-function apiOf(runs: readonly WireRun[] = []): RunsApi {
+function apiOf(runs: readonly WireRun[] = []): DurableClient {
   return {
     listRuns: () => Promise.resolve([...runs]),
     runLineage: () => Promise.resolve(LINEAGE),
     journalTimeline: () => Promise.resolve([...TIMELINE]),
     rerun: () => Promise.resolve('r9'),
+    // The dialog/catalog endpoints: the board never calls them (the single
+    // interface keeps the fake honest about the whole wire face).
+    listDefinitions: () => { throw new Error('board does not list definitions') },
+    startRun: () => { throw new Error('board does not start runs') },
+    steerText: () => { throw new Error('board does not steer') },
   }
 }
 

@@ -10,9 +10,6 @@
 import { useEffect } from 'react'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls ui-inbox's SlotMap merge (the catalog seat) in so
-// PropsRuntime<'inbox.agents.page'> resolves.
-import type {} from '@daypaw/ui-inbox/client'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { CatalogState, CatalogStore } from './catalog-store.ts'
 import css from './agents-page.module.css'

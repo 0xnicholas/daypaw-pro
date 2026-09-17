@@ -8,7 +8,7 @@
  */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { RunsApi, WireJournalEntry, WireRun, WireRunLineage } from './runs-api.ts'
+import type { DurableClient, WireJournalEntry, WireRun, WireRunLineage } from '@daypaw/durable-client/client'
 
 /**
  * Board refresh cadence (ms). The browser boot graph (WebBootEntry) carries
@@ -27,8 +27,8 @@ export interface RunsBoardTimers {
 
 /** RunsBoardStore construction share. */
 export interface RunsBoardStoreDeps extends RunsBoardTimers {
-  /** The wire face (durable/listRuns). */
-  readonly api: RunsApi
+  /** The durable wire face (durable/listRuns). */
+  readonly api: DurableClient
   /** Poll cadence; defaults to {@link RUNS_BOARD_POLL_MS}. */
   readonly intervalMs?: number
 }
@@ -107,8 +107,8 @@ export class RunsBoardStore {
 
 /** TaskDetailStore construction share. */
 export interface TaskDetailStoreDeps {
-  /** The wire face (durable/runLineage + durable/journalTimeline). */
-  readonly api: RunsApi
+  /** The durable wire face (durable/runLineage + durable/journalTimeline). */
+  readonly api: DurableClient
 }
 
 /** Detail-column snapshot. */

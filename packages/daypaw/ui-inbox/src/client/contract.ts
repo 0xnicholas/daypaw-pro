@@ -7,7 +7,7 @@
  * props instead.
  */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from './runs-api.ts'
+import type { WireJournalEntry, WireRun, WireRunDefKind, WireRunLineage, WireRunStatus } from '@daypaw/durable-client/client'
 
 /** Owner share of a workspace banner entry. */
 export interface InboxBannerOwnerProps {

@@ -24,13 +24,10 @@ import { useState, type FormEvent } from 'react'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ConvViewOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls ui-inbox's SlotMap merge (the conversation seat) in so
-// PropsRuntime<'inbox.workspace.conversation'> resolves.
-import type {} from '@daypaw/ui-inbox/client'
 // Type-only: pulls ui-chat's session-standard merge (useChat).
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import { isUnfinishedWireRun } from '@daypaw/ui-inbox/client'
+import { isUnfinishedWireRun } from '@daypaw/durable-client/client'
 import { ApprovalCard, type PendingApprovalWait } from './approval-card.tsx'
 import { projectBusinessRows } from './chat-projection.ts'
 import css from './conversation-view.module.css'

@@ -10,7 +10,7 @@ import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { NewTaskDialog, type NewTaskDialogProps } from '../src/client/new-task-dialog.tsx'
 import { NewTaskStore, type NewTaskSessions } from '../src/client/new-task-store.ts'
 import { zh } from '../src/client/locales.ts'
-import type { WireStartRunRequest } from '../src/client/new-task-api.ts'
+import type { WireStartRunRequest } from '@daypaw/durable-client/client'
 import { FakeTaskApi, fail, ok, definition } from './fake-task-api.client.ts'
 
 afterEach(cleanup)
@@ -55,7 +55,7 @@ function mountDialog(api: FakeTaskApi, sessions: NewTaskSessions = sessionsDoubl
 /** Program the roster with one agent of the given input kind. */
 function oneAgent(api: FakeTaskApi, inputKind: 'text' | 'json') {
   api.onListDefinitions = () => Promise.resolve(ok([
-    definition('starter-assistant', { version: '1.0.0', display: { title: '通用助手' }, inputKind }),
+    definition('starter-assistant', { version: '1.0.0', display: { title: '通用助手', description: '通用助手' }, inputKind }),
   ]))
 }
 
@@ -64,7 +64,7 @@ describe('NewTaskDialog', () => {
     const api = new FakeTaskApi()
     api.onListDefinitions = () => Promise.resolve(ok([
       definition('alpha', { version: '2.0.0' }),
-      definition('beta', { version: '0.3.1', display: { title: '周报助手' } }),
+      definition('beta', { version: '0.3.1', display: { title: '周报助手', description: '周报助手' } }),
     ]))
     mountDialog(api)
     // Loading state: the submit stays disabled while the roster settles.

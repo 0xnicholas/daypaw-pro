@@ -9,8 +9,8 @@
  * push re-runs the check.
  */
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
-import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { DurableClient } from '@daypaw/durable-client/client'
 import { deriveKeyRef } from './provider-keys.ts'
 
 /** The provider route assumed while the host description names none. */
@@ -41,12 +41,12 @@ export class ApiKeyCardStore {
 
   /**
    * @param api - the wire face (credentials/host domains).
-   * @param rpc - the connection's RPC caller (durable/listDefinitions).
+   * @param durable - the durable wire face (durable/listDefinitions).
    */
   constructor(private readonly api: {
     credentials: Pick<ClientRemote['credentials'], 'describe'>
     session: Pick<ClientRemote['session'], 'modelCatalog'>
-  }, private readonly rpc: Pick<ClientConnectionRpc, 'call'>) {}
+  }, private readonly durable: DurableClient) {}
 
   /**
    * Run the readiness check: the roster's first agent name + host provider,
@@ -59,24 +59,11 @@ export class ApiKeyCardStore {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading' })
     try {
-      const [rosterResult, catalogResponse] = await Promise.all([
-        this.rpc.call('/api', 'durable/listDefinitions', { args: {} }),
+      const [name, catalogResponse] = await Promise.all([
+        this.loadFirstAgentName(),
         this.api.session.modelCatalog(),
       ])
-      if (!rosterResult.ok) throw new Error(rosterResult.error.message)
       if (!catalogResponse.ok) throw new Error(catalogResponse.error.message)
-      const roster = rosterResult.value as unknown[]
-      if (!Array.isArray(roster)) throw new Error('ui-settings: durable/listDefinitions answered a non-array')
-      const firstAgent = roster.find(entry =>
-        typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>)['kind'] === 'agent')
-      const entry = firstAgent as { name?: unknown; display?: { title?: unknown } } | undefined
-      const title = entry?.display?.title
-      // Row-level tolerance, unlike the dialog's fail-loud roster parse: a
-      // malformed display field must not hide the key-readiness banner, so
-      // the name degrades to the generic label and the check continues.
-      const name = typeof title === 'string' ? title
-        : typeof entry?.name === 'string' ? entry.name
-          : FALLBACK_AGENT_NAME
       const provider = catalogResponse.value.default.provider
       const ref = deriveKeyRef(provider)
       const credentialsResponse = await this.api.credentials.describe([ref])
@@ -94,6 +81,22 @@ export class ApiKeyCardStore {
       // (an unverifiable key must not block the workspace) and the settings
       // page carries its own load errors.
       this.store.update((s) => { s.status = 'error' })
+    }
+  }
+
+  /**
+   * The roster's first agent business name. Roster-level tolerance, unlike
+   * the catalog's fail-loud read of the same endpoint: a failed or malformed
+   * roster must not hide the key-readiness banner, so the name degrades to
+   * the generic label and the check continues.
+   * @returns the first agent's display title, its technical name, or the fallback.
+   */
+  private async loadFirstAgentName(): Promise<string> {
+    try {
+      const firstAgent = (await this.durable.listDefinitions()).find(definition => definition.kind === 'agent')
+      return firstAgent?.display?.title ?? firstAgent?.name ?? FALLBACK_AGENT_NAME
+    } catch {
+      return FALLBACK_AGENT_NAME
     }
   }
 }

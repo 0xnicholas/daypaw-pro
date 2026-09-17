@@ -13,7 +13,7 @@ import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { InboxNav, type InboxNavProps } from '../src/client/InboxNav.tsx'
 import { InboxSelectionController } from '../src/client/selection.ts'
 import type { RunsBoardState } from '../src/client/runs-store.ts'
-import type { WireRun } from '../src/client/runs-api.ts'
+import type { WireRun } from '@daypaw/durable-client/client'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)

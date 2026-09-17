@@ -20,7 +20,7 @@ describe('ApiKeyCardStore readiness', () => {
       { kind: 'agent', name: 'starter-assistant', version: '1.0.0', display: { title: '小爪' } },
       { kind: 'agent', name: 'weekly-report', version: '1.2.0' },
     ], 'deepseek')
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     expect(card.store.getSnapshot()).toEqual({ status: 'ready', name: '小爪', configured: false })
   })
@@ -28,7 +28,7 @@ describe('ApiKeyCardStore readiness', () => {
   it('falls back to the technical name when the agent declares no display title', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     expect(card.store.getSnapshot().name).toBe('starter-assistant')
   })
@@ -36,7 +36,7 @@ describe('ApiKeyCardStore readiness', () => {
   it('skips workflow rows and falls back to the generic name on an empty roster', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'workflow', name: 'release-digest', version: '0.4.0' }])
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     expect(card.store.getSnapshot().name).toBe(FALLBACK_AGENT_NAME)
   })
@@ -44,7 +44,7 @@ describe('ApiKeyCardStore readiness', () => {
   it('falls back to the generic name when the first agent row is malformed', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent' } as never])
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     expect(card.store.getSnapshot()).toMatchObject({ status: 'ready', name: FALLBACK_AGENT_NAME })
   })
@@ -52,7 +52,7 @@ describe('ApiKeyCardStore readiness', () => {
   it('reports configured when the active provider key is set', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }], 'deepseek', true)
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     expect(card.store.getSnapshot().configured).toBe(true)
   })
@@ -63,29 +63,40 @@ describe('ApiKeyCardStore readiness', () => {
     api.onModelCatalog = () => Promise.resolve(ok({
       default: { provider: '', model: '' }, routableProviders: [], groups: [], failures: [],
     }))
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     // The empty provider routes nowhere, so the reference stays unconfigured.
     expect(card.store.getSnapshot().configured).toBe(false)
   })
 
   it.each([
-    ['roster fetch', (api: FakeHostApi) => { api.onListDefinitions = () => Promise.resolve(fail('roster down')) }],
     ['catalog fetch', (api: FakeHostApi) => { api.onModelCatalog = () => Promise.resolve(fail('catalog down')) }],
     ['credential describe', (api: FakeHostApi) => { api.onDescribeCredentials = () => Promise.resolve(fail('describe down')) }],
   ])('stays silent (renders like loading) when the %s fails', async (_name, breakIt) => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
     breakIt(api)
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     await card.load()
     expect(card.store.getSnapshot().status).toBe('error')
+  })
+
+  it.each([
+    ['a failed roster fetch', (api: FakeHostApi) => { api.onListDefinitions = () => Promise.resolve(fail('roster down')) }],
+    ['a non-array roster answer', (api: FakeHostApi) => { api.onListDefinitions = () => Promise.resolve(ok('not an array' as never)) }],
+  ])('keeps the banner up under the generic name when %s lands (row-level tolerance lives here, not in the parser)', async (_name, breakIt) => {
+    const api = new FakeHostApi()
+    program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
+    breakIt(api)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
+    await card.load()
+    expect(card.store.getSnapshot()).toMatchObject({ status: 'ready', name: FALLBACK_AGENT_NAME })
   })
 
   it('keeps the latest load when an older response lands late', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     // Park one roster answer, run a second load, then release the stale one.
     let release!: (value: unknown) => void
     const parked = new Promise<unknown>((resolve) => { release = resolve })
@@ -98,10 +109,10 @@ describe('ApiKeyCardStore readiness', () => {
     expect(card.store.getSnapshot().name).toBe('fresh')
   })
 
-  it('ignores a stale load failure landing after a newer load succeeded', async () => {
+  it('ignores a stale load failure landing after a newer load succeeded (a roster failure is absorbed, never an error)', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
+    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
     let reject!: (error: unknown) => void
     const parked = new Promise<unknown>((_resolve, rej) => { reject = rej })
     api.onListDefinitions = () => parked as never
@@ -110,14 +121,6 @@ describe('ApiKeyCardStore readiness', () => {
     await card.load()
     reject(new Error('late failure'))
     await stale
-    expect(card.store.getSnapshot().status).toBe('ready')
-  })
-
-  it('flags a non-array roster answer as an error', async () => {
-    const api = new FakeHostApi()
-    api.onListDefinitions = () => Promise.resolve(ok('nope' as never))
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.rpc)
-    await card.load()
-    expect(card.store.getSnapshot().status).toBe('error')
+    expect(card.store.getSnapshot()).toMatchObject({ status: 'ready', name: 'fresh' })
   })
 })

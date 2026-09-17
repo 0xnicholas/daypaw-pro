@@ -230,6 +230,13 @@
     - id: ui-sidebar-right
       name: '@deepseek-ai/dsh-client-ui-sidebar-right'
 
+    # The durable wire vocabulary (ticket #116): the single client face the
+    # four daypaw ui-* rows read the engine's `durable/*` Remote endpoints
+    # through, plus the run-status dictionaries its plugin registers in the
+    # self-held 'durable' namespace.
+    - id: durable-client
+      name: '@daypaw/durable-client'
+
     # daypaw brand theme (spec 05 §7): stacks the warm-orange accent /
     # warm-neutral base token layer and the --dp-space-* density scale onto
     # the reused ui-theme base; the light/dark preference keeps driving both

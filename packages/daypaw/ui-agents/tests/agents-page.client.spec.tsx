@@ -5,7 +5,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { AgentsPage, type AgentsPageProps } from '../src/client/agents-page.tsx'
 import { CatalogStore } from '../src/client/catalog-store.ts'
-import type { CatalogApi } from '../src/client/definitions-api.ts'
+import type { DurableClient } from '@daypaw/durable-client/client'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -13,14 +13,28 @@ afterEach(cleanup)
 const t: AgentsPageProps['t'] = key => (zh as Record<string, string>)[key] ?? key
 const neverHook = (() => { throw new Error('the catalog page must not read session hooks') }) as never
 
-const CARDS_API: CatalogApi = {
+/** The catalog reads one endpoint; the rest of the single wire face stays unused. */
+const UNUSED = () => { throw new Error('the catalog reads listDefinitions only') }
+
+const CARDS_API: DurableClient = {
   listDefinitions: () => Promise.resolve([
-    { kind: 'agent', name: 'weekly-report', version: '1.2.0', display: { title: '周报助手', description: '汇总本周进展，生成周报草稿。' } },
-    { kind: 'agent', name: 'invoice-checker', version: '0.3.1' },
+    { kind: 'agent', name: 'weekly-report', version: '1.2.0', display: { title: '周报助手', description: '汇总本周进展，生成周报草稿。' }, inputKind: 'text' },
+    { kind: 'agent', name: 'invoice-checker', version: '0.3.1', inputKind: null },
   ]),
+  listRuns: UNUSED,
+  runLineage: UNUSED,
+  journalTimeline: UNUSED,
+  rerun: UNUSED,
+  startRun: UNUSED,
+  steerText: UNUSED,
 }
 
-function mountPage(api: CatalogApi = CARDS_API) {
+/** Wrap one listDefinitions handler as the single wire face (the other endpoints stay unused). */
+function apiOf(listDefinitions: DurableClient['listDefinitions']): DurableClient {
+  return { ...CARDS_API, listDefinitions }
+}
+
+function mountPage(api: DurableClient = CARDS_API) {
   const store = new CatalogStore(api)
   render(
     <AgentsPage
@@ -64,12 +78,12 @@ describe('AgentsPage', () => {
   })
 
   it('renders the empty state when the registry holds no agent definitions', async () => {
-    mountPage({ listDefinitions: () => Promise.resolve([{ kind: 'workflow', name: 'close-the-books', version: '2.0.0' }]) })
+    mountPage(apiOf(() => Promise.resolve([{ kind: 'workflow', name: 'close-the-books', version: '2.0.0', inputKind: null }])))
     expect(await screen.findByText('暂无可用 Agent')).toBeTruthy()
   })
 
   it('renders the inline failure when the roster load fails', async () => {
-    mountPage({ listDefinitions: () => Promise.reject(new Error('boom')) })
+    mountPage(apiOf(() => Promise.reject(new Error('boom'))))
     expect(await screen.findByText('Agent 目录加载失败')).toBeTruthy()
   })
 

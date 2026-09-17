@@ -10,16 +10,17 @@ import { cleanup, render, screen } from '@testing-library/react'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { ConversationNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type {
-  TaskDetailView, WireJournalEntry, WireRun, WireRunLineage,
-} from '@daypaw/ui-inbox/client'
+import type { TaskDetailView } from '@daypaw/ui-inbox/client'
+import type { WireJournalEntry, WireRun, WireRunLineage } from '@daypaw/durable-client/client'
 import type { ApprovalHistoryEntry } from '@daypaw/approval-history/types'
 import { DetailBody, type DetailBodyProps } from '../src/client/detail-body.tsx'
 import { zh } from '../src/client/locales.ts'
+import { zh as durableZh } from '@daypaw/durable-client/src/client/locales.ts'
 
 afterEach(cleanup)
 
 const t: DetailBodyProps['t'] = key => (zh as Record<string, string>)[key] ?? key
+const tStatus: DetailBodyProps['tStatus'] = key => (durableZh as Record<string, string>)[key] ?? key
 const neverHook = (() => { throw new Error('the detail body must not read this hook') }) as never
 
 let seq = 0
@@ -109,7 +110,7 @@ function mountBody(detail: TaskDetailView, opts: MountOptions = {}) {
   return render(
     <DetailBody
       usePanelInfo={neverHook} useResource={neverHook}
-      detail={detail} useSession={useSession} useChat={useChat} useProjection={useProjection}
+      detail={detail} tStatus={tStatus} useSession={useSession} useChat={useChat} useProjection={useProjection}
       sessionId={(opts.seatSessionId ?? 's1') as SessionId}
       useConversation={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}

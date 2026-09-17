@@ -11,21 +11,29 @@
  */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: ui-inbox's SlotMap merge (the detail seat) plus the detail view
-// and wire types it re-exports for occupants.
-import type { TaskDetailView, WireJournalEntry } from '@daypaw/ui-inbox/client'
+// it re-exports for occupants.
+import type { TaskDetailView } from '@daypaw/ui-inbox/client'
+import type { WireJournalEntry } from '@daypaw/durable-client/client'
 // Type-only: the approvalHistory SessionProjectionMap key merge (the domain's
 // pure outlet — the value itself arrives through the session seat).
 import type { ApprovalHistoryEntry } from '@daypaw/approval-history/types'
 import { projectBusinessRows, type BusinessRow } from './chat-projection.ts'
-import { runStatusKey } from './run-status.ts'
+import { runStatusKey } from '@daypaw/durable-client/client'
 import type { DaypawTasksKey } from './locales.ts'
 import css from './detail-body.module.css'
 
-/** Full component props: owner share (the selection-keyed detail view) + session standard kit + locale seat. */
+/** Registration-side business face for the detail body. */
+export interface DetailBodyInjected {
+  /** The durable status vocabulary's translate (the subtask row status copy). */
+  tStatus: TranslateNS<'durable'>
+}
+
+/** Full component props: owner share (the selection-keyed detail view) + injected face + session standard kit + locale seat. */
 export type DetailBodyProps =
   PropsRuntime<'inbox.detail.body'>
+  & InjectFace<DetailBodyInjected>
   & PropsLocale<'daypaw-tasks'>
 
 /** The business tail the progress section draws for a session-backed task. */
@@ -117,14 +125,15 @@ function Progress({ detail, ownSeat, chat, running, t }: SectionProps & {
 }
 
 /** 子任务: the run's lineage children (defName + strict status text). */
-function Subtasks({ detail, t }: SectionProps & { detail: TaskDetailView }) {
+/** @param tStatus - the durable status translate (the subtask rows' copy). */
+function Subtasks({ detail, t, tStatus }: SectionProps & { detail: TaskDetailView; tStatus: DetailBodyProps['tStatus'] }) {
   const empty = <div className={css.empty}>{t('detail.subtasks.empty')}</div>
   const children = detail.kind === 'run' ? detail.lineage?.children : undefined
   if (children === undefined || children.length === 0) return empty
   return children.map(child => (
     <div key={child.runId} className={css.row}>
       <span className={css.rowLabel}>{child.defName}</span>
-      <span className={css.rowStatus}>{t(runStatusKey(child.status))}</span>
+      <span className={css.rowStatus}>{tStatus(runStatusKey(child.status))}</span>
     </div>
   ))
 }
@@ -174,7 +183,7 @@ function Approvals({ ownSeat, entries, t }: SectionProps & {
  * @param props - composed slot props (owner share + session standard kit + locale seat).
  * @returns the four-section body tree, or null.
  */
-export function DetailBody({ detail, useSession, useChat, sessionId, useProjection, t }: DetailBodyProps) {
+export function DetailBody({ detail, tStatus, useSession, useChat, sessionId, useProjection, t }: DetailBodyProps) {
   // The seats are read unconditionally (hook order); seatMatches below decides
   // whether their values apply to this selection.
   const chat = useChat(s => s)
@@ -190,7 +199,7 @@ export function DetailBody({ detail, useSession, useChat, sessionId, useProjecti
       </section>
       <section className={css.section}>
         <h3 className={css.heading}>{t('detail.subtasks.heading')}</h3>
-        <Subtasks detail={detail} t={t} />
+        <Subtasks detail={detail} t={t} tStatus={tStatus} />
       </section>
       <section className={css.section}>
         <h3 className={css.heading}>{t('detail.deliverables.heading')}</h3>

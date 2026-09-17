@@ -21,14 +21,12 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the session-controller Context merge (ctx.sessions).
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
-// Type-only: pulls ui-inbox's SlotMap merge (the four target seats).
-import type {} from '@daypaw/ui-inbox/client'
 import { NewTaskDialog, type NewTaskDialogInjected } from './new-task-dialog.tsx'
-import { TaskList } from './task-list.tsx'
+import { TaskList, type TaskListInjected } from './task-list.tsx'
 import { ConversationView, type ConversationViewInjected } from './conversation-view.tsx'
-import { DetailBody } from './detail-body.tsx'
+import { DetailBody, type DetailBodyInjected } from './detail-body.tsx'
 import { NewTaskStore } from './new-task-store.ts'
-import { createNewTaskApi } from './new-task-api.ts'
+import { createDurableClient } from '@daypaw/durable-client/client'
 import { en, zh, type DaypawTasksKey } from './locales.ts'
 
 export type { NewTaskDialogInjected, NewTaskDialogProps } from './new-task-dialog.tsx'
@@ -37,7 +35,6 @@ export type { ConversationViewInjected, ConversationViewProps } from './conversa
 export type { ApprovalCardProps, PendingApprovalWait } from './approval-card.tsx'
 export type { DetailBodyProps } from './detail-body.tsx'
 export type { NewTaskState, NewTaskSessions, AgentOption } from './new-task-store.ts'
-export type { NewTaskApi, WireAgentDefinition, WireStartRunRequest } from './new-task-api.ts'
 export type { BusinessRow } from './chat-projection.ts'
 export type { DaypawTasksKey } from './locales.ts'
 
@@ -67,7 +64,11 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'daypaw-ui-tasks: dictionaries')
 
   const connection = ctx.get('connection') as ConnectionHandle
-  const newTask = new NewTaskStore(createNewTaskApi(connection.rpc), { list: ctx.sessions.list })
+  // The durable wire face (the single home of the engine's Remote vocabulary);
+  // the status vocabulary's translate rides the list and detail inject faces.
+  const durable = createDurableClient(connection.rpc)
+  const tStatus = ctx.locale.bind('durable')
+  const newTask = new NewTaskStore(durable, { list: ctx.sessions.list })
 
   // One queued-prompt sender serves both riders: the approval reject note
   // (拒绝可附言回对话) and the light-chat seat's input (issue #102) — queue mode
@@ -81,12 +82,10 @@ export function apply(ctx: ClientContext): void {
   }
 
   // The follow-up seat's steer: the engine's free-text Remote endpoint over
-  // the connection's generic RPC channel (the dialog's startRun precedent);
-  // sessionId ≡ runId for agent tasks, and the boundary applies the
-  // definition's wire face to the bare text (issue #94).
+  // the durable wire face; sessionId ≡ runId for agent tasks, and the
+  // boundary applies the definition's wire face to the bare text (issue #94).
   const steer = async (sessionId: SessionId, text: string): Promise<void> => {
-    const result = await connection.rpc.call('/api', 'durable/steerText', { args: { runId: sessionId, text } })
-    if (!result.ok) throw new Error(result.error.message)
+    await durable.steerText(sessionId, text)
   }
 
   ctx.slots.inject('inbox.new-task.dialog', () => ctx.slots.register({
@@ -100,6 +99,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.workspace.tasks', () => ctx.slots.register({
     name: 'inbox.workspace.tasks',
     locale: NS,
+    inject: (): TaskListInjected => ({ tStatus }),
   }, TaskList))
   ctx.slots.inject('inbox.workspace.conversation', () => ctx.slots.register({
     name: 'inbox.workspace.conversation',
@@ -114,5 +114,6 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.detail.body', () => ctx.slots.register({
     name: 'inbox.detail.body',
     locale: NS,
+    inject: (): DetailBodyInjected => ({ tStatus }),
   }, DetailBody))
 }

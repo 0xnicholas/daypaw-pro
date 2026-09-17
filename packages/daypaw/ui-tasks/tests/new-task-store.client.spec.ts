@@ -8,7 +8,7 @@ import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/c
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import { NewTaskStore, type NewTaskSessions } from '../src/client/new-task-store.ts'
-import type { WireStartRunRequest } from '../src/client/new-task-api.ts'
+import type { WireStartRunRequest } from '@daypaw/durable-client/client'
 import { FakeTaskApi, fail, ok, definition } from './fake-task-api.client.ts'
 
 function emptyList(): SnapshotStore<SessionListState> {
@@ -49,7 +49,7 @@ describe('NewTaskStore roster', () => {
     api.onListDefinitions = () => Promise.resolve(ok([
       definition('alpha', { version: '2.1.0' }),
       definition('workflow-row', { kind: 'workflow' }),
-      definition('beta', { version: '0.3.1', display: { title: '周报助手' }, inputKind: 'json' }),
+      definition('beta', { version: '0.3.1', display: { title: '周报助手', description: '周报助手' }, inputKind: 'json' }),
     ]))
     const store = await readyStore(api, sessionsBench().sessions)
     const state = store.store.getSnapshot()
@@ -104,7 +104,7 @@ describe('NewTaskStore submit', () => {
   async function submittingBench(inputKind: 'text' | 'json' = 'text') {
     const api = new FakeTaskApi()
     api.onListDefinitions = () => Promise.resolve(ok([
-      definition('starter-assistant', { version: '1.0.0', display: { title: 'Starter assistant' }, inputKind }),
+      definition('starter-assistant', { version: '1.0.0', display: { title: 'Starter assistant', description: 'Starter assistant' }, inputKind }),
     ]))
     const bench = sessionsBench()
     const store = await readyStore(api, bench.sessions)

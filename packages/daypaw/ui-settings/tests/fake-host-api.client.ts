@@ -1,6 +1,7 @@
 /** Test-local programmable wire face: the Client Remote namespaces the settings page and first-run banner read or write. */
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
+import type { DurableClient, WireDefinition } from '@daypaw/durable-client/client'
 
 /** Test-held settlement: the case decides when an RPC lands (generation-guard material). */
 export interface Deferred<T> {
@@ -101,7 +102,7 @@ export class FakeHostApi {
   onListProviders: () => Promise<Result<readonly FakeProviderInfo[]>> =
     () => Promise.resolve(ok([]))
 
-  /** The connection's generic RPC channel over the engine-roster endpoint. */
+  /** The connection's generic RPC channel over the engine-roster endpoint (what `createDurableClient` consumes). */
   readonly rpc: Pick<ClientConnectionRpc, 'call'> = {
     call: (_channel, endpoint, _payload) => {
       if (endpoint === 'durable/listDefinitions') {
@@ -109,6 +110,25 @@ export class FakeHostApi {
       }
       return Promise.resolve(fail(`unexpected ${endpoint}`)) as ReturnType<ClientConnectionRpc['call']>
     },
+  }
+
+  /** The durable wire face over the engine-roster endpoint (the other six endpoints stay unused here). */
+  readonly durable: DurableClient = {
+    listDefinitions: () => {
+      this.calls.push({ method: 'durable/listDefinitions', payload: undefined })
+      return this.onListDefinitions().then((result) => {
+        if (!result.ok) throw new Error(result.error.message)
+        // The fake stands in for the wire itself, so it may serve rows the
+        // real client's parser would reject — the banner's tolerance material.
+        return result.value as readonly WireDefinition[]
+      })
+    },
+    listRuns: () => { throw new Error('settings read the roster only') },
+    runLineage: () => { throw new Error('settings read the roster only') },
+    journalTimeline: () => { throw new Error('settings read the roster only') },
+    rerun: () => { throw new Error('settings read the roster only') },
+    startRun: () => { throw new Error('settings read the roster only') },
+    steerText: () => { throw new Error('settings read the roster only') },
   }
 
   readonly credentials: CredentialsNamespace = {

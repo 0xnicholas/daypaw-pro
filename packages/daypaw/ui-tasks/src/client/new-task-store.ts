@@ -14,7 +14,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { NewTaskApi, WireAgentDefinition } from './new-task-api.ts'
+import type { DurableClient, WireDefinition } from '@daypaw/durable-client/client'
 
 /** One selectable agent row. */
 export interface AgentOption {
@@ -78,12 +78,12 @@ export class NewTaskStore {
   private pendingRunId: string | undefined
 
   /**
-   * @param api - the wire face (durable/listDefinitions + durable/startRun).
+   * @param api - the durable wire face (durable/listDefinitions + durable/startRun).
    * @param sessions - the sessions service (list projection for the twin wait).
    * @param timers - the twin-wait timer driver (tests).
    */
   constructor(
-    private readonly api: NewTaskApi,
+    private readonly api: DurableClient,
     private readonly sessions: NewTaskSessions,
     timers: NewTaskTimers = {},
   ) {
@@ -113,7 +113,9 @@ export class NewTaskStore {
     this.store.update((s) => { s.status = 'loading' })
     try {
       const definitions = await this.api.listDefinitions()
-      const agents = definitions.map(projectAgentOption)
+      // The roster presents agents only; workflow definitions are engine
+      // internals the dialog cannot start (ruling #65).
+      const agents = definitions.filter(d => d.kind === 'agent').map(projectAgentOption)
       if (generation !== this.generation) return
       this.store.update((s) => {
         s.status = 'ready'
@@ -218,7 +220,7 @@ export class NewTaskStore {
 }
 
 /** Project one wire definition to a selectable roster row. */
-function projectAgentOption(definition: WireAgentDefinition): AgentOption {
+function projectAgentOption(definition: WireDefinition): AgentOption {
   return {
     id: `${definition.name}@${definition.version}`,
     label: definition.display?.title ?? definition.name,

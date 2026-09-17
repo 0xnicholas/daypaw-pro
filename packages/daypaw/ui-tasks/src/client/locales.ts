@@ -1,8 +1,9 @@
 /**
  * `daypaw-tasks` namespace dictionaries: the new-task dialog, the group task
- * list (including the run status text), the business-language conversation
- * view, and the task detail body copy. Product vocabulary rule: no
- * run/session/journal wording on this surface — a task is a task.
+ * list, the business-language conversation view, and the task detail body
+ * copy (run-status copy lives in `@daypaw/durable-client`). Product
+ * vocabulary rule: no run/session/journal wording on this surface — a task
+ * is a task.
  */
 
 /** Simplified Chinese dictionary (the key-set source of truth; product copy). */
@@ -26,11 +27,6 @@ export const zh = {
   'list.time.days': '{n} 天前',
   'list.time.months': '{n} 个月前',
   'list.time.years': '{n} 年前',
-  'list.status.running': '进行中',
-  'list.status.waiting': '等待确认',
-  'list.status.done': '已完成',
-  'list.status.failed': '出错了',
-  'list.status.cancelled': '已取消',
   'detail.progress.heading': '进度',
   'detail.progress.empty': '暂无进度',
   'detail.step.started': '进行中',
@@ -93,11 +89,6 @@ export const en = {
   'list.time.days': '{n} d ago',
   'list.time.months': '{n} mo ago',
   'list.time.years': '{n} y ago',
-  'list.status.running': 'In progress',
-  'list.status.waiting': 'Awaiting confirmation',
-  'list.status.done': 'Done',
-  'list.status.failed': 'Something went wrong',
-  'list.status.cancelled': 'Cancelled',
   'detail.progress.heading': 'Progress',
   'detail.progress.empty': 'No progress yet',
   'detail.step.started': 'In progress',

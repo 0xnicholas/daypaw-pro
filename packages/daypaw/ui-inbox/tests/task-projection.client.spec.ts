@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
-import type { WireRun, WireRunStatus } from '../src/client/runs-api.ts'
+import type { WireRun, WireRunStatus } from '@daypaw/durable-client/client'
 import { projectInboxBoard } from '../src/client/task-projection.ts'
 
 function run(overrides: Partial<WireRun> = {}): WireRun {

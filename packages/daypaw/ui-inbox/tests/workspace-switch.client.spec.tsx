@@ -14,7 +14,7 @@ import type {
 } from '../src/client/contract.ts'
 import { InboxSelectionController } from '../src/client/selection.ts'
 import type { RunsBoardState } from '../src/client/runs-store.ts'
-import type { WireRun } from '../src/client/runs-api.ts'
+import type { WireRun } from '@daypaw/durable-client/client'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)

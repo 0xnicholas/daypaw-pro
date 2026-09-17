@@ -21,6 +21,7 @@
   "dsh": {
     "client": {
       "inject": [
+        "@daypaw/durable-client",
         "@daypaw/ui-inbox",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-connection"
@@ -37,6 +38,7 @@
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
+    "@daypaw/durable-client": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",

@@ -9,7 +9,7 @@
  * back to the empty state.
  */
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'details' entry) in so
 // PropsRuntime<'details'> resolves.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -19,7 +19,7 @@ import type {} from './contract.ts'
 import type { TaskDetailView } from './contract.ts'
 import type { InboxSelection } from './selection.ts'
 import type { TaskDetailState } from './runs-store.ts'
-import { runStatusKey } from './task-status.ts'
+import { runStatusKey } from '@daypaw/durable-client/client'
 import css from './TaskDetail.module.css'
 
 /** Registration-side business face for the detail column. */
@@ -32,6 +32,8 @@ export interface TaskDetailInjected {
   }
   /** Retry a failed run: reruns it, selects the running group, and kicks the board. */
   retry: (runId: string) => void
+  /** The durable status vocabulary's translate (the header's strict status copy). */
+  tStatus: TranslateNS<'durable'>
 }
 
 /** Full component props: runtime share + child render share + injected face + locale seat. */
@@ -61,7 +63,7 @@ function parseRunOutput(outputJson: string | null): unknown {
  * @param props - composed slot props (runtime share + child render share + injected face + locale seat).
  * @returns the detail element tree.
  */
-export function TaskDetail({ useSelection, useDetail, retry, renderSlot, t }: TaskDetailProps) {
+export function TaskDetail({ useSelection, useDetail, retry, tStatus, renderSlot, t }: TaskDetailProps) {
   const selection = useSelection(s => s)
   const state = useDetail(s => s)
   const empty = <div className={css.empty}>{t('detail.empty')}</div>
@@ -93,7 +95,7 @@ export function TaskDetail({ useSelection, useDetail, retry, renderSlot, t }: Ta
         <div className={css.root}>
           <header className={css.header}>
             <h2 className={css.title}>{run.defName}</h2>
-            <span className={css.status}>{t(runStatusKey(run.status))}</span>
+            <span className={css.status}>{tStatus(runStatusKey(run.status))}</span>
             {run.status === 'failed' && (
               <button type="button" className={css.retry} onClick={() => { retry(run.runId) }}>
                 {t('detail.retry')}

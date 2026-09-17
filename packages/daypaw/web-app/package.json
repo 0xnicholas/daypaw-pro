@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@daypaw/approval-history": "workspace:^",
+    "@daypaw/durable-client": "workspace:^",
     "@daypaw/sdk": "workspace:^",
     "@daypaw/ui-agents": "workspace:^",
     "@daypaw/ui-brand": "workspace:^",
@@ -126,6 +127,7 @@
     "@deepseek-ai/dsh-system-prompt": "workspace:^"
   },
   "devDependencies": {
+    "@daypaw/durable-client": "workspace:^",
     "@daypaw/engine": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",

@@ -1648,7 +1648,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.conversation.inspector\', () => ctx.slots.register(\n      { name: \'inbox.workspace.conversation.inspector\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-tasks/src/client/conversation-view.tsx:47',
+    source: 'packages/daypaw/ui-tasks/src/client/conversation-view.tsx:44',
   },
   {
     key: 'inbox.workspace.tasks',

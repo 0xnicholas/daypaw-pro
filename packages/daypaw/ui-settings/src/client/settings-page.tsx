@@ -13,8 +13,6 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { LocaleRuntime, LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 import type { ThemePreference } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls ui-inbox's SlotMap merge (the 'inbox.settings.page' entry).
-import type {} from '@daypaw/ui-inbox/client'
 // Type-only: pulls the settings domain base's SlotMap merge (the
 // 'settings.section' entry this page declares and renders).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'

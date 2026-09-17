@@ -8,7 +8,7 @@ retry=true
 section=Progress
   empty=No progress yet
 section=Subtasks
-  row=invoice-checker=Something went wrong
+  row=invoice-checker=Failed
 section=Deliverables
   empty=No deliverables
 section=Approval history

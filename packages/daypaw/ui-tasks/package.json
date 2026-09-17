@@ -22,6 +22,7 @@
     "client": {
       "inject": [
         "@daypaw/approval-history",
+        "@daypaw/durable-client",
         "@daypaw/ui-inbox",
         "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-api-session-controller",
@@ -42,6 +43,7 @@
   },
   "devDependencies": {
     "@daypaw/approval-history": "workspace:^",
+    "@daypaw/durable-client": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-api-remotes": "workspace:^",

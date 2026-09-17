@@ -192,8 +192,11 @@ describe('assembled task progress', () => {
     fireEvent.click(within(column('sidebarCol')).getByRole('button', { name: /^Completed/ }))
     await waitFor(() => { expect(listButtons()).toHaveLength(4) }, { timeout: 10_000 })
     fireEvent.click(within(column('centerCol')).getByRole('button', { name: /invoice-checker/ }))
-    // The failed child subtask row carries the failed status text.
-    await screen.findByText('Something went wrong', undefined, { timeout: 10_000 })
+    // The failed header and the failed child subtask row both carry the
+    // failed status text (the shared durable vocabulary's copy).
+    await waitFor(() => {
+      expect(screen.getAllByText('Failed')).toHaveLength(2)
+    }, { timeout: 10_000 })
     const failedDetail = column('rightbarCol')
     expect(failedDetail.textContent ?? '').not.toMatch(FORBIDDEN)
     const retry = within(failedDetail).getByRole('button', { name: 'Retry' })
