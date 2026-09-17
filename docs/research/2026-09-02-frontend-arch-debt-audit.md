@@ -13,7 +13,7 @@
 | 条目 | 债形状 | sync 重放成本 | 审计建议 |
 |---|---|---|---|
 | [packages/client/connection/src/client/fixture.ts](../../packages/client/connection/src/client/fixture.ts) durable/* 应答 | ~600+ 行 fork 代码住上游测试运输文件；引擎契约的第三处镜像 | **高**（上游重构 fixture 即手工重放；#75 实证 fixture 绿 ≠ 真网关绿） | 立装饰器迁移 spike（图外执行票）；迁移前保留登记 |
-| packages/client/connection/tests/fixture-durable.client.spec.ts | **未登记**：fork 自有文件住上游包 tests/ | 静默漂移（新增文件不进 merge 冲突） | 迁到 apps/daypaw-web/tests/（与车道同 owner）或补登记 |
+| `client/connection/tests/fixture-durable.client.spec.ts` | **未登记**：fork 自有文件住上游包 tests/ | 静默漂移（新增文件不进 merge 冲突） | 迁到 apps/daypaw-web/tests/（与车道同 owner）或补登记 |
 | built-boot 断言（apps/web/tests/built-boot.expected.e2e.ts:94） | **登记路径过期**：登记簿仍写 `built-boot.snapshot.ts` | 重放时按登记找不到文件 | 修登记行；执行票顺带全量校验登记簿路径 |
 | ui-theme `DEFAULT_PREFERENCE`→light | 唯一改上游**产品行为**的触碰；涟漪面已登记 | 低而稳定（一行常量 + 固定涟漪） | 保留登记，不动 |
 | vitest.config.ts coverage 豁免 glob | ADR 0007 §1 裁决的机械化 | 低（一行 glob） | 保留登记 |
@@ -44,7 +44,7 @@
 
 ### 2.2 未登记：fixture-durable.client.spec.ts
 
-`packages/client/connection/tests/fixture-durable.client.spec.ts`（checkpoint 后新增，+50 行）：fork 自有测试文件住在上游包的 tests/ 目录，CORE_TOUCHES.md 无对应行。债不在代码在**可见性**：新增文件不进 merge 冲突，上游改 tests/ 约定（含改名——见 §2.3 的先例）时静默漂移；且「上游树内 fork 文件」违背登记簿的可见性承诺。建议**迁到 `apps/daypaw-web/tests/`**（它测的就是 daypaw golden 的供数源，与车道同 owner；上游树恢复零 fork 痕迹），不愿迁则补登记一行。
+`client/connection/tests/fixture-durable.client.spec.ts`（checkpoint 后新增，+50 行）：fork 自有测试文件住在上游包的 tests/ 目录，CORE_TOUCHES.md 无对应行。债不在代码在**可见性**：新增文件不进 merge 冲突，上游改 tests/ 约定（含改名——见 §2.3 的先例）时静默漂移；且「上游树内 fork 文件」违背登记簿的可见性承诺。建议**迁到 `apps/daypaw-web/tests/`**（它测的就是 daypaw golden 的供数源，与车道同 owner；上游树恢复零 fork 痕迹），不愿迁则补登记一行。
 
 ### 2.3 登记路径过期：built-boot 断言
 
@@ -76,7 +76,7 @@ ADR 0007 §1 裁决的机械化（[vitest.config.ts:246–250](../../vitest.conf
 
 ### 3.2 JournalStore 查询面：单一事实源成立
 
-[packages/daypaw/store](../../packages/daypaw/store)（SqliteJournalStore + migrations + `SCHEMA_VERSION`）+ [packages/daypaw/engine/src/seams.ts](../../packages/daypaw/engine/src/seams.ts)（RunListFilter/RunInsert/RunFinalize 等接口）——查询知识收在引擎 seam，host 无 SQL 散点（spec 05 §5 裁决兑现）。浏览器侧 `packages/daypaw/ui-inbox/src/client/runs-api.ts` 在 wire 边界逐字段校验：malformed answer（错版本、冒牌端点）fails loud 进板错误态而非画出坏收件箱；snake_case→camelCase 投影归该模块自持。
+[packages/daypaw/store](../../packages/daypaw/store)（SqliteJournalStore + migrations + `SCHEMA_VERSION`）+ [packages/daypaw/engine/src/seams.ts](../../packages/daypaw/engine/src/seams.ts)（RunListFilter/RunInsert/RunFinalize 等接口）——查询知识收在引擎 seam，host 无 SQL 散点（spec 05 §5 裁决兑现）。浏览器侧 `daypaw/ui-inbox/src/client/runs-api.ts` 在 wire 边界逐字段校验：malformed answer（错版本、冒牌端点）fails loud 进板错误态而非画出坏收件箱；snake_case→camelCase 投影归该模块自持。
 
 ### 3.3 host 轮询投影：浏览器轮询 + 会话投影两源
 
