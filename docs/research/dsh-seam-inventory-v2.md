@@ -92,7 +92,7 @@
 
 ## 4. 旧清点文档作废/加注清单
 
-旧文在 throwaway 分支 `research/dsh-seam-inventory`（未合入 main），下列为其需要修订的具体断言：
+旧文已入库为 `docs/research/dsh-seam-inventory.md`，下列为其需要修订的具体断言：
 
 | 位置 | 原断言 | 处置 |
 |---|---|---|

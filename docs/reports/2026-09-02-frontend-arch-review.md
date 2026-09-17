@@ -22,7 +22,7 @@
 - **重放成本集中三个交叉点**：fixture.ts × 三条横切重构（session seq/offset 分离 351 文件、Remote 失败词汇收敛、跨包 relay 删除）；repo 级 stylesheet-scan（下次 sync 起直接扫 fork CSS）；`@daypaw/*/invariant` 伴生物与上游反模式口径的约定漂移。
 - **底册校准**：#37 清单包名早于上游 2026-08-28 重组（runtime → store/ui-conversation/ui-chat/ui-renderer），裁决记录已迁移现行包名（#89）。
 
-findings：`docs/research/2026-09-02-upstream-drift-client-stack.md`（分支 `research/upstream-drift-client-stack`）。
+findings：`docs/research/2026-09-02-upstream-drift-client-stack.md`。
 
 ## 4. 债评估（[#79](https://github.com/0xnicholas/daypaw-pro/issues/79)）
 
@@ -32,7 +32,7 @@ findings：`docs/research/2026-09-02-upstream-drift-client-stack.md`（分支 `r
 - **ui-theme `DEFAULT_PREFERENCE`→light 保留**：不可能链已证（settings namespace 归属注册不可重叠 / 插件无 config 钮 / 种子污染共享文档，ADR 0001 §4 三问无解）。
 - **后端缝隙三面零上游编辑**：durable/\* 挂 Typert 网关现成缝（GoalService 先例）、approval-history 挂上游投影缝、agents-dir 纯函数装载——路线 B 的架构成本不在缝隙面。
 
-findings：`docs/research/2026-09-02-frontend-arch-debt-audit.md`（分支 `research/frontend-arch-debt-audit`）。
+findings：`docs/research/2026-09-02-frontend-arch-debt-audit.md`。
 
 ## 5. 功能走查（[#84](https://github.com/0xnicholas/daypaw-pro/issues/84)）
 

@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-可挂面清单盘点（wayfinder [#97](https://github.com/0xnicholas/daypaw-pro/issues/97)，`docs/research/2026-09-02-dsh-surface-catalog.md` §1，分支 `research/dsh-surface-catalog`）查出 fork web roster 恰缺两行上游 client 行，各只花一行 roster、零 fork 代码：`ui-attachment`——附件在会话槽上的全部表现面（composer 待发图列、拖放邀请、Chat/Trajectory/Tool 结果里的持久图、原图 lightbox）；`ui-reference`——composer 的 `@file`/`@session` 候选列表，其宿主服务行 `file-reference-local` 与 `session-reference` fork bundle 早已挂载。[ADR 0013](../../../../docs/adr/0013-positioning-review-dual-mode.md) 裁两行都收（wayfinder [#100](https://github.com/0xnicholas/daypaw-pro/issues/100) 裁决②）：贴截图是业务用户的自然需求且近乎白赚；`@` 引用只要有 composer 渲染触发机制，power 用户即刻受益。
+可挂面清单盘点（wayfinder [#97](https://github.com/0xnicholas/daypaw-pro/issues/97)，`docs/research/2026-09-02-dsh-surface-catalog.md` §1）查出 fork web roster 恰缺两行上游 client 行，各只花一行 roster、零 fork 代码：`ui-attachment`——附件在会话槽上的全部表现面（composer 待发图列、拖放邀请、Chat/Trajectory/Tool 结果里的持久图、原图 lightbox）；`ui-reference`——composer 的 `@file`/`@session` 候选列表，其宿主服务行 `file-reference-local` 与 `session-reference` fork bundle 早已挂载。[ADR 0013](../../../../docs/adr/0013-positioning-review-dual-mode.md) 裁两行都收（wayfinder [#100](https://github.com/0xnicholas/daypaw-pro/issues/100) 裁决②）：贴截图是业务用户的自然需求且近乎白赚；`@` 引用只要有 composer 渲染触发机制，power 用户即刻受益。
 
 ## Decision
 
