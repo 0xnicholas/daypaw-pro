@@ -3612,6 +3612,7 @@ Abstract service classes — a deployment loads a concrete implementation packag
 Imported as libraries by other packages; a `cordis.yml` cannot load them.
 
 - `@daypaw/cli` ([`packages/daypaw/cli/src/index.ts`](../packages/daypaw/cli/src/index.ts))
+- `@daypaw/client-load` ([`packages/daypaw/client-load/src/index.ts`](../packages/daypaw/client-load/src/index.ts))
 - `@daypaw/sdk` ([`packages/daypaw/sdk/src/index.ts`](../packages/daypaw/sdk/src/index.ts))
 - `@daypaw/store` ([`packages/daypaw/store/src/index.ts`](../packages/daypaw/store/src/index.ts))
 - `@deepseek-ai/dsh-agent-loop-testkit` ([`packages/test-support/agent-loop-testkit/src/index.ts`](../packages/test-support/agent-loop-testkit/src/index.ts))
