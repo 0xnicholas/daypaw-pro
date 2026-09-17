@@ -10,6 +10,7 @@
  */
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 import type { DurableClient } from '@daypaw/durable-client/client'
 import { deriveKeyRef } from './provider-keys.ts'
 
@@ -37,7 +38,7 @@ export class ApiKeyCardStore {
   })
 
   /** Latest load wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
 
   /**
    * @param api - the wire face (credentials/host domains).
@@ -56,9 +57,7 @@ export class ApiKeyCardStore {
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
-    const generation = ++this.generation
-    this.store.update((s) => { s.status = 'loading' })
-    try {
+    await this.loads.run(async () => {
       const [name, catalogResponse] = await Promise.all([
         this.loadFirstAgentName(),
         this.api.session.modelCatalog(),
@@ -68,20 +67,21 @@ export class ApiKeyCardStore {
       const ref = deriveKeyRef(provider)
       const credentialsResponse = await this.api.credentials.describe([ref])
       if (!credentialsResponse.ok) throw new Error(credentialsResponse.error.message)
-      const configured = credentialsResponse.value[ref]?.configured === true
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+      return { name, configured: credentialsResponse.value[ref]?.configured === true }
+    }, {
+      start: (s) => { s.status = 'loading' },
+      success: (s, { name, configured }) => {
         s.status = 'ready'
         s.name = name
         s.configured = configured
-      })
-    } catch {
-      if (generation !== this.generation) return
-      // The failure detail has nowhere useful to go: the banner stays hidden
-      // (an unverifiable key must not block the workspace) and the settings
-      // page carries its own load errors.
-      this.store.update((s) => { s.status = 'error' })
-    }
+      },
+      failure: (s) => {
+        // The failure detail has nowhere useful to go: the banner stays hidden
+        // (an unverifiable key must not block the workspace) and the settings
+        // page carries its own load errors.
+        s.status = 'error'
+      },
+    })
   }
 
   /**

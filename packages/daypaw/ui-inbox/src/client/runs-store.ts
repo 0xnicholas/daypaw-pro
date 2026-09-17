@@ -4,10 +4,14 @@
  * journal timeline for the right column. Both are apply-closure snapshot
  * stores handed to the registrations through the inject hooks compartments
  * (the CatalogStore precedent in ui-agents); the host stays the single fact
- * source and any wire failure lands in the store's error status.
+ * source and any wire failure lands in the store's error status. Both load
+ * through `@daypaw/client-load`'s guard, so a superseded attempt — the board
+ * tick a manual refresh overtook, the selection a newer one replaced — writes
+ * nothing at all.
  */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 import type { DurableClient, WireJournalEntry, WireRun, WireRunLineage } from '@daypaw/durable-client/client'
 
 /**
@@ -47,7 +51,7 @@ export class RunsBoardStore {
   readonly store: SnapshotStore<RunsBoardState> = createSnapshotStore<RunsBoardState>({ status: 'idle', runs: [] })
 
   /** Latest fetch wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
   /** The live interval timer; undefined while stopped. */
   private timer: unknown
 
@@ -85,23 +89,22 @@ export class RunsBoardStore {
     await this.fetch()
   }
 
-  /** One generation-guarded fetch. */
+  /** One newest-wins fetch. */
   private async fetch(): Promise<void> {
-    const generation = ++this.generation
-    if (this.store.getSnapshot().status !== 'ready') this.store.update((s) => { s.status = 'loading' })
-    try {
-      const runs = await this.deps.api.listRuns()
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+    await this.loads.run(() => this.deps.api.listRuns(), {
+      // A tick that overtakes a finished board keeps the data on screen; only a
+      // board that has never loaded (or last failed) shows the loading status.
+      start: (s) => { if (s.status !== 'ready') s.status = 'loading' },
+      success: (s, runs) => {
         s.status = 'ready'
         s.runs = runs
-      })
-    } catch {
-      if (generation !== this.generation) return
-      // Any wire or payload failure reads as the same generic inline failure;
-      // raw host wording never reaches the page, and the poll keeps running.
-      this.store.update((s) => { s.status = 'error' })
-    }
+      },
+      failure: (s) => {
+        // Any wire or payload failure reads as the same generic inline failure;
+        // raw host wording never reaches the page, and the poll keeps running.
+        s.status = 'error'
+      },
+    })
   }
 }
 
@@ -131,7 +134,7 @@ export class TaskDetailStore {
   readonly store: SnapshotStore<TaskDetailState> = createSnapshotStore<TaskDetailState>(IDLE_DETAIL)
 
   /** Latest selection wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
 
   /**
    * @param deps - the wire face.
@@ -148,39 +151,35 @@ export class TaskDetailStore {
    * @returns nothing; the snapshot carries the outcome.
    */
   async select(runId: string | undefined): Promise<void> {
-    const generation = ++this.generation
     if (runId === undefined) {
+      this.loads.invalidate()
       this.store.set(IDLE_DETAIL)
       return
     }
     const sameRun = this.store.getSnapshot().runId === runId
-    this.store.update((s) => {
-      s.runId = runId
-      if (!(sameRun && s.status === 'ready')) s.status = 'loading'
-      if (!sameRun) {
-        s.lineage = undefined
-        s.timeline = undefined
-      }
-    })
-    try {
-      const [lineage, timeline] = await Promise.all([
-        this.deps.api.runLineage(runId),
-        this.deps.api.journalTimeline(runId),
-      ])
-      if (generation !== this.generation) return
-      this.store.update((s) => {
-        s.status = 'ready'
-        s.lineage = lineage
-        s.timeline = timeline
-      })
-    } catch {
-      if (generation !== this.generation) return
-      this.store.update((s) => {
-        s.status = 'error'
-        s.lineage = undefined
-        s.timeline = undefined
-      })
-    }
+    await this.loads.run(
+      () => Promise.all([this.deps.api.runLineage(runId), this.deps.api.journalTimeline(runId)]),
+      {
+        start: (s) => {
+          s.runId = runId
+          if (!(sameRun && s.status === 'ready')) s.status = 'loading'
+          if (!sameRun) {
+            s.lineage = undefined
+            s.timeline = undefined
+          }
+        },
+        success: (s, [lineage, timeline]) => {
+          s.status = 'ready'
+          s.lineage = lineage
+          s.timeline = timeline
+        },
+        failure: (s) => {
+          s.status = 'error'
+          s.lineage = undefined
+          s.timeline = undefined
+        },
+      },
+    )
   }
 
   /**

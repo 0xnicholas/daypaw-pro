@@ -5447,6 +5447,12 @@ importers:
         specifier: workspace:^
         version: link:../../../vendor/cordis
 
+  packages/daypaw/client-load:
+    devDependencies:
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:^
+        version: link:../../client/store
+
   packages/daypaw/durable-client:
     devDependencies:
       '@deepseek-ai/cordis':
@@ -5528,6 +5534,9 @@ importers:
 
   packages/daypaw/ui-agents:
     devDependencies:
+      '@daypaw/client-load':
+        specifier: workspace:^
+        version: link:../client-load
       '@daypaw/durable-client':
         specifier: workspace:^
         version: link:../durable-client
@@ -5585,6 +5594,9 @@ importers:
 
   packages/daypaw/ui-inbox:
     devDependencies:
+      '@daypaw/client-load':
+        specifier: workspace:^
+        version: link:../client-load
       '@daypaw/durable-client':
         specifier: workspace:^
         version: link:../durable-client
@@ -5645,6 +5657,9 @@ importers:
 
   packages/daypaw/ui-settings:
     devDependencies:
+      '@daypaw/client-load':
+        specifier: workspace:^
+        version: link:../client-load
       '@daypaw/durable-client':
         specifier: workspace:^
         version: link:../durable-client
@@ -5702,6 +5717,9 @@ importers:
       '@daypaw/approval-history':
         specifier: workspace:^
         version: link:../approval-history
+      '@daypaw/client-load':
+        specifier: workspace:^
+        version: link:../client-load
       '@daypaw/durable-client':
         specifier: workspace:^
         version: link:../durable-client

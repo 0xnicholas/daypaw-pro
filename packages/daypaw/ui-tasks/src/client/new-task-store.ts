@@ -12,6 +12,7 @@
 import { randomUuid } from './random-uuid.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { DurableClient, WireDefinition } from '@daypaw/durable-client/client'
@@ -73,7 +74,7 @@ export class NewTaskStore {
   })
 
   /** Latest roster load wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
   /** The run id minted for the task in flight; kept across failed submits so a retry attaches. */
   private pendingRunId: string | undefined
 
@@ -109,23 +110,18 @@ export class NewTaskStore {
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
-    const generation = ++this.generation
-    this.store.update((s) => { s.status = 'loading' })
-    try {
-      const definitions = await this.api.listDefinitions()
-      // The roster presents agents only; workflow definitions are engine
-      // internals the dialog cannot start (ruling #65).
-      const agents = definitions.filter(d => d.kind === 'agent').map(projectAgentOption)
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+    await this.loads.run(() => this.api.listDefinitions(), {
+      start: (s) => { s.status = 'loading' },
+      success: (s, definitions) => {
+        // The roster presents agents only; workflow definitions are engine
+        // internals the dialog cannot start (ruling #65).
+        const agents = definitions.filter(d => d.kind === 'agent').map(projectAgentOption)
         s.status = 'ready'
         s.agents = agents
         s.selected = agents[0]?.id
-      })
-    } catch {
-      if (generation !== this.generation) return
-      this.store.update((s) => { s.status = 'error' })
-    }
+      },
+      failure: (s) => { s.status = 'error' },
+    })
   }
 
   /** Pick an agent.

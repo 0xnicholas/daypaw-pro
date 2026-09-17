@@ -42,6 +42,7 @@
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
+    "@daypaw/client-load": "workspace:^",
     "@daypaw/approval-history": "workspace:^",
     "@daypaw/durable-client": "workspace:^",
     "@daypaw/ui-inbox": "workspace:^",

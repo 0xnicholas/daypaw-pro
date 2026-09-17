@@ -94,6 +94,8 @@ host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjec
 
 浏览器平面 wire 词汇（票 [#116](https://github.com/0xnicholas/daypaw-pro/issues/116)）：engine Remote 面的客户端 interface——端点字符串、`{ args }` 信封、snake_case 行、ok/error 解包、五值 run 状态词表（含 zh/en 文案）——收拢在 `@daypaw/durable-client` 一处；四个 ui-* 包经它读账本、不 import engine，wire 类型手声明而非 alias 引擎类型（序列化漂移由活网关 wire-contract spec 的执行证明兜底），解析策略统一 fail-loud、需要行级容错的消费方在自己的调用侧降级。
 
+浏览器平面 store 载入结算（票 [#118](https://github.com/0xnicholas/daypaw-pro/issues/118)）：七处手写代际守卫收拢在 `@daypaw/client-load` 一处（`LatestLoad`——最新一次尝试落笔，被顶替的成功与失败都不写）；各 store 只留取数、投影与自己的状态策略（何时 loading、刷新期是否保 ready、失败写什么），不变量行为只在包内 spec 测一次、各 store 保留一条并发接线断言。家取 fork 局部包而非上游 `dsh-client-store`（ADR 0014：上游当前无接受通道）。
+
 缓做与不做：`ctx.waitFor` gate 原语缓做（[第 1 章](01-durable-execution.md) §6 既定引擎工作，另立引擎票 #47）；v1 审批待办板块只用 dsh 交互式审批面（apiproxy pending 聚合 + mux 重放，wire 闭环已全），「等待人审批的 run」业务语义随原语落地后升级；pending 审批 unary 查询不做（mux-open 重放即冷启动基线）；路线 C 对话面缺口随 #36 否决消灭。
 
 ## 6. 权限与安全模型（裁决 [#46](https://github.com/0xnicholas/daypaw-pro/issues/46)）

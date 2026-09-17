@@ -93,7 +93,9 @@ describe('ApiKeyCardStore readiness', () => {
     expect(card.store.getSnapshot()).toMatchObject({ status: 'ready', name: FALLBACK_AGENT_NAME })
   })
 
-  it('keeps the latest load when an older response lands late', async () => {
+  // The rule's own spec lives in @daypaw/client-load; this asserts both roster
+  // loads share one guard.
+  it('shares one newest-wins guard across loads: an older response never wins', async () => {
     const api = new FakeHostApi()
     program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
     const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
@@ -107,20 +109,5 @@ describe('ApiKeyCardStore readiness', () => {
     release(ok([{ kind: 'agent', name: 'stale', version: '1.0.0' }]))
     await stale
     expect(card.store.getSnapshot().name).toBe('fresh')
-  })
-
-  it('ignores a stale load failure landing after a newer load succeeded (a roster failure is absorbed, never an error)', async () => {
-    const api = new FakeHostApi()
-    program(api, [{ kind: 'agent', name: 'starter-assistant', version: '1.0.0' }])
-    const card = new ApiKeyCardStore({ credentials: api.credentials, session: api.session }, api.durable)
-    let reject!: (error: unknown) => void
-    const parked = new Promise<unknown>((_resolve, rej) => { reject = rej })
-    api.onListDefinitions = () => parked as never
-    const stale = card.load()
-    program(api, [{ kind: 'agent', name: 'fresh', version: '1.0.0' }])
-    await card.load()
-    reject(new Error('late failure'))
-    await stale
-    expect(card.store.getSnapshot()).toMatchObject({ status: 'ready', name: 'fresh' })
   })
 })

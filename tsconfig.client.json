@@ -127,6 +127,7 @@
     { "path": "./packages/daypaw/ui-tasks" },
     { "path": "./packages/daypaw/ui-agents" },
     { "path": "./packages/daypaw/ui-brand" },
-    { "path": "./packages/daypaw/durable-client" }
+    { "path": "./packages/daypaw/durable-client" },
+    { "path": "./packages/daypaw/client-load" }
   ]
 }

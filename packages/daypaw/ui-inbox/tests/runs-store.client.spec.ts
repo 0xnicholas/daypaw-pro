@@ -120,7 +120,9 @@ describe('RunsBoardStore', () => {
     expect(board.store.getSnapshot()).toEqual({ status: 'ready', runs: [RUN] })
   })
 
-  it('keeps the newest fetch: a stale response never overwrites a newer one', async () => {
+  // The newest-wins rule itself is @daypaw/client-load's spec; this store keeps
+  // one wiring assertion per controller — both refreshes must share the guard.
+  it('shares one newest-wins guard across refreshes: a superseded fetch never overwrites a newer one', async () => {
     let resolveFirst!: (value: WireRun[]) => void
     const first = new Promise<WireRun[]>((resolve) => { resolveFirst = resolve })
     const listRuns = vi.fn()
@@ -132,20 +134,6 @@ describe('RunsBoardStore', () => {
     resolveFirst([RUN])
     await Promise.all([stale, fresh])
     expect(board.store.getSnapshot().runs).toEqual([OTHER])
-  })
-
-  it('keeps the newest fetch: a stale rejection never overwrites a ready board', async () => {
-    let rejectFirst!: (error: Error) => void
-    const first = new Promise<WireRun[]>((_resolve, reject) => { rejectFirst = reject })
-    const listRuns = vi.fn()
-      .mockImplementationOnce(() => first)
-      .mockImplementationOnce(() => Promise.resolve([OTHER]))
-    const board = new RunsBoardStore({ api: { ...apiOf(), listRuns } })
-    const stale = board.refresh()
-    const fresh = board.refresh()
-    rejectFirst(new Error('boom'))
-    await Promise.all([stale, fresh])
-    expect(board.store.getSnapshot()).toEqual({ status: 'ready', runs: [OTHER] })
   })
 
   it('refresh forces an out-of-band refetch without the interval', async () => {
@@ -188,37 +176,6 @@ describe('TaskDetailStore', () => {
     expect(detail.store.getSnapshot()).toEqual({ runId: 'r1', status: 'error', lineage: undefined, timeline: undefined })
   })
 
-  it('keeps the newest selection: a stale response never overwrites it', async () => {
-    let resolveFirst!: (value: WireRunLineage) => void
-    const first = new Promise<WireRunLineage>((resolve) => { resolveFirst = resolve })
-    const runLineage = vi.fn()
-      .mockImplementationOnce(() => first)
-      .mockImplementationOnce(() => Promise.resolve({ ...LINEAGE, run: OTHER }))
-    const detail = new TaskDetailStore({ api: { ...apiOf(), runLineage } })
-    const stale = detail.select('r1')
-    const fresh = detail.select('r2')
-    resolveFirst(LINEAGE)
-    await Promise.all([stale, fresh])
-    expect(detail.store.getSnapshot()).toEqual({
-      runId: 'r2', status: 'ready', lineage: { ...LINEAGE, run: OTHER }, timeline: TIMELINE,
-    })
-  })
-
-  it('keeps the newest selection: a stale rejection never lands an error', async () => {
-    let rejectFirst!: (error: Error) => void
-    const first = new Promise<WireRunLineage>((_resolve, reject) => { rejectFirst = reject })
-    const runLineage = vi.fn()
-      .mockImplementationOnce(() => first)
-      .mockImplementationOnce(() => Promise.resolve(LINEAGE))
-    const detail = new TaskDetailStore({ api: { ...apiOf(), runLineage } })
-    const stale = detail.select('r1')
-    const fresh = detail.select('r2')
-    rejectFirst(new Error('boom'))
-    await Promise.all([stale, fresh])
-    expect(detail.store.getSnapshot().status).toBe('ready')
-    expect(detail.store.getSnapshot().runId).toBe('r2')
-  })
-
   it('re-selecting the same run while loading fetches again without leaving loading', async () => {
     const api = { ...apiOf(), runLineage: vi.fn((): Promise<WireRunLineage> => Promise.resolve(LINEAGE)) }
     const detail = new TaskDetailStore({ api })
@@ -241,7 +198,9 @@ describe('TaskDetailStore', () => {
     expect(detail.store.getSnapshot().status).toBe('ready')
   })
 
-  it('a superseded refresh never overwrites a newer selection', async () => {
+  // The rule's own spec lives in @daypaw/client-load; this asserts the store's
+  // two entry paths (a board tick's refresh, a selection) share one guard.
+  it('shares one newest-wins guard across a refresh and a selection: a superseded refresh never overwrites a newer selection', async () => {
     let resolveRefresh!: (value: WireRunLineage) => void
     const second = new Promise<WireRunLineage>((resolve) => { resolveRefresh = resolve })
     const runLineage = vi.fn()

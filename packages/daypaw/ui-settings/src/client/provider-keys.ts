@@ -9,6 +9,7 @@
  */
 import type { ClientRemote, CredentialInfo } from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 
 /**
  * Derive the conventional credential reference for a provider route: this
@@ -69,7 +70,7 @@ export class CredentialsStore {
   })
 
   /** Latest load wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
 
   /**
    * @param api - the wire face (credentials/llm domains).
@@ -86,9 +87,7 @@ export class CredentialsStore {
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
-    const generation = ++this.generation
-    this.store.update((s) => { s.status = 'loading'; s.error = null })
-    try {
+    await this.loads.run(async () => {
       const providersResponse = await this.api.llm.listProviders()
       if (!providersResponse.ok) throw new Error(providersResponse.error.message)
       // Derive each provider's conventional reference exactly once; the rows zip back over it.
@@ -99,23 +98,26 @@ export class CredentialsStore {
         if (!credentialsResponse.ok) throw new Error(credentialsResponse.error.message)
         credentials = credentialsResponse.value
       }
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+      return keyed.map(({ entry, ref }) => ({
+        provider: entry.id,
+        displayName: entry.name,
+        ref,
+        credential: credentials[ref] ?? UNCONFIGURED,
+      } satisfies CredentialRow))
+    }, {
+      start: (s) => {
+        s.status = 'loading'
+        s.error = null
+      },
+      success: (s, rows) => {
         s.status = 'ready'
-        s.rows = keyed.map(({ entry, ref }) => ({
-          provider: entry.id,
-          displayName: entry.name,
-          ref,
-          credential: credentials[ref] ?? UNCONFIGURED,
-        }))
-      })
-    } catch (error) {
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+        s.rows = rows
+      },
+      failure: (s, error) => {
         s.status = 'error'
         s.error = messageOf(error)
-      })
-    }
+      },
+    })
   }
 
   /**

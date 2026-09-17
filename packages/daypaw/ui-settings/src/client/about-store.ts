@@ -8,6 +8,7 @@
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 import { messageOf } from './provider-keys.ts'
 
 /** The observable host facts the About tab lists. */
@@ -51,7 +52,7 @@ export class AboutStore {
   })
 
   /** Latest load wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
 
   /**
    * @param api - the wire face (session catalog).
@@ -68,27 +69,27 @@ export class AboutStore {
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
-    const generation = ++this.generation
-    this.store.update((s) => { s.status = 'loading'; s.error = null })
-    try {
+    await this.loads.run(async () => {
       const response = await this.api.modelCatalog()
       if (!response.ok) throw new Error(response.error.message)
-      const description: HostFacts = {
+      return {
         provider: response.value.default.provider,
         model: response.value.default.model,
         attachedSessions: this.sessions.list.getSnapshot().ids.length,
-      }
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+      } satisfies HostFacts
+    }, {
+      start: (s) => {
+        s.status = 'loading'
+        s.error = null
+      },
+      success: (s, description) => {
         s.status = 'ready'
         s.description = description
-      })
-    } catch (error) {
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+      },
+      failure: (s, error) => {
         s.status = 'error'
         s.error = messageOf(error)
-      })
-    }
+      },
+    })
   }
 }

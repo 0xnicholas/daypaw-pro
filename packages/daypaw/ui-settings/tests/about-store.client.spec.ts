@@ -57,7 +57,9 @@ describe('AboutStore.load', () => {
     expect(store.store.getSnapshot().error).toBe('offline')
   })
 
-  it('keeps the newer load when an older one lands late (success and failure alike)', async () => {
+  // The rule's own spec lives in @daypaw/client-load; this asserts both loads
+  // share one guard.
+  it('shares one newest-wins guard across loads: an older one landing late writes nothing', async () => {
     const api = new FakeHostApi()
     const sessions = fakeSessions([])
     const parked = deferred<Result<FakeModelCatalog>>()
@@ -69,24 +71,11 @@ describe('AboutStore.load', () => {
     }))
     await store.load()
     expect(store.store.getSnapshot().description?.provider).toBe('other')
-    // The stale success lands after: ignored.
     parked.resolve(ok({
       default: { provider: 'deepseek', model: 'deepseek-chat' }, routableProviders: [], groups: [], failures: [],
     }))
     await stale
     expect(store.store.getSnapshot().description?.provider).toBe('other')
-    // A stale failure lands after: also ignored.
-    const parkedAgain = deferred<Result<FakeModelCatalog>>()
-    api.onModelCatalog = () => parkedAgain.promise
-    const staleAgain = store.load()
-    api.onModelCatalog = () => Promise.resolve(ok({
-      default: { provider: 'third', model: 'm3' }, routableProviders: [], groups: [], failures: [],
-    }))
-    await store.load()
-    parkedAgain.reject(new Error('late failure'))
-    await staleAgain
-    expect(store.store.getSnapshot().status).toBe('ready')
-    expect(store.store.getSnapshot().description?.provider).toBe('third')
   })
 })
 

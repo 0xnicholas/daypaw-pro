@@ -9,6 +9,7 @@
  */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 import type { DurableClient } from '@daypaw/durable-client/client'
 
 /** One catalog card (agents only; broken or non-agent definitions never list). */
@@ -43,7 +44,7 @@ export class CatalogStore {
   })
 
   /** Latest roster load wins; an older response never overwrites a newer one. */
-  private generation = 0
+  private readonly loads = new LatestLoad(this.store)
 
   /**
    * @param api - the durable wire face (durable/listDefinitions).
@@ -56,12 +57,9 @@ export class CatalogStore {
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
-    const generation = ++this.generation
-    this.store.update((s) => { s.status = 'loading' })
-    try {
-      const definitions = await this.api.listDefinitions()
-      if (generation !== this.generation) return
-      this.store.update((s) => {
+    await this.loads.run(() => this.api.listDefinitions(), {
+      start: (s) => { s.status = 'loading' },
+      success: (s, definitions) => {
         s.status = 'ready'
         s.cards = definitions
           .filter(definition => definition.kind === 'agent')
@@ -72,13 +70,13 @@ export class CatalogStore {
             name: definition.name,
             version: definition.version,
           }))
-      })
-    } catch {
-      if (generation !== this.generation) return
-      // Any wire or payload failure reads as the same generic inline failure;
-      // raw host wording never reaches the page.
-      this.store.update((s) => { s.status = 'error' })
-    }
+      },
+      failure: (s) => {
+        // Any wire or payload failure reads as the same generic inline failure;
+        // raw host wording never reaches the page.
+        s.status = 'error'
+      },
+    })
   }
 
   /**

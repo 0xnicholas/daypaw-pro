@@ -75,7 +75,9 @@ describe('CredentialsStore.load', () => {
     expect(store.store.getSnapshot().error).toBe('socket gone')
   })
 
-  it('keeps the newer load when an older one lands late (success and failure alike)', async () => {
+  // The rule's own spec lives in @daypaw/client-load; this asserts both loads
+  // share one guard.
+  it('shares one newest-wins guard across loads: an older one landing late writes nothing', async () => {
     const api = new FakeHostApi()
     const parked = deferred<Result<readonly FakeProviderInfo[]>>()
     api.onListProviders = () => parked.promise
@@ -84,20 +86,9 @@ describe('CredentialsStore.load', () => {
     api.onListProviders = () => Promise.resolve(ok([{ id: 'openai', name: 'OpenAI' }]))
     await store.load()
     expect(store.store.getSnapshot().rows.map(row => row.provider)).toEqual(['openai'])
-    // The stale success lands after: ignored.
     parked.resolve(ok([{ id: 'deepseek', name: 'DeepSeek' }]))
     await stale
     expect(store.store.getSnapshot().rows.map(row => row.provider)).toEqual(['openai'])
-    // A stale failure lands after: also ignored.
-    const parkedAgain = deferred<Result<readonly FakeProviderInfo[]>>()
-    api.onListProviders = () => parkedAgain.promise
-    const staleAgain = store.load()
-    api.onListProviders = () => Promise.resolve(ok([]))
-    await store.load()
-    parkedAgain.reject(new Error('late failure'))
-    await staleAgain
-    expect(store.store.getSnapshot().status).toBe('ready')
-    expect(store.store.getSnapshot().rows).toEqual([])
   })
 })
 

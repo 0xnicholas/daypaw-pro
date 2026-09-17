@@ -69,7 +69,9 @@ describe('NewTaskStore roster', () => {
     expect(store.store.getSnapshot().status).toBe('error')
   })
 
-  it('keeps the latest load when an older response lands late', async () => {
+  // The rule's own spec lives in @daypaw/client-load; this asserts both roster
+  // loads share one guard.
+  it('shares one newest-wins guard across loads: an older response never lands', async () => {
     const api = new FakeTaskApi()
     let release!: (value: unknown) => void
     const parked = new Promise<unknown>((resolve) => { release = resolve })
@@ -83,20 +85,6 @@ describe('NewTaskStore roster', () => {
     const state = store.store.getSnapshot()
     expect(state.status).toBe('ready')
     expect(state.agents.map(agent => agent.id)).toEqual(['fresh@1'])
-  })
-
-  it('ignores a stale load failure landing after a newer load succeeded', async () => {
-    const api = new FakeTaskApi()
-    let reject!: (error: unknown) => void
-    const parked = new Promise<unknown>((_resolve, rej) => { reject = rej })
-    api.onListDefinitions = () => parked as never
-    const store = new NewTaskStore(api, sessionsBench().sessions)
-    const stale = store.load()
-    api.onListDefinitions = () => Promise.resolve(ok([definition('fresh')]))
-    await store.load()
-    reject(new Error('late failure'))
-    await stale
-    expect(store.store.getSnapshot().status).toBe('ready')
   })
 })
 

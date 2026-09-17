@@ -49,7 +49,9 @@ describe('CatalogStore', () => {
     expect(store.store.getSnapshot().status).toBe('error')
   })
 
-  it('keeps the newest load: a stale response never overwrites it', async () => {
+  // The rule's own spec lives in @daypaw/client-load; this asserts both loads
+  // share one guard.
+  it('shares one newest-wins guard across loads: a stale response never overwrites it', async () => {
     let resolveFirst!: (value: WireDefinition[]) => void
     const first = new Promise<WireDefinition[]>((resolve) => { resolveFirst = resolve })
     const listDefinitions = vi.fn()
@@ -61,22 +63,6 @@ describe('CatalogStore', () => {
     resolveFirst([DISPLAYED])
     await Promise.all([stale, fresh])
     expect(store.store.getSnapshot().cards.map(card => card.key)).toEqual(['invoice-checker@0.3.1'])
-  })
-
-  it('keeps the newest load: a stale rejection never overwrites it', async () => {
-    let rejectFirst!: (error: Error) => void
-    const first = new Promise<WireDefinition[]>((_resolve, reject) => { rejectFirst = reject })
-    const listDefinitions = vi.fn()
-      .mockImplementationOnce(() => first)
-      .mockImplementationOnce(() => Promise.resolve([PLAIN]))
-    const store = new CatalogStore(apiOf(listDefinitions))
-    const stale = store.load()
-    const fresh = store.load()
-    rejectFirst(new Error('boom'))
-    await Promise.all([stale, fresh])
-    const state = store.store.getSnapshot()
-    expect(state.status).toBe('ready')
-    expect(state.cards.map(card => card.key)).toEqual(['invoice-checker@0.3.1'])
   })
 
   it('opens and closes the detail view, ignoring unknown keys', async () => {

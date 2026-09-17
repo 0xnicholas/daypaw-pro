@@ -63,6 +63,10 @@ dsh agent preset 机制在 daypaw 壳内的终局定位：上游机制保留（�
 
 浏览器平面对 engine Remote 面的唯一客户端词汇家（`@daypaw/durable-client`）：`durable/*` 端点调用、wire 行类型、状态词表（含 zh/en 文案）与失败折叠一处声明，四个 ui-* 包经它读 Engine Ledger、不 import engine。wire 类型手声明而非 alias engine 类型——独立声明正是 wire 边界校验的对象，序列化漂移由活网关 spec 的执行证明兑底。
 
+### 载入控制器（Load Controller）
+
+产品壳浏览器平面的 store 载入结算规则（`@daypaw/client-load`）：一次载入只有最新一次尝试能落笔，被顶替的尝试数据与拒绝都不写；`invalidate()` 作废在飞尝试而不发起新的（清空/选择路径）。取数、投影与状态策略留在各 store；「何时该载入」的惰性约定不属此词。ADR 0014。
+
 ## 编排（Durable Engine 域）
 
 ### Durable Engine（参照系名 Orchestrator）
