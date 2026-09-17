@@ -158,4 +158,4 @@ Docs accompany every code change: update affected README and JSDoc contracts tog
 
 # daypaw-pro (fork layer)
 
-> Fork-only additions; everything above stays upstream-owned (exceptions registered in `docs/fork/CORE_TOUCHES.md`). Skills: GitHub issues via `gh` — `docs/agents/issue-tracker.md`; triage labels — `docs/agents/triage-labels.md`; domain docs (root `CONTEXT.md` + `docs/adr/`) — `docs/agents/domain.md`.
+> Fork-only additions; everything above stays upstream-owned (exceptions registered in `docs/fork/CORE_TOUCHES.md`). Skills: GitHub issues via `gh` — `docs/agents/issue-tracker.md`; triage labels — `docs/agents/triage-labels.md`; domain docs (root `CONTEXT.md` + `docs/adr/`) — `docs/agents/domain.md`; fork front door — `README-daypaw.md`.
