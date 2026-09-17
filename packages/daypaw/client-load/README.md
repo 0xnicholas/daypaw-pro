@@ -31,15 +31,26 @@ Consumed by the fork's shell stores: the inbox board's poll and the task detail'
 
 ### Entry point
 
-```ts
-private readonly loads = new LatestLoad(this.store)
+```ts ignore-check
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { LatestLoad } from '@daypaw/client-load'
 
-async load(): Promise<void> {
-  await this.loads.run(() => this.api.listDefinitions(), {
-    start: s => { s.status = 'loading' },
-    success: (s, definitions) => { s.status = 'ready'; s.cards = project(definitions) },
-    failure: s => { s.status = 'error' },
-  })
+interface CatalogState {
+  status: 'idle' | 'loading' | 'ready' | 'error'
+  cards: readonly string[]
+}
+
+class CatalogStore {
+  private readonly store: SnapshotStore<CatalogState> = createSnapshotStore<CatalogState>({ status: 'idle', cards: [] })
+  private readonly loads = new LatestLoad(this.store)
+
+  async load(read: () => Promise<readonly string[]>): Promise<void> {
+    await this.loads.run(read, {
+      start: (s) => { s.status = 'loading' },
+      success: (s, cards) => { s.status = 'ready'; s.cards = cards },
+      failure: (s) => { s.status = 'error' },
+    })
+  }
 }
 ```
 
