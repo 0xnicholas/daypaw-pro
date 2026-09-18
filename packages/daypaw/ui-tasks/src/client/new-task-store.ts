@@ -24,7 +24,7 @@ export interface AgentOption {
   /** Business name, falling back to the technical name. */
   label: string
   /** Input presentation the dialog renders for this agent. */
-  inputKind: 'text' | 'json' | null
+  inputKind: WireDefinition['inputKind']
 }
 
 /** Dialog snapshot. */
@@ -239,7 +239,7 @@ function splitIdentity(id: string): [name: string, version: string] {
  *   (blank text, or a malformed JSON draft).
  */
 function composeInput(
-  inputKind: 'text' | 'json' | null,
+  inputKind: WireDefinition['inputKind'],
   state: NewTaskState,
   parseJson: () => unknown,
 ): unknown {

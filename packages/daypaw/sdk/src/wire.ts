@@ -1,7 +1,10 @@
 /**
  * The wire face SDK-compiled definitions carry for browser-initiated starts
  * (ruling #65): the input presentation the dialog renders and the opaque
- * validator the engine's `durable/startRun` boundary calls. Installed by
+ * validator the engine's `durable/startRun` boundary calls. The starter-text
+ * rule's single declaration (ticket #119): which shapes count, the bare
+ * string the wire carries, and the wrapping live in this module; every
+ * other seat references the wire face. Installed by
  * {@link bind} and {@link bindAgent} at compile time.
  * @module @daypaw/sdk/wire
  */
