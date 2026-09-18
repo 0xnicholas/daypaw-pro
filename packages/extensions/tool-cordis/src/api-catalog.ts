@@ -935,7 +935,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote(\'steerText\') async steerText(runId: string, text: string): Promise<number>',
-        description: 'Append a free-text follow-up segment to an unfinished steerable run (ticket #94): the browser follow-up seat\'s channel. Resolves the run\'s definition and validates the text through its wire face — the same starter-text rule startRun applies, so the seat sends the bare text the dialog sends and the recorded segment carries the input the consuming body expects. Fails loud when the run is unknown, its definition is not registered, or the wire contract rejects the text (a json-kind definition takes no free-text follow-up); nothing records on failure. Served to the browser as the Remote endpoint `durable/steerText` (the `steer` precedent).',
+        description: 'Append a free-text follow-up segment to an unfinished steerable run (ticket #94): the browser follow-up seat\'s channel. Resolves the run\'s definition and validates the text through its wire face — the same starter-text rule startRun applies; `@daypaw/sdk/wire` owns the rule\'s declaration. The journal records the input the consuming body expects. Fails loud when the run is unknown, its definition is not registered, or the wire contract rejects the text (a json-kind definition takes no free-text follow-up); nothing records on failure. Served to the browser as the Remote endpoint `durable/steerText` (the `steer` precedent).',
         parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'text', description: 'free-text follow-up; the definition\'s wire face owns the starter shape.' }],
         returns: 'the assigned segment sequence (1-based).',
       },
