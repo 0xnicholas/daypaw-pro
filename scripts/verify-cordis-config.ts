@@ -54,6 +54,26 @@ const CHOOSER_BACKEND_PACKAGES = [
   '@deepseek-ai/dsh-client-ui-directory-picker-browse',
   '@deepseek-ai/dsh-client-ui-directory-picker-native',
 ]
+
+/** The upstream web bundle patch whose browser roster the fork mirrors. */
+const UPSTREAM_WEB_PATCH = 'packages/bundle/web-app/cordis.patch.yml'
+/** The fork web bundle patch that must mirror the upstream browser roster. */
+const FORK_WEB_PATCH = 'packages/daypaw/web-app/cordis.patch.yml'
+
+/**
+ * Upstream web-bundle browser rows the fork roster deliberately does not
+ * mirror. Every entry states its reason: a trim without a recorded reason is
+ * indistinguishable from a sync miss, which is the failure this gate exists
+ * to catch. A stale entry (the upstream row is gone) fails the gate too.
+ */
+const ROSTER_TRIMS = [
+  '@deepseek-ai/dsh-client-ui-open-in-app', // the daypaw shell ships no "Open In…" split button
+  '@deepseek-ai/dsh-client-ui-sidebar', // @daypaw/ui-inbox replaces the generic sidebar wholesale
+  '@deepseek-ai/dsh-client-ui-sidebar-documentpreview', // right-sidebar document tab stays unshipped
+  '@deepseek-ai/dsh-client-ui-sidebar-files', // right-sidebar file-tree tab stays unshipped
+  '@deepseek-ai/dsh-client-ui-brand-official', // @daypaw/ui-brand occupies the brand slots
+]
+
 const errors: string[] = []
 const pluginReferences: PluginReference[] = []
 
@@ -77,6 +97,7 @@ if (import.meta.main) {
   errors.push(...validateSourcePlaneResolution())
   errors.push(...validatePresetPlaneSeparation())
   errors.push(...validateClientHalvesDeclared())
+  errors.push(...validateRosterMirror())
 
   if (errors.length > 0) {
     console.error('verify-cordis-config: invalid Loader metadata or plugin package resolution:')
@@ -282,6 +303,115 @@ function validatePackageTestResolution(): string[] {
   }
   return [...referencesByManifest].flatMap(([manifestPath, references]) =>
     packageTestPluginDependencyErrors(manifestPath, readManifest(manifestPath), references))
+}
+
+/** One browser-roster row of a web bundle patch, keyed for mirror comparison. */
+export interface RosterRow {
+  /** Repository-relative patch file the row lives in. */
+  file: string
+  /** Row id; diagnostics cite it. */
+  id: string
+  /** Package the row mounts (subpath specifiers collapse to the package). */
+  packageName: string
+}
+
+/**
+ * The fork browser roster must mirror every upstream web-bundle client row.
+ *
+ * The fork composes its browser surface by mirroring the upstream web bundle
+ * patch, and a client row the sync misses fails nothing at bundle time: the
+ * modules row serves what it has, so the plugin either never reaches the
+ * browser (the ui-deliverables-form class of silent absence) or the boot dies
+ * on a missing service a whole cycle late. Rows are therefore compared as a
+ * set of package names — every upstream row whose package declares
+ * `dsh.client` must appear in the fork roster or in the trim list with a
+ * recorded reason. Host rows are not compared: their config overrides and
+ * disables are legitimate patch semantics, not roster membership. A trim
+ * whose upstream row disappears fails symmetrically, so the list cannot rot.
+ * @param upstream - client rows of the upstream web bundle patch.
+ * @param fork - client rows of the fork web bundle patch.
+ * @param trims - packages the fork roster deliberately does not mirror.
+ * @returns one diagnostic per unmirrored upstream row and per stale trim.
+ */
+export function rosterMirrorViolations(
+  upstream: readonly RosterRow[],
+  fork: readonly RosterRow[],
+  trims: readonly string[],
+): string[] {
+  const violations: string[] = []
+  const mirrored = new Set(fork.map(row => row.packageName))
+  for (const row of upstream) {
+    if (mirrored.has(row.packageName) || trims.includes(row.packageName)) continue
+    violations.push(
+      `${row.file}: row "${row.id}" mounts ${row.packageName}, which declares dsh.client; `
+        + `the fork roster must mirror it — add the row to ${FORK_WEB_PATCH} `
+        + 'or extend ROSTER_TRIMS in scripts/verify-cordis-config.ts with its reason',
+    )
+  }
+  const upstreamPackages = new Set(upstream.map(row => row.packageName))
+  for (const trim of trims) {
+    if (upstreamPackages.has(trim)) continue
+    violations.push(
+      `scripts/verify-cordis-config.ts ROSTER_TRIMS: ${trim} has no row in ${UPSTREAM_WEB_PATCH} `
+        + 'anymore — remove the stale trim entry',
+    )
+  }
+  return violations
+}
+
+/**
+ * Packages whose workspace manifest declares a browser half (`dsh.client`).
+ * @returns the package names that count as browser-roster rows.
+ */
+function clientPluginPackages(): Set<string> {
+  const names = new Set<string>()
+  for (const manifestPath of globSync('packages/*/*/package.json', { cwd: root })) {
+    const manifest = readManifest(manifestPath) as PackageManifest & {
+      dsh?: { client?: unknown }
+    }
+    if (manifest.name === undefined || manifest.dsh?.client === undefined) continue
+    names.add(manifest.name)
+  }
+  return names
+}
+
+/**
+ * Browser-roster rows of one web bundle patch: every nested entry (inserts,
+ * group configs, include patches) whose package declares `dsh.client`.
+ * @param file - repository-relative patch path.
+ * @param clientPackages - packages that count as browser-roster rows.
+ * @returns the roster rows, keyed for mirror comparison.
+ */
+function clientRosterRows(file: string, clientPackages: ReadonlySet<string>): RosterRow[] {
+  const rows: RosterRow[] = []
+  const walk = (value: unknown): void => {
+    if (isUnknownArray(value)) {
+      for (const item of value) walk(item)
+      return
+    }
+    if (!isRecord(value)) return
+    if (typeof value.id === 'string' && typeof value.name === 'string') {
+      const packageName = packageNameFromSpecifier(value.name)
+      if (packageName !== undefined && clientPackages.has(packageName)) {
+        rows.push({ file, id: value.id, packageName })
+      }
+    }
+    for (const child of Object.values(value)) walk(child)
+  }
+  walk(loadEntries(file))
+  return rows
+}
+
+/** Check the fork browser roster against the upstream web bundle.
+ * @returns roster-mirror diagnostics for the two web bundle patches.
+ */
+function validateRosterMirror(): string[] {
+  const clientPackages = clientPluginPackages()
+  return rosterMirrorViolations(
+    clientRosterRows(UPSTREAM_WEB_PATCH, clientPackages),
+    clientRosterRows(FORK_WEB_PATCH, clientPackages),
+    ROSTER_TRIMS,
+  )
 }
 
 /**

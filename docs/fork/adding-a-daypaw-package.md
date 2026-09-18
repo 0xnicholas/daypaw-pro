@@ -45,6 +45,8 @@ packages/daypaw/<pkg>/
 | `tsconfig.host.json` / `tsconfig.client.json` | 每包加 `{ "path": "./packages/daypaw/<pkg>" }` 引用；engine/store/sdk 归 host 聚合，ui-* 与客户端纯库归 client（聚合唯一，不同属两端） |
 | `docs/config-catalog.md`(+`.zh.md`) | 新包会进「库包（无插件入口）」清单——`pnpm run gen-config-catalog` 再生**英文侧**，中文侧按配对流程随动并重录 sidecar（生成器只写英文） |
 
+**ui-\* 浏览器插件包另有两步登记**（各有其门）：`packages/daypaw/web-app/cordis.patch.yml` 加 roster 行（门：`verify-cordis-config` 的 roster 镜像检查——上游 `dsh.client` 行必须被镜像或入其 `ROSTER_TRIMS` 裁剪清单；fork 自有行自由添加，但缺行即整面缺席）与 `packages/daypaw/web-app/package.json` 加依赖行（门：同一脚本的 bundle 依赖闭包检查）。
+
 零改动（glob/发现机制自动覆盖，已核实）：`pnpm-workspace.yaml`（`packages/*/*`）、vitest projects 与覆盖率 globs、`scripts/publint-all.ts`、根 `tsdown.config.ts`（客户端包仍需自己的包级配置，见 §1）、`.oxlintrc.json`。`scripts/check-workspace-constraints.ts` 的 release-member 规则已登记 core touch（daypaw 组排除，保 private 姿态）——上游 npm-public 化后此顶不再是零改动。
 
 ## 3. 包拓扑与命名

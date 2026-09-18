@@ -14,6 +14,8 @@ import {
   metadataExpressionErrors,
   packageTestFixtureDependencyErrors,
   packageTestPluginDependencyErrors,
+  rosterMirrorViolations,
+  type RosterRow,
 } from './verify-cordis-config.ts'
 
 describe('verify-cordis-config metadata expressions', () => {
@@ -85,6 +87,45 @@ describe('workspace Bundle discovery and product dependency closures', () => {
       { file, name: '@deepseek-ai/dsh-missing-plugin' },
     ])).toEqual([
       `${file}: @deepseek-ai/dsh-missing-plugin must be declared in ${manifestPath} dependencies`,
+    ])
+  })
+})
+
+describe('fork browser roster mirrors the upstream web bundle', () => {
+  const upstreamFile = 'packages/bundle/web-app/cordis.patch.yml'
+  const forkFile = 'packages/daypaw/web-app/cordis.patch.yml'
+  const mirroredRow: RosterRow = { file: upstreamFile, id: 'ui-theme', packageName: '@deepseek-ai/dsh-client-ui-theme' }
+  const mirrorRow: RosterRow = { file: forkFile, id: 'ui-theme', packageName: '@deepseek-ai/dsh-client-ui-theme' }
+  const trimmedRow: RosterRow = {
+    file: upstreamFile,
+    id: 'ui-sidebar',
+    packageName: '@deepseek-ai/dsh-client-ui-sidebar',
+  }
+
+  it('accepts a mirrored row and a trimmed row', () => {
+    expect(rosterMirrorViolations([mirroredRow, trimmedRow], [mirrorRow], ['@deepseek-ai/dsh-client-ui-sidebar'])).toEqual([])
+  })
+
+  it('rejects an upstream client row the fork neither mirrors nor trims (sync missed it)', () => {
+    expect(rosterMirrorViolations([trimmedRow], [], [])).toEqual([
+      `${upstreamFile}: row "ui-sidebar" mounts @deepseek-ai/dsh-client-ui-sidebar, which declares dsh.client; `
+        + `the fork roster must mirror it — add the row to ${forkFile} `
+        + 'or extend ROSTER_TRIMS in scripts/verify-cordis-config.ts with its reason',
+    ])
+  })
+
+  it('rejects a mirrored row the fork roster dropped', () => {
+    expect(rosterMirrorViolations([mirroredRow], [], [])).toEqual([
+      `${upstreamFile}: row "ui-theme" mounts @deepseek-ai/dsh-client-ui-theme, which declares dsh.client; `
+        + `the fork roster must mirror it — add the row to ${forkFile} `
+        + 'or extend ROSTER_TRIMS in scripts/verify-cordis-config.ts with its reason',
+    ])
+  })
+
+  it('rejects a trim whose upstream row is gone', () => {
+    expect(rosterMirrorViolations([], [], ['@deepseek-ai/dsh-client-ui-brand-official'])).toEqual([
+      'scripts/verify-cordis-config.ts ROSTER_TRIMS: @deepseek-ai/dsh-client-ui-brand-official '
+        + `has no row in ${upstreamFile} anymore — remove the stale trim entry`,
     ])
   })
 })
