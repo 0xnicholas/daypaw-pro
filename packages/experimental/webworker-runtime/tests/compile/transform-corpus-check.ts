@@ -43,6 +43,10 @@ const BASELINE_EXEMPT: ReadonlyMap<string, string> = new Map([
   [DOCKKIT_BUNDLE, 'imports .css, which bare Node cannot load'],
   ['packages/client/ui-primitives/lib/index.js', 'imports .css, which bare Node cannot load'],
   ['packages/client/web/lib/index.js', 'imports .css, which bare Node cannot load'],
+  // The fork's assembled-boot library imports the client-web graph, which this
+  // launcher resolves into its source tree and which reaches `.css` there (the
+  // same admission as the client/web row above; ticket #123).
+  ['packages/daypaw/assembled-boot/lib/index.js', 'imports .css, which bare Node cannot load'],
   ['packages/subprocess/win32-process/lib/index.js', 'koffi type-name collision on a second load'],
   ['packages/test-support/client-runtime/lib/index.js', "needs vitest's internal state"],
 ])
