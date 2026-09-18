@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-09-18-daypaw-agent-plane-overlay-derived.md
+2026-09-18-daypaw-agent-plane-overlay-derived.md: 98bab2600c36c7b8a15686470facf1ce788eb47d
+2026-09-18-daypaw-agent-plane-overlay-derived.zh.md: e50793b12ed736efb8ca4591d53c63a948eed525

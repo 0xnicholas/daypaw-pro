@@ -15,14 +15,14 @@
  * stays open until answered (the waiting state), and a rejection fails the
  * call closed with nothing executed.
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import {
-  boot, healProfilesModuleFallback, initProfile, loadOverlayPatches, loadProfile,
+  boot, composeEntries, healProfilesModuleFallback, initProfile, loadOverlayPatches, loadProfile,
 } from '@deepseek-ai/dsh-app-boot'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -39,45 +39,102 @@ import type {} from '@deepseek-ai/dsh-user-approval'
 /** The repo's dsh app manifest: the anchor the isolated profile's bundles resolve from. */
 const INSTALL_ANCHOR = fileURLToPath(new URL('../../../../apps/cli/package.json', import.meta.url))
 
+/** The repo root the browser-half manifest scan reads from. */
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url))
+
 /** The daypaw profile's bundle layers, in order (what the CLI seeds). */
 const BUNDLES = ['@deepseek-ai/dsh-base', '@daypaw/web-app'] as const
 
+/** The composed-roster fields the derivation reads. */
+interface RosterRow {
+  id: string
+  name: string
+}
+
 /**
- * Web-transport rows the composition cannot activate without a bound server
- * (they wait on webStartup/webServer/connection services). Everything on the
- * agent plane — the tool line, the sandbox and approval stack, the session
- * log — stays composed; `api-remotes` comes out too so this spec's answerer
- * occupies the scoped-waterfall seam itself instead of the gateway bridge.
+ * The web transport itself, disabled headless. These rows mount host-only
+ * packages (no browser half to key the derivation off), and without them the
+ * composition would either bind a real server or wait forever on services
+ * (`webStartup`, `webRuntime`) only a web invocation provides.
  */
-const WEB_TRANSPORT_OFF = `- id: session-log-download
-  disabled: true
-- id: directory-picker
-  disabled: true
-- id: session-controller
-  disabled: true
-- id: web-startup
-  disabled: true
-- id: webserver
-  disabled: true
-- id: web-runtime
-  disabled: true
-- id: client-hmr
-  disabled: true
-- id: modules
-  disabled: true
-- id: connection
-  disabled: true
-- id: ui-deliverables
-  disabled: true
-- id: file-upload
-  disabled: true
-- id: api-remotes
-  disabled: true
-`
+const HOST_TRANSPORT_OFF = [
+  // Samples the display and bind host from webRuntime to choose the
+  // dual-face picker's backend.
+  'directory-picker',
+  // Parses the web invocation's flags and provides `webStartup`.
+  'web-startup',
+  // Binds the HTTP server the transport serves through.
+  'webserver',
+  // Resolves the frontend dist and provides `webRuntime`.
+  'web-runtime',
+] as const
+
+/**
+ * Browser-half rows the headless composition keeps live anyway: their node
+ * halves provide services host rows consume, so disabling them would stall a
+ * host row's activation instead of pruning a browser face.
+ */
+const HOST_PLANE_KEEP = [
+  // dsh-typert-registry's node half is the in-process type-graph registry;
+  // typert-loader (a host row, no browser half) waits on its `typert` service.
+  'typert',
+] as const
+
+/** Package name of a plugin specifier: subpaths collapse (`@scope/pkg/sub` → `@scope/pkg`). */
+function packageNameOf(specifier: string): string {
+  const segments = specifier.split('/')
+  return specifier.startsWith('@') ? segments.slice(0, 2).join('/') : segments[0]!
+}
+
+/**
+ * Packages whose workspace manifest declares a browser half (`dsh.client`) —
+ * the same fact the roster mirror gate keys on: a composed row mounting one
+ * of these rides the web plane.
+ * @param repoRoot - repository root to scan workspace package manifests
+ * (`packages/<group>/<pkg>/package.json`) under.
+ * @returns the browser-half package names.
+ */
+function clientPluginPackages(repoRoot: string): Set<string> {
+  const names = new Set<string>()
+  for (const manifestPath of globSync('packages/*/*/package.json', { cwd: repoRoot })) {
+    const manifest = JSON.parse(readFileSync(join(repoRoot, manifestPath), 'utf8')) as {
+      name?: string
+      dsh?: { client?: unknown }
+    }
+    if (manifest.name !== undefined && manifest.dsh?.client !== undefined) names.add(manifest.name)
+  }
+  return names
+}
+
+/**
+ * Derive the web-transport-off overlay content: every composed roster row
+ * whose package declares a browser half is a web-plane row (its node half
+ * waits on the bound server's services or serves only browser faces), plus
+ * the host-transport remainder, minus the host-plane keeps. Everything on
+ * the agent plane — the tool line, the sandbox and approval stack, the
+ * session log — stays composed; `api-remotes` comes out too so this spec's
+ * answerer occupies the scoped-waterfall seam itself instead of the gateway
+ * bridge. Deriving from the roster means upstream growing the browser roster
+ * (a new `dsh.client` row the mirror gate forces into the fork patch) flows
+ * through with no edit here — the 2026-10-09 sync had to chase the
+ * ui-deliverables row into the old 12-line literal.
+ * @param roster - the booted profile's composed entry list.
+ * @param clientPackages - browser-half package names.
+ * @returns the overlay file body: one `- id: …` / `disabled: true` pair per row.
+ */
+function webTransportOffOverlay(roster: readonly RosterRow[], clientPackages: ReadonlySet<string>): string {
+  const off = new Set<string>(HOST_TRANSPORT_OFF)
+  for (const entry of roster) {
+    if (clientPackages.has(packageNameOf(entry.name))) off.add(entry.id)
+  }
+  for (const keep of HOST_PLANE_KEEP) off.delete(keep)
+  return [...off].map(id => `- id: ${id}\n  disabled: true\n`).join('')
+}
 
 let home: string | undefined
 let workspace: string | undefined
 let ctx: Context | undefined
+let rosterRows: readonly RosterRow[] | undefined
 const handles: AgentHandle[] = []
 
 beforeAll(async () => {
@@ -89,8 +146,9 @@ beforeAll(async () => {
   const rootConfig = join(profile.dir, 'cordis.yml')
   writeFileSync(rootConfig, '[]\n')
   await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, profile, home })
+  rosterRows = composeEntries(profile.layers.map(layer => layer.patches))
   const overlayFile = join(home, 'web-transport-off.patch.yml')
-  writeFileSync(overlayFile, WEB_TRANSPORT_OFF)
+  writeFileSync(overlayFile, webTransportOffOverlay(rosterRows, clientPluginPackages(REPO_ROOT)))
   const patches = [
     ...profile.layers.flatMap(layer => layer.patches),
     ...loadOverlayPatches('daypaw-agent-plane', overlayFile),
@@ -167,8 +225,7 @@ function outcomes(agent: Agent): Array<{ id: string; outcome: string }> {
 
 interface AskRecord { toolName: string; reason: string; signalAborted: boolean }
 
-/**
- * Register the spec's answerer at the scoped-waterfall seam — the
+/** Register the spec's answerer at the scoped-waterfall seam — the
  * registration `api-remotes` holds in the full composition — first in line.
  * @param answer - produce the outcome (or a promise of it) for each ask.
  * @returns the ask records and the disposer.
@@ -189,6 +246,38 @@ function answerer(
   const dispose = ctx!.on('approval/request', listener, { prepend: true })
   return { asks, dispose }
 }
+
+describe('the web-transport-off overlay is derived from the roster (ticket #122)', () => {
+  it('absorbs an upstream-grown browser row with no edit to this spec', () => {
+    // The sync event the derivation replaces: upstream ships a new client
+    // package (its workspace manifest declares the browser half) and the
+    // roster mirror gate adds the row to the fork patch. Both inputs grow;
+    // the overlay picks the row up with nothing here restating ids.
+    const fixtureRoot = mkdtempSync(join(tmpdir(), 'daypaw-agent-plane-roster-'))
+    try {
+      const shinyDir = join(fixtureRoot, 'packages/client/ui-shiny')
+      mkdirSync(shinyDir, { recursive: true })
+      writeFileSync(join(shinyDir, 'package.json'), JSON.stringify({
+        name: '@deepseek-ai/dsh-client-ui-shiny',
+        dsh: { client: {} },
+      }))
+      const grown = [...rosterRows!, { id: 'ui-shiny', name: '@deepseek-ai/dsh-client-ui-shiny' }]
+      const clientPackages = new Set([...clientPluginPackages(REPO_ROOT), ...clientPluginPackages(fixtureRoot)])
+      expect(webTransportOffOverlay(grown, clientPackages)).toContain('- id: ui-shiny\n  disabled: true\n')
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps every literal edge id a row the composition actually mounts', () => {
+    // A stale literal (a sync renaming a remainder or keep row) would target
+    // nothing and silently stop guarding; fail loud instead.
+    const mounted = new Set(rosterRows!.map(row => row.id))
+    for (const id of [...HOST_TRANSPORT_OFF, ...HOST_PLANE_KEEP]) {
+      expect(mounted.has(id), id).toBe(true)
+    }
+  })
+})
 
 // The spec drives the POSIX shell stack the base composes on this platform;
 // win32 swaps `bash` for `pwsh` (base rows gate on platform), so its catalog
