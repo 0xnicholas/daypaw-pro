@@ -1,0 +1,6 @@
+# Micro layer that disables every row it carries, yielding an empty
+# composition when used alone.
+- insert:
+    - id: locale
+      name: '@deepseek-ai/dsh-client-locale'
+      disabled: true

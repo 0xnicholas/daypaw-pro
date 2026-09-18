@@ -1,0 +1,4 @@
+# Micro web layer: one application plugin over the modules base.
+- insert:
+    - id: locale
+      name: '@deepseek-ai/dsh-client-locale'

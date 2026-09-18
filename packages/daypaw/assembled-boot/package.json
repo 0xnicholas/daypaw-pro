@@ -1,0 +1,37 @@
+{
+  "name": "@daypaw/assembled-boot",
+  "description": "Parameterized assembled-boot scaffolding for the jsdom web lanes: one module boots the real built client roster through AppWebEntry's ModuleLoader path, with the bundle layers, transport carrier, and pinned document title as lane options",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@testing-library/react": "^16.3.2",
+    "vitest": "^4.1.8"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-connection": "workspace:^",
+    "@deepseek-ai/dsh-client-modules": "workspace:^",
+    "@deepseek-ai/dsh-client-web": "workspace:^"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-app-boot": "workspace:^",
+    "@deepseek-ai/dsh-client-connection": "workspace:^",
+    "@deepseek-ai/dsh-client-modules": "workspace:^",
+    "@deepseek-ai/dsh-client-web": "workspace:^"
+  }
+}

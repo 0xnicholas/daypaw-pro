@@ -55,6 +55,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`@shikijs/langs`](https://github.com/shikijs/shiki) | MIT |
 | [`@standard-schema/spec`](https://github.com/standard-schema/standard-schema) | MIT |
 | [`@tanstack/react-virtual`](https://github.com/TanStack/virtual) | MIT |
+| [`@testing-library/react`](https://github.com/testing-library/react-testing-library) | MIT |
 | [`@vscode/ripgrep`](https://github.com/microsoft/vscode-ripgrep) | MIT |
 | [`@xterm/headless`](https://github.com/xtermjs/xterm.js) | MIT |
 | [`@yarnpkg/parsers`](https://github.com/yarnpkg/berry) | BSD-2-Clause |
@@ -107,6 +108,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`typescript`](https://github.com/microsoft/TypeScript) | Apache-2.0 |
 | [`undici`](https://github.com/nodejs/undici) | MIT |
 | [`use-sync-external-store`](https://github.com/facebook/react) | MIT |
+| [`vitest`](https://github.com/vitest-dev/vitest) | MIT |
 | [`ws`](https://github.com/websockets/ws) | MIT |
 | [`yaml`](https://github.com/eemeli/yaml) | ISC |
 | [`zod`](https://github.com/colinhacks/zod) | MIT |
@@ -150,7 +152,6 @@ External packages **directly declared** for development, tests, types, or toolin
 | [`@modelcontextprotocol/server-filesystem`](https://github.com/modelcontextprotocol/servers) | MIT / Apache-2.0 |
 | [`@stylistic/eslint-plugin`](https://github.com/eslint-stylistic/eslint-stylistic) | MIT |
 | [`@testing-library/dom`](https://github.com/testing-library/dom-testing-library) | MIT |
-| [`@testing-library/react`](https://github.com/testing-library/react-testing-library) | MIT |
 | [`@types/babel__code-frame`](https://github.com/DefinitelyTyped/DefinitelyTyped) | MIT |
 | [`@types/compression`](https://github.com/DefinitelyTyped/DefinitelyTyped) | MIT |
 | [`@types/js-yaml`](https://github.com/DefinitelyTyped/DefinitelyTyped) | MIT |
@@ -207,7 +208,6 @@ External packages **directly declared** for development, tests, types, or toolin
 | [`vite-tsconfig-paths`](https://github.com/aleclarson/vite-tsconfig-paths) | MIT |
 | [`vitepress`](https://github.com/vuejs/vitepress) | MIT |
 | [`vitepress-plugin-mermaid`](https://github.com/emersonbottero/vitepress-plugin-mermaid) | MIT |
-| [`vitest`](https://github.com/vitest-dev/vitest) | MIT |
 
 `eslint-plugin-sonarjs` (LGPL-3.0-only) and `lightningcss` (MPL-2.0) run only as development tooling; their code is not linked into or distributed with any DeepSeek Harness artifact.
 

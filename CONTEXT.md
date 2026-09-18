@@ -67,6 +67,10 @@ dsh agent preset 机制在 daypaw 壳内的终局定位：上游机制保留（�
 
 产品壳浏览器平面的 store 载入结算规则（`@daypaw/client-load`）：一次载入只有最新一次尝试能落笔，被顶替的尝试数据与拒绝都不写；`invalidate()` 作废在飞尝试而不发起新的（清空/选择路径）。取数、投影与状态策略留在各 store；「何时该载入」的惰性约定不属此词。ADR 0014。
 
+### 装配启动道（Assembled Boot Lane）
+
+两条 web 快照车道（上游 apps/web e2e、fork apps/daypaw-web golden）共用的 jsdom 启动方式（`@daypaw/assembled-boot`）：一条 lane 由三轴事实定义——bundle 层、transport 装配（载体钩子工厂或 `?fixture` 自选）、钉制标题——换回同一套环境装设与挂载。车道入口是传参薄 stub；脚手架本体只有一家。ADR 0015。
+
 ## 编排（Durable Engine 域）
 
 ### Durable Engine（参照系名 Orchestrator）

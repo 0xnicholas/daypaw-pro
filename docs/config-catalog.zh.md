@@ -3611,6 +3611,7 @@ export interface Config {
 ## 库包（无插件入口）
 
 由其他包作为库导入；`cordis.yml` 无法加载它们。
+- `@daypaw/assembled-boot`（[`packages/daypaw/assembled-boot/src/index.ts`](../packages/daypaw/assembled-boot/src/index.ts)）
 - `@daypaw/cli`（[`packages/daypaw/cli/src/index.ts`](../packages/daypaw/cli/src/index.ts)）
 - `@daypaw/client-load`（[`packages/daypaw/client-load/src/index.ts`](../packages/daypaw/client-load/src/index.ts)）
 - `@daypaw/sdk`（[`packages/daypaw/sdk/src/index.ts`](../packages/daypaw/sdk/src/index.ts)）

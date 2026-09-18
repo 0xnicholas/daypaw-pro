@@ -126,6 +126,9 @@
     },
     {
       "path": "../../packages/client/modules"
+    },
+    {
+      "path": "../../packages/daypaw/assembled-boot"
     }
   ]
 }

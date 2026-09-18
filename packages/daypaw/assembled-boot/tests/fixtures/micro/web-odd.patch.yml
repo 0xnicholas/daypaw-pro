@@ -1,0 +1,18 @@
+# Micro web layer exercising every composition skip and the declaration-gated
+# config passthrough: a disabled row, a non-string row name, a row naming a
+# package outside the workspace, a row whose package declares no dsh.client,
+# and a config-carrying row whose package opts in via dsh.client.config.
+- insert:
+    - id: disabled-locale
+      name: '@deepseek-ai/dsh-client-locale'
+      disabled: true
+    - id: non-string
+      name: 42
+    - id: foreign
+      name: '@deepseek-ai/dsh-not-a-workspace-package'
+    - id: no-client-declaration
+      name: '@deepseek-ai/dsh-app-boot'
+    - id: trajectory
+      name: '@deepseek-ai/dsh-client-ui-trajectory'
+      config:
+        viewSlot: inbox.workspace.conversation.inspector

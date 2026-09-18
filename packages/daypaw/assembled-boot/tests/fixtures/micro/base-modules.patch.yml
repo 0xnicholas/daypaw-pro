@@ -1,0 +1,4 @@
+# Micro base layer: only the parser-preloaded bootstrap plugin.
+- insert:
+    - id: modules
+      name: '@deepseek-ai/dsh-client-modules'

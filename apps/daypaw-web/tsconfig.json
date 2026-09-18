@@ -30,6 +30,9 @@
     },
     {
       "path": "../../packages/client/connection/tsconfig.client.json"
+    },
+    {
+      "path": "../../packages/daypaw/assembled-boot"
     }
   ]
 }
