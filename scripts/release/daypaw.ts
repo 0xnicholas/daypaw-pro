@@ -206,8 +206,13 @@ async function run(
   })
 }
 
-/** How long {@link runUntil} waits for a matched probe before failing the step. */
-const RUN_UNTIL_PROBE_TIMEOUT_MS = 15_000
+/**
+ * How long {@link runUntil} waits for a matched probe before failing the step.
+ * The cli smoke's probe runs a full headless-browser first-render wait after
+ * its fetch checks, so the budget covers cold Chromium loading the served
+ * dist over loopback on CI hardware.
+ */
+const RUN_UNTIL_PROBE_TIMEOUT_MS = 120_000
 
 /** How long {@link runUntil} lets a matched process exit on SIGTERM before escalating to SIGKILL. */
 const RUN_UNTIL_KILL_GRACE_MS = 10_000
@@ -491,10 +496,13 @@ class DaypawRelease {
    * Smoke the CLI tarball: clean-prefix global install, then a bare `daypaw`
    * boot (the argv the adapter defaults to the daypaw profile) from a fresh
    * DSH_HOME must come up as the product shell — print its launch-token URL
-   * line, exchange the token for a browser session cookie, and serve the
-   * bundled frontend dist — proving the seeded profile composes, the
-   * whole bundled plugin closure loads end to end, and the dist ships in the
-   * tarball (installation builds nothing).
+   * line, exchange the token for a browser session cookie, serve the
+   * bundled frontend dist, and reach the served page's first render in a
+   * headless browser — proving the seeded profile composes, the
+   * whole bundled plugin closure loads end to end, the dist ships in the
+   * tarball (installation builds nothing), and the vite browserization
+   * (define/stub/alias composition) actually executes instead of rendering
+   * blank.
    * @param tarball - the packed CLI tarball.
    */
   private async smokeCli(tarball: string): Promise<void> {
@@ -535,6 +543,11 @@ class DaypawRelease {
         if (!page.ok) throw new Error(`dist probe got HTTP ${String(page.status)}`)
         const body = await page.text()
         if (!body.includes('daypaw')) throw new Error('dist probe fetched a page that never mentions daypaw')
+        // The fetch checks pin the wire contract (token fence, 303 + cookie,
+        // served HTML); the browser step adds execution — the page must boot
+        // to its first render, the only proof a broken browserization define
+        // or stub cannot survive.
+        await DaypawRelease.browserFirstRender(launchUrl)
       },
     })
     // First-run seeding materialized the daypaw profile from the shipped
@@ -554,7 +567,34 @@ class DaypawRelease {
     if (missing.length > 0) {
       throw new Error(`release-daypaw: cli smoke found the daypaw seed incomplete: ${missing.join(', ')} missing.`)
     }
-    console.log('release-daypaw: cli smoke booted the shell directly: URL line, served dist, seeded profile, engine ledger.')
+    console.log('release-daypaw: cli smoke booted the shell directly: URL line, served dist, browser first render, seeded profile, engine ledger.')
+  }
+
+  /**
+   * Load the served shell in headless Chromium and wait for its first
+   * render. The marker is the first-run API-key banner's interpolated roster
+   * name: the card renders nothing while its checks are undecided, and its
+   * name arrives only through the full served chain — vite dist module graph
+   * executing (the browserization composition), boot graph assembling,
+   * connection opening, `durable/listDefinitions` answering with the seeded
+   * starter's business name, and the credential check deciding visibility.
+   * A blank or disconnected page can never show it.
+   * @param launchUrl - the tokened URL line the boot printed; the browser
+   * walks the token exchange itself and must land on the bare origin.
+   */
+  private static async browserFirstRender(launchUrl: string): Promise<void> {
+    const { chromium } = await import('playwright')
+    const browser = await chromium.launch()
+    try {
+      const page = await browser.newPage()
+      await page.goto(launchUrl)
+      if (new URL(page.url()).searchParams.size !== 0) {
+        throw new Error(`browser token exchange did not land on the bare origin: ${page.url()}`)
+      }
+      await page.getByText('通用助手', { exact: false }).first().waitFor({ timeout: 60_000 })
+    } finally {
+      await browser.close()
+    }
   }
 
   /**

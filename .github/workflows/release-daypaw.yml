@@ -49,6 +49,11 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
+      # The cli smoke's browser first-render step drives headless Chromium
+      # against the booted shell; same plain install as CI (daypaw main).
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
+
       - name: Build both faces, pack, and smoke
         run: pnpm run release:daypaw
 
