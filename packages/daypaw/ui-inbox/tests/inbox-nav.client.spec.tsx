@@ -150,7 +150,7 @@ describe('InboxNav', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('hands the dialog occupant close and openTask owners; openTask kicks the board, selects the task, and dismisses the dialog', () => {
+  it('hands the dialog occupant close, openTask, and openRun owners; each navigation kicks the board, selects, and dismisses the dialog', () => {
     const controller = new InboxSelectionController(vi.fn())
     const refreshBoard = vi.fn()
     const owners: Record<string, unknown>[] = []
@@ -172,18 +172,24 @@ describe('InboxNav', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: '新任务' }))
     expect(screen.getByText('dialog-body')).toBeTruthy()
-    const owner = owners[0] as { close: () => void; openTask: (sessionId: SessionId) => void }
+    const owner = owners[0] as { close: () => void; openTask: (sessionId: SessionId) => void; openRun: (runId: string) => void }
     act(() => { owner.openTask('s1' as SessionId) })
     expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 's1' })
     // The just-started run refetches without waiting the poll cadence.
     expect(refreshBoard).toHaveBeenCalledOnce()
     // The dialog dismissed with the navigation.
     expect(screen.queryByRole('dialog')).toBeNull()
+    // A workflow run has no session to open, so openRun selects the run itself.
+    fireEvent.click(screen.getByRole('button', { name: '新任务' }))
+    act(() => { (owners.at(-1) as { openRun: (runId: string) => void }).openRun('r1') })
+    expect(controller.store.getSnapshot()).toEqual({ kind: 'run', runId: 'r1' })
+    expect(refreshBoard).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('dialog')).toBeNull()
     // Reopen, then the plain close owner dismisses without selecting.
     fireEvent.click(screen.getByRole('button', { name: '新任务' }))
     act(() => { (owners.at(-1) as { close: () => void }).close() })
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(controller.store.getSnapshot()).toEqual({ kind: 'task', sessionId: 's1' })
+    expect(controller.store.getSnapshot()).toEqual({ kind: 'run', runId: 'r1' })
   })
 
   it('routes the light-chat entry through the injected startChat, never the task dialog', () => {

@@ -88,6 +88,14 @@ export function InboxNav({
     select({ kind: 'task', sessionId })
   }
 
+  const openRun = (runId: string): void => {
+    // Same ledger-entry refresh as openTask; a workflow run has no session to
+    // hand the conversation seat, so the run itself is the selection.
+    refreshBoard()
+    setDialogOpen(false)
+    select({ kind: 'run', runId })
+  }
+
   const newTaskDialog = (
     <Modal
       open={dialogOpen}
@@ -98,6 +106,7 @@ export function InboxNav({
       {renderSlot('inbox.new-task.dialog', {
         close: () => { setDialogOpen(false) },
         openTask,
+        openRun,
       }, {
         fallback: <p className={css.dialogStub}>{t('dialog.new-task.stub')}</p>,
       })}

@@ -34,7 +34,7 @@ export type { TaskListProps } from './task-list.tsx'
 export type { ConversationViewInjected, ConversationViewProps } from './conversation-view.tsx'
 export type { ApprovalCardProps, PendingApprovalWait } from './approval-card.tsx'
 export type { DetailBodyProps } from './detail-body.tsx'
-export type { NewTaskState, NewTaskSessions, AgentOption } from './new-task-store.ts'
+export type { NewTaskState, NewTaskSessions, NewTaskOutcome, DefinitionOption } from './new-task-store.ts'
 export type { BusinessRow } from './chat-projection.ts'
 export type { DaypawTasksKey } from './locales.ts'
 

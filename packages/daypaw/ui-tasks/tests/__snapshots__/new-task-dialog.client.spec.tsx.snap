@@ -11,10 +11,10 @@ exports[`NewTaskDialog > matches the ready dialog snapshot 1`] = `
       <span
         class="_label_4e5d42"
       >
-        执行 Agent
+        任务类型
       </span>
       <select
-        aria-label="执行 Agent"
+        aria-label="任务类型"
         class="_select_4e5d42"
       >
         <option

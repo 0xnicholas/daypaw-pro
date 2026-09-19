@@ -27,6 +27,12 @@ export interface InboxNewTaskDialogOwnerProps {
   close: () => void
   /** Open a created task's conversation in the middle column (also dismisses the dialog). */
   openTask: (sessionId: SessionId) => void
+  /**
+   * Open a created workflow run in the middle column (also dismisses the
+   * dialog). A workflow run has no session, so the run itself is the
+   * selection.
+   */
+  openRun: (runId: string) => void
 }
 
 /**
@@ -137,7 +143,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'inbox.settings.page': { kind: 'single'; scope: 'session-maybe'; owner: InboxSettingsPageOwnerProps }
     /**
      * The new-task dialog body inside InboxNav's Modal: the single occupant
-     * owns the agent picker, the task text, and the submit sequence. An
+     * owns the definition picker, the task input, and the submit sequence. An
      * absent occupant falls back to the owner's stub copy.
      */
     'inbox.new-task.dialog': { kind: 'single'; scope: 'root'; owner: InboxNewTaskDialogOwnerProps }

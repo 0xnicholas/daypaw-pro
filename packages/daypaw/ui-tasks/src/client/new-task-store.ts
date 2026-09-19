@@ -1,13 +1,15 @@
 /**
- * New-task dialog store: the engine's agent-definition roster
- * (`durable/listDefinitions`, ruling #65: the registry IS the roster) and the
- * submit sequence — mint one run id per task attempt, `durable/startRun`
- * (start-or-attach, so a retried submit reuses the minted id and never
- * double-creates), wait for the run's session twin to reach the list
- * projection (an agent run's sessionId IS its runId, and `sessions.open`
- * fails loud on unlisted ids), then hand the id back for the owner's
- * openTask. The host stays the single fact source; a failure anywhere lands
- * inline on the dialog and keeps the minted run id for the retry.
+ * New-task dialog store: the engine's definition roster
+ * (`durable/listDefinitions`, ruling #65: the registry IS the roster — agent
+ * and workflow definitions alike) and the submit sequence — mint one run id
+ * per task attempt, `durable/startRun` (start-or-attach, so a retried submit
+ * reuses the minted id and never double-creates), then hand the owner what to
+ * open. An agent run's session identity IS its runId, so the submit waits for
+ * that session twin to reach the list projection (`sessions.open` fails loud
+ * on unlisted ids) and answers with the session; a workflow run has no
+ * session (ADR 0016), so it answers with the run id itself. The host stays
+ * the single fact source; a failure anywhere lands inline on the dialog and
+ * keeps the minted run id for the retry.
  */
 import { randomUuid } from './random-uuid.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -17,23 +19,34 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { DurableClient, WireDefinition } from '@daypaw/durable-client/client'
 
-/** One selectable agent row. */
-export interface AgentOption {
+/** One selectable roster row: an engine definition the dialog can start. */
+export interface DefinitionOption {
   /** Registry identity (`name@version`); the submit's exact resolution target. */
   id: string
-  /** Business name, falling back to the technical name. */
+  /** Business name (an agent's display title), falling back to the technical name. */
   label: string
-  /** Input presentation the dialog renders for this agent. */
+  /** Definition family: only an agent run gains a session twin to open. */
+  kind: WireDefinition['kind']
+  /** Input presentation the dialog renders for this definition. */
   inputKind: WireDefinition['inputKind']
 }
+
+/**
+ * What one successful submit hands the owner: the created agent run's session
+ * (the middle column opens its conversation), or the created workflow run's
+ * id (a session-less run opens as the run itself).
+ */
+export type NewTaskOutcome =
+  | { readonly kind: 'task'; readonly sessionId: SessionId }
+  | { readonly kind: 'run'; readonly runId: string }
 
 /** Dialog snapshot. */
 export interface NewTaskState {
   /** Roster load lifecycle; idle until the first dialog open. */
   status: 'idle' | 'loading' | 'ready' | 'error'
-  /** Agent definitions in registration order. */
-  agents: readonly AgentOption[]
-  /** The picked agent's registry identity; undefined when the roster is empty or unsettled. */
+  /** Engine definitions in registration order (agent and workflow rows alike). */
+  definitions: readonly DefinitionOption[]
+  /** The picked row's registry identity; undefined when the roster is empty or unsettled. */
   selected: string | undefined
   /** The free-text draft (the text input kinds). */
   text: string
@@ -70,7 +83,7 @@ export interface NewTaskTimers {
 export class NewTaskStore {
   /** The snapshot the dialog renders from (uSES-safe store). */
   readonly store: SnapshotStore<NewTaskState> = createSnapshotStore<NewTaskState>({
-    status: 'idle', agents: [], selected: undefined, text: '', json: '', submitting: false, submitFailed: false,
+    status: 'idle', definitions: [], selected: undefined, text: '', json: '', submitting: false, submitFailed: false,
   })
 
   /** Latest roster load wins; an older response never overwrites a newer one. */
@@ -97,15 +110,15 @@ export class NewTaskStore {
   /** The twin-wait timer release (injectable; the platform `clearTimeout`). */
   private readonly clearTimeoutFn: (timer: unknown) => void
 
-  /** The selected agent's roster row, when one is picked. */
-  private selectedAgent(): AgentOption | undefined {
+  /** The selected definition's roster row, when one is picked. */
+  private selectedDefinition(): DefinitionOption | undefined {
     const state = this.store.getSnapshot()
-    return state.agents.find(agent => agent.id === state.selected)
+    return state.definitions.find(row => row.id === state.selected)
   }
 
   /**
-   * Fetch the agent roster from the engine registry: business label from the
-   * declared display title (technical name otherwise), first row
+   * Fetch the definition roster from the engine registry: business label from
+   * an agent's declared display title (technical name otherwise), first row
    * preselected. Safe to call again; only an idle dialog skips it.
    * @returns nothing; the snapshot carries the outcome.
    */
@@ -113,18 +126,16 @@ export class NewTaskStore {
     await this.loads.run(() => this.api.listDefinitions(), {
       start: (s) => { s.status = 'loading' },
       success: (s, definitions) => {
-        // The roster presents agents only; workflow definitions are engine
-        // internals the dialog cannot start (ruling #65).
-        const agents = definitions.filter(d => d.kind === 'agent').map(projectAgentOption)
+        const rows = definitions.map(projectDefinitionOption)
         s.status = 'ready'
-        s.agents = agents
-        s.selected = agents[0]?.id
+        s.definitions = rows
+        s.selected = rows[0]?.id
       },
       failure: (s) => { s.status = 'error' },
     })
   }
 
-  /** Pick an agent.
+  /** Pick a roster row.
    * @param id - the registry identity (`name@version`). */
   select(id: string): void {
     this.store.update((s) => { s.selected = id })
@@ -158,30 +169,33 @@ export class NewTaskStore {
   }
 
   /**
-   * Start the task: `durable/startRun` with a dialog-minted run id, then wait
-   * until the sessions list carries the run's session twin (sessionId ≡
-   * runId) so the owner can open the conversation. A failed submit keeps the
-   * minted id: the retry's start-or-attach lands on the same run instead of
-   * creating a second one.
-   * @returns the run's session id, or undefined when the submit was rejected
-   *   (guard) or failed (the snapshot flags the inline failure).
+   * Start the task: `durable/startRun` with a dialog-minted run id, then
+   * resolve what the owner opens. An agent run's session twin must reach the
+   * list projection first (sessionId ≡ runId) so its conversation can open; a
+   * workflow run has no session, so its run id is the answer. A failed submit
+   * keeps the minted id: the retry's start-or-attach lands on the same run
+   * instead of creating a second one.
+   * @returns the created run's open outcome, or undefined when the submit was
+   *   rejected (guard) or failed (the snapshot flags the inline failure).
    */
-  async submit(): Promise<SessionId | undefined> {
+  async submit(): Promise<NewTaskOutcome | undefined> {
     const state = this.store.getSnapshot()
     if (state.submitting || state.status !== 'ready') return undefined
-    const agent = this.selectedAgent()
-    if (agent === undefined) return undefined
-    const input = composeInput(agent.inputKind, state, () => this.parseJsonDraft())
+    const definition = this.selectedDefinition()
+    if (definition === undefined) return undefined
+    const input = composeInput(definition.inputKind, state, () => this.parseJsonDraft())
     if (input === undefined) return undefined
-    const [defName, defVersion] = splitIdentity(agent.id)
+    const [defName, defVersion] = splitIdentity(definition.id)
     this.store.update((s) => { s.submitting = true; s.submitFailed = false })
     try {
       this.pendingRunId ??= randomUuid()
       const started = await this.api.startRun({ defName, defVersion, input, runId: this.pendingRunId })
-      await this.whenListed(started.runId)
+      if (definition.kind === 'agent') await this.whenListed(started.runId)
       this.pendingRunId = undefined
       this.store.update((s) => { s.submitting = false; s.text = ''; s.json = '' })
-      return started.runId as SessionId
+      return definition.kind === 'agent'
+        ? { kind: 'task', sessionId: started.runId as SessionId }
+        : { kind: 'run', runId: started.runId }
     } catch {
       // Any wire or invariant failure reads as the same generic inline
       // failure; raw host wording never reaches the dialog. The minted run
@@ -216,10 +230,11 @@ export class NewTaskStore {
 }
 
 /** Project one wire definition to a selectable roster row. */
-function projectAgentOption(definition: WireDefinition): AgentOption {
+function projectDefinitionOption(definition: WireDefinition): DefinitionOption {
   return {
     id: `${definition.name}@${definition.version}`,
     label: definition.display?.title ?? definition.name,
+    kind: definition.kind,
     inputKind: definition.inputKind,
   }
 }
@@ -232,7 +247,7 @@ function splitIdentity(id: string): [name: string, version: string] {
 
 /**
  * Compose the start input for one input kind.
- * @param inputKind - the selected agent's input presentation.
+ * @param inputKind - the selected definition's input presentation.
  * @param state - the dialog snapshot (the drafts).
  * @param parseJson - JSON-draft parse (inline validation).
  * @returns the wire input value, or undefined when the draft is unusable
@@ -244,8 +259,10 @@ function composeInput(
   parseJson: () => unknown,
 ): unknown {
   if (inputKind === 'json' || inputKind === null) {
-    // A null kind (engine-native definition without a wire face) takes the
-    // JSON box too: the engine inserts the value as given.
+    // A workflow definition carries no wire face (ADR 0012 attaches one to
+    // agents), and neither does an engine-native definition: both take the
+    // JSON box, where the engine inserts the value as given and the
+    // definition's own input contract validates it.
     const parsed = parseJson()
     return parsed instanceof SyntaxError ? undefined : parsed
   }

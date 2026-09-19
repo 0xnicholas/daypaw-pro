@@ -60,13 +60,14 @@ describe('assembled inbox conversation', () => {
     // The nav column boots on the running group; open the new-task dialog.
     const newTask = await screen.findByRole('button', { name: 'New Task' }, { timeout: 10_000 })
     fireEvent.click(newTask)
-    const picker = await screen.findByRole('combobox', { name: 'Agent' }, { timeout: 10_000 })
-    // The fixture registry's agent rows in registration order, business
-    // names first (display titles, then the technical-name fallback), with
-    // the first row preselected.
+    const picker = await screen.findByRole('combobox', { name: 'Task type' }, { timeout: 10_000 })
+    // The fixture registry's rows in registration order, business names first
+    // (display titles, then the technical-name fallback for a row without
+    // one) and the workflow definition beside the agent rows, with the first
+    // row preselected.
     await waitFor(() => { expect((picker as HTMLSelectElement).disabled).toBe(false) }, { timeout: 10_000 })
     expect([...screen.getAllByRole('option')].map(option => option.textContent))
-      .toEqual(['Starter assistant', 'Weekly report assistant', 'invoice-checker'])
+      .toEqual(['Starter assistant', 'Weekly report assistant', 'invoice-checker', 'nightly-digest'])
     expect((picker as HTMLSelectElement).value).toBe('starter-assistant@1.0.0')
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Task' }), { target: { value: 'write a poem' } })

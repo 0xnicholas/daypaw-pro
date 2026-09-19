@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
-/** NewTaskDialog: first-open roster load, picker + inputKind-ruled input surfaces + submit gating, success navigation, inline failures. */
+/**
+ * NewTaskDialog: first-open roster load, picker + inputKind-ruled input surfaces + submit gating,
+ * agent-run and workflow-run success navigation, inline failures.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
@@ -39,17 +42,18 @@ function sessionsDouble(listOnDemand: () => SessionId | undefined = () => undefi
 function mountDialog(api: FakeTaskApi, sessions: NewTaskSessions = sessionsDouble().sessions, store?: NewTaskStore) {
   const owned = store ?? new NewTaskStore(api, sessions)
   const openTask = vi.fn()
+  const openRun = vi.fn()
   const close = vi.fn()
   const view = render(
     <NewTaskDialog
       usePanelInfo={neverHook} useResource={neverHook}
-      close={close} openTask={openTask}
+      close={close} openTask={openTask} openRun={openRun}
       useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook}
       useNewTask={bindSnapshotSelector(owned.store)}
       store={owned} t={t}
     />,
   )
-  return { store: owned, openTask, close, view }
+  return { store: owned, openTask, openRun, close, view }
 }
 
 /** Program the roster with one agent of the given input kind. */
@@ -69,10 +73,10 @@ describe('NewTaskDialog', () => {
     mountDialog(api)
     // Loading state: the submit stays disabled while the roster settles.
     expect(screen.getByRole('button', { name: '开始任务' })).toHaveProperty('disabled', true)
-    await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
     expect(api.callsOf('durable/listDefinitions')).toHaveLength(1)
     // The first registration-order row is preselected; labels are business names.
-    const select = screen.getByRole('combobox', { name: '执行 Agent' }) as HTMLSelectElement
+    const select = screen.getByRole('combobox', { name: '任务类型' }) as HTMLSelectElement
     expect(select.value).toBe('alpha@2.0.0')
     expect(screen.getByRole('option', { name: '周报助手' })).toBeTruthy()
     expect(screen.getByRole('option', { name: 'alpha' })).toBeTruthy()
@@ -94,7 +98,7 @@ describe('NewTaskDialog', () => {
       twin.listSession(request.runId as SessionId)
       return Promise.resolve(ok({ runId: request.runId }))
     }
-    await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
     fireEvent.change(screen.getByRole('textbox', { name: '任务内容' }), { target: { value: '写一首诗' } })
     fireEvent.click(screen.getByRole('button', { name: '开始任务' }))
     await waitFor(() => { expect(openTask).toHaveBeenCalledTimes(1) })
@@ -129,7 +133,7 @@ describe('NewTaskDialog', () => {
     oneAgent(api, 'text')
     api.onStartRun = () => Promise.resolve(fail('engine down'))
     const { openTask } = mountDialog(api)
-    await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
     fireEvent.change(screen.getByRole('textbox', { name: '任务内容' }), { target: { value: 'x' } })
     fireEvent.click(screen.getByRole('button', { name: '开始任务' }))
     await screen.findByText('创建任务失败')
@@ -148,14 +152,14 @@ describe('NewTaskDialog', () => {
     expect(store.store.getSnapshot().status).toBe('error')
     api.onListDefinitions = () => Promise.resolve(ok([definition('alpha')]))
     mountDialog(api, sessionsDouble().sessions, store)
-    await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
     expect(screen.getByRole('option', { name: 'alpha' })).toBeTruthy()
   })
 
   it('renders the empty-roster picker copy and keeps submit disabled', async () => {
     const api = new FakeTaskApi() // default roster: empty
     mountDialog(api)
-    await waitFor(() => { expect(screen.getByRole('option', { name: '暂无可用 Agent' })).toBeTruthy() })
+    await waitFor(() => { expect(screen.getByRole('option', { name: '暂无可选任务类型' })).toBeTruthy() })
     fireEvent.change(screen.getByRole('textbox', { name: '任务内容' }), { target: { value: '做点什么' } })
     expect(screen.getByRole('button', { name: '开始任务' })).toHaveProperty('disabled', true)
     expect(api.callsOf('durable/startRun')).toEqual([])
@@ -165,16 +169,34 @@ describe('NewTaskDialog', () => {
     const api = new FakeTaskApi()
     api.onListDefinitions = () => Promise.resolve(ok([definition('alpha', { version: '1' }), definition('beta', { version: '1' })]))
     const { store } = mountDialog(api)
-    await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
-    fireEvent.change(screen.getByRole('combobox', { name: '执行 Agent' }), { target: { value: 'beta@1' } })
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
+    fireEvent.change(screen.getByRole('combobox', { name: '任务类型' }), { target: { value: 'beta@1' } })
     expect(store.store.getSnapshot().selected).toBe('beta@1')
+  })
+
+  it('starts a workflow row and hands the run itself to the owner', async () => {
+    const api = new FakeTaskApi()
+    api.onListDefinitions = () => Promise.resolve(ok([
+      definition('notes-audit', { kind: 'workflow', inputKind: null }),
+    ]))
+    const { openTask, openRun } = mountDialog(api)
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
+    // A workflow definition carries no wire face: the JSON surface stands in
+    // for the text one, and no session twin is waited for.
+    expect(screen.getByRole('option', { name: 'notes-audit' })).toBeTruthy()
+    expect(screen.queryByRole('textbox', { name: '任务内容' })).toBeNull()
+    fireEvent.change(screen.getByRole('textbox', { name: '任务 JSON' }), { target: { value: '{"paths":["a.md"]}' } })
+    fireEvent.click(screen.getByRole('button', { name: '开始任务' }))
+    await waitFor(() => { expect(openRun).toHaveBeenCalledTimes(1) })
+    expect(openRun.mock.calls[0]![0]).toBe((api.callsOf('durable/startRun')[0] as WireStartRunRequest).runId)
+    expect(openTask).not.toHaveBeenCalled()
   })
 
   it('matches the ready dialog snapshot', async () => {
     const api = new FakeTaskApi()
     oneAgent(api, 'text')
     const { view } = mountDialog(api)
-    await waitFor(() => { expect(screen.getByRole('combobox', { name: '执行 Agent' })).toHaveProperty('disabled', false) })
+    await waitFor(() => { expect(screen.getByRole('combobox', { name: '任务类型' })).toHaveProperty('disabled', false) })
     expect(view.container).toMatchSnapshot()
   })
 })

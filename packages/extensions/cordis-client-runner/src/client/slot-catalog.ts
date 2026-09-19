@@ -1388,7 +1388,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.agents.page\', () => ctx.slots.register(\n      { name: \'inbox.agents.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:163',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:169',
   },
   {
     key: 'inbox.detail.body',
@@ -1428,17 +1428,17 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.detail.body\', () => ctx.slots.register(\n      { name: \'inbox.detail.body\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:172',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:178',
   },
   {
     key: 'inbox.new-task.dialog',
     kind: 'single',
     scope: 'root',
-    summary: 'The new-task dialog body inside InboxNav\'s Modal: the single occupant owns the agent picker, the task text, and the submit sequence.',
-    doc: 'The new-task dialog body inside InboxNav\'s Modal: the single occupant\nowns the agent picker, the task text, and the submit sequence. An\nabsent occupant falls back to the owner\'s stub copy.',
+    summary: 'The new-task dialog body inside InboxNav\'s Modal: the single occupant owns the definition picker, the task input, and the submit sequence.',
+    doc: 'The new-task dialog body inside InboxNav\'s Modal: the single occupant\nowns the definition picker, the task input, and the submit sequence. An\nabsent occupant falls back to the owner\'s stub copy.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the new-task dialog body occupant (the Modal chrome stays with the nav). */\nexport interface InboxNewTaskDialogOwnerProps {\n  /** Dismiss the dialog without creating anything. */\n  close: () => void\n  /** Open a created task\'s conversation in the middle column (also dismisses the dialog). */\n  openTask: (sessionId: SessionId) => void\n}',
+      '/** Owner share of the new-task dialog body occupant (the Modal chrome stays with the nav). */\nexport interface InboxNewTaskDialogOwnerProps {\n  /** Dismiss the dialog without creating anything. */\n  close: () => void\n  /** Open a created task\'s conversation in the middle column (also dismisses the dialog). */\n  openTask: (sessionId: SessionId) => void\n  /**\n   * Open a created workflow run in the middle column (also dismisses the\n   * dialog). A workflow run has no session, so the run itself is the\n   * selection.\n   */\n  openRun: (runId: string) => void\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -1460,7 +1460,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.new-task.dialog\', () => ctx.slots.register(\n      { name: \'inbox.new-task.dialog\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:143',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:149',
   },
   {
     key: 'inbox.settings.page',
@@ -1496,7 +1496,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.settings.page\', () => ctx.slots.register(\n      { name: \'inbox.settings.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:137',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:143',
   },
   {
     key: 'inbox.workspace.banner',
@@ -1551,7 +1551,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.banner\', () => ctx.slots.register(\n      { name: \'inbox.workspace.banner\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:131',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:137',
   },
   {
     key: 'inbox.workspace.conversation',
@@ -1591,7 +1591,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.conversation\', () => ctx.slots.register(\n      { name: \'inbox.workspace.conversation\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:157',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:163',
   },
   {
     key: 'inbox.workspace.conversation.inspector',
@@ -1681,7 +1681,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.tasks\', () => ctx.slots.register(\n      { name: \'inbox.workspace.tasks\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:149',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:155',
   },
   {
     key: 'main',

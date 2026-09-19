@@ -1,12 +1,13 @@
 /**
- * New-task dialog body (the 'inbox.new-task.dialog' occupant): agent picker
- * over the engine registry's roster (business names, first row preselected)
- * and the input surface the picked agent's `inputKind` rules (ruling #65 §7):
- * a free-text area for the starter text shapes, a JSON area with inline
- * syntax validation for every other shape. The Modal chrome (title, mask,
- * Escape) stays with InboxNav; on success the owner's openTask navigates and
- * dismisses. The roster loads on first open and submit stays disabled until
- * it is ready and the draft is usable.
+ * New-task dialog body (the 'inbox.new-task.dialog' occupant): definition
+ * picker over the engine registry's roster (business names, first row
+ * preselected) and the input surface the picked definition's `inputKind`
+ * rules (ruling #65 §7): a free-text area for the starter text shapes, a JSON
+ * area with inline syntax validation for every other shape. The Modal chrome
+ * (title, mask, Escape) stays with InboxNav; on success the owner navigates
+ * and dismisses — an agent run opens its conversation, a workflow run opens
+ * the run itself. The roster loads on first open and submit stays disabled
+ * until it is ready and the draft is usable.
  */
 import { useEffect } from 'react'
 import clsx from 'clsx'
@@ -37,7 +38,7 @@ export type NewTaskDialogProps =
  * @param props - composed slot props (owner share + injected face + locale seat).
  * @returns the dialog body tree.
  */
-export function NewTaskDialog({ openTask, useNewTask, store, t }: NewTaskDialogProps) {
+export function NewTaskDialog({ openTask, openRun, useNewTask, store, t }: NewTaskDialogProps) {
   const state = useNewTask(s => s)
   // First-open roster load; a later re-open reuses the ready snapshot and
   // retries after a load failure (the roster error is not a wedge).
@@ -45,7 +46,11 @@ export function NewTaskDialog({ openTask, useNewTask, store, t }: NewTaskDialogP
     if (state.status === 'idle' || state.status === 'error') void store.load()
   }, [state.status, store])
 
-  const selectedKind = state.agents.find(agent => agent.id === state.selected)?.inputKind ?? 'text'
+  // A definition without a row is the unsettled-roster case (text is inert);
+  // a row with `inputKind: null` carries no wire face and shares the JSON
+  // surface with the json kind, exactly as `composeInput` reads it.
+  const selectedRow = state.definitions.find(row => row.id === state.selected)
+  const selectedKind = selectedRow === undefined ? 'text' : selectedRow.inputKind
   const jsonKind = selectedKind !== 'text'
   const parsedJson = jsonKind ? store.parseJsonDraft() : undefined
   const jsonInvalid = jsonKind && parsedJson instanceof SyntaxError
@@ -54,8 +59,10 @@ export function NewTaskDialog({ openTask, useNewTask, store, t }: NewTaskDialogP
     : state.text.trim() !== ''
 
   const submit = (): void => {
-    void store.submit().then((sessionId) => {
-      if (sessionId !== undefined) openTask(sessionId)
+    void store.submit().then((outcome) => {
+      if (outcome === undefined) return
+      if (outcome.kind === 'task') openTask(outcome.sessionId)
+      else openRun(outcome.runId)
     })
   }
   const canSubmit = state.status === 'ready' && state.selected !== undefined && draftUsable && !state.submitting
@@ -63,17 +70,17 @@ export function NewTaskDialog({ openTask, useNewTask, store, t }: NewTaskDialogP
   return (
     <div className={css.root}>
       <label className={css.field}>
-        <span className={css.label}>{t('dialog.agent.label')}</span>
+        <span className={css.label}>{t('dialog.type.label')}</span>
         <select
           className={css.select}
-          aria-label={t('dialog.agent.label')}
-          disabled={state.status !== 'ready' || state.agents.length === 0 || state.submitting}
+          aria-label={t('dialog.type.label')}
+          disabled={state.status !== 'ready' || state.definitions.length === 0 || state.submitting}
           value={state.selected ?? ''}
           onChange={(event) => { store.select(event.target.value) }}
         >
-          {state.agents.length === 0
-            ? <option value="">{t('dialog.agent.empty')}</option>
-            : state.agents.map(agent => <option key={agent.id} value={agent.id}>{agent.label}</option>)}
+          {state.definitions.length === 0
+            ? <option value="">{t('dialog.type.empty')}</option>
+            : state.definitions.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}
         </select>
       </label>
       {jsonKind

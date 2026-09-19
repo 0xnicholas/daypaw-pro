@@ -233,13 +233,15 @@ function seedJournal(): DurableJournalRow[] {
  * `durable/listDefinitions` and validated by `durable/startRun`. The starter
  * agent leads (the CLI seeds it first-run) with the starter `{ task }` text
  * shape; one other entry carries display metadata and one does not, so the
- * dialog's technical-name fallback is exercisable. Static: the fixture has no
- * definition registration surface.
+ * dialog's technical-name fallback is exercisable; a workflow definition
+ * closes the roster, carrying no display and no wire face (issue #127).
+ * Static: the fixture has no definition registration surface.
  */
 const DURABLE_DEFINITIONS: readonly DurableDefinition[] = [
   { kind: 'agent', name: 'starter-assistant', version: '1.0.0', inputKind: 'text', display: { title: 'Starter assistant', description: 'The general-purpose assistant seeded at first setup; steerable and yours to edit.' } },
   { kind: 'agent', name: 'weekly-report', version: '1.2.0', inputKind: 'json', display: { title: 'Weekly report assistant', description: 'Collects the week\'s updates from each team and drafts the report.' } },
   { kind: 'agent', name: 'invoice-checker', version: '0.3.1', inputKind: 'json' },
+  { kind: 'workflow', name: 'nightly-digest', version: '1', inputKind: null },
 ]
 
 function ok<T>(value: T): Promise<ConnectionRpcResult<T>> {
@@ -374,6 +376,10 @@ export function decorateDurableRpc(base: ClientConnectionRpc): ClientConnectionR
           updated_at: createdAt,
           finished_at: null,
         })
+        // A workflow run has no session (ADR 0016): the engine creates one
+        // only for the agent family, so the fixture answers with the run row
+        // alone and the start-or-attach here is the whole drive.
+        if (def.kind === 'workflow') return ok({ runId })
         // The engine creates the session (sessionId ≡ runId) on first drive,
         // so the twin is registered through the fixture's own session/create:
         // it owns the summary row, the model default, and the

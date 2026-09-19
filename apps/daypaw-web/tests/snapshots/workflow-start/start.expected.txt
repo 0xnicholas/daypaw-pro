@@ -1,0 +1,13 @@
+conversation
+placeholder=This task has no conversation — see its progress and outputs in the details column
+detail
+header=nightly-digest
+status=In progress
+section=Progress
+  empty=No progress yet
+section=Subtasks
+  empty=No subtasks
+section=Deliverables
+  empty=No deliverables
+section=Approval history
+  empty=No approval history

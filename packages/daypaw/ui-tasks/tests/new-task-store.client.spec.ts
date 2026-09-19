@@ -1,6 +1,6 @@
 /**
- * NewTaskStore: roster load (agent filter, business labels, latest-wins), submit guards, the
- * startRun→twin-wait sequence, and the minted-runId retry identity.
+ * NewTaskStore: roster load (every definition, business labels, latest-wins), submit guards, the
+ * startRun→twin-wait sequence for agents, the twin-less workflow sequence, and the minted-runId retry identity.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -44,20 +44,22 @@ function startedPayload(api: FakeTaskApi, index = 0): WireStartRunRequest {
 }
 
 describe('NewTaskStore roster', () => {
-  it('loads agent definitions in registration order, labeling from the display title', async () => {
+  it('loads every registry definition in registration order, labeling from the display title', async () => {
     const api = new FakeTaskApi()
     api.onListDefinitions = () => Promise.resolve(ok([
       definition('alpha', { version: '2.1.0' }),
-      definition('workflow-row', { kind: 'workflow' }),
+      definition('workflow-row', { kind: 'workflow', inputKind: null }),
       definition('beta', { version: '0.3.1', display: { title: '周报助手', description: '周报助手' }, inputKind: 'json' }),
     ]))
     const store = await readyStore(api, sessionsBench().sessions)
     const state = store.store.getSnapshot()
     expect(state.status).toBe('ready')
-    // The workflow row never rosters; the label falls back to the technical name.
-    expect(state.agents).toEqual([
-      { id: 'alpha@2.1.0', label: 'alpha', inputKind: 'text' },
-      { id: 'beta@0.3.1', label: '周报助手', inputKind: 'json' },
+    // A workflow definition rosters too (ruling #65: the registry IS the
+    // roster); it declares no display title, so the technical name shows.
+    expect(state.definitions).toEqual([
+      { id: 'alpha@2.1.0', label: 'alpha', kind: 'agent', inputKind: 'text' },
+      { id: 'workflow-row@1', label: 'workflow-row', kind: 'workflow', inputKind: null },
+      { id: 'beta@0.3.1', label: '周报助手', kind: 'agent', inputKind: 'json' },
     ])
     expect(state.selected).toBe('alpha@2.1.0')
   })
@@ -84,7 +86,7 @@ describe('NewTaskStore roster', () => {
     await stale
     const state = store.store.getSnapshot()
     expect(state.status).toBe('ready')
-    expect(state.agents.map(agent => agent.id)).toEqual(['fresh@1'])
+    expect(state.definitions.map(row => row.id)).toEqual(['fresh@1'])
   })
 })
 
@@ -118,10 +120,31 @@ describe('NewTaskStore submit', () => {
     expect(store.store.getSnapshot().submitting).toBe(true)
     const runId = payload.runId
     bench.listSession(runId as SessionId)
-    expect(await pending).toBe(runId)
+    expect(await pending).toEqual({ kind: 'task', sessionId: runId })
     const state = store.store.getSnapshot()
     expect(state.submitting).toBe(false)
     expect(state.text).toBe('')
+    expect(state.submitFailed).toBe(false)
+  })
+
+  it('answers a workflow row with the run itself: no session twin is awaited', async () => {
+    const api = new FakeTaskApi()
+    api.onListDefinitions = () => Promise.resolve(ok([
+      definition('notes-audit', { kind: 'workflow', inputKind: null }),
+    ]))
+    const bench = sessionsBench()
+    const store = await readyStore(api, bench.sessions)
+    store.setJson('{"paths":["a.md"]}')
+    // Nothing ever joins the list projection: an agent submit would park on
+    // the twin subscription until its bound, a workflow submit must not.
+    const outcome = await store.submit()
+    const payload = startedPayload(api)
+    expect(payload.defName).toBe('notes-audit')
+    expect(payload.input).toEqual({ paths: ['a.md'] })
+    expect(outcome).toEqual({ kind: 'run', runId: payload.runId })
+    const state = store.store.getSnapshot()
+    expect(state.submitting).toBe(false)
+    expect(state.json).toBe('')
     expect(state.submitFailed).toBe(false)
   })
 
@@ -146,7 +169,7 @@ describe('NewTaskStore submit', () => {
     const second = startedPayload(api, 1)
     expect(second.runId).toBe(startedPayload(api).runId)
     bench.listSession(second.runId as SessionId)
-    expect(await pending).toBe(second.runId)
+    expect(await pending).toEqual({ kind: 'task', sessionId: second.runId })
     // A fresh task after success mints a fresh id.
     store.setText('下一件事')
     const third = store.submit()

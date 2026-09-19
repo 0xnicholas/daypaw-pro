@@ -8,16 +8,16 @@
 
 /** Simplified Chinese dictionary (the key-set source of truth; product copy). */
 export const zh = {
-  'dialog.agent.label': '执行 Agent',
-  'dialog.agent.empty': '暂无可用 Agent',
+  'dialog.type.label': '任务类型',
+  'dialog.type.empty': '暂无可选任务类型',
   'dialog.text.label': '任务内容',
   'dialog.text.placeholder': '描述要完成的任务…',
   'dialog.json.label': '任务 JSON',
-  'dialog.json.placeholder': '这个 Agent 需要结构化输入，请填写 JSON…',
+  'dialog.json.placeholder': '此项需要结构化输入，请填写 JSON…',
   'dialog.json.invalid': 'JSON 格式有误，请检查后重试',
   'dialog.submit': '开始任务',
   'dialog.submitting': '正在创建…',
-  'dialog.load-failed': 'Agent 列表加载失败',
+  'dialog.load-failed': '任务类型加载失败',
   'dialog.create-failed': '创建任务失败',
   'list.empty': '暂无任务',
   'list.recent': '最近动态 {time}',
@@ -70,16 +70,16 @@ export type DaypawTasksKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
-  'dialog.agent.label': 'Agent',
-  'dialog.agent.empty': 'No agents available',
+  'dialog.type.label': 'Task type',
+  'dialog.type.empty': 'No task types available',
   'dialog.text.label': 'Task',
   'dialog.text.placeholder': 'Describe the task…',
   'dialog.json.label': 'Task JSON',
-  'dialog.json.placeholder': 'This agent takes structured input — enter JSON…',
+  'dialog.json.placeholder': 'This task type takes structured input — enter JSON…',
   'dialog.json.invalid': 'The JSON is malformed — fix it and retry',
   'dialog.submit': 'Start task',
   'dialog.submitting': 'Creating…',
-  'dialog.load-failed': 'Failed to load the agent list',
+  'dialog.load-failed': 'Failed to load the task types',
   'dialog.create-failed': 'Failed to create the task',
   'list.empty': 'No tasks yet',
   'list.recent': 'Last activity {time}',
