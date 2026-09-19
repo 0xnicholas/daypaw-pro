@@ -20,6 +20,7 @@
 | run 进度 | agent run = 对话动态的业务语言投影；workflow run = step 名时间线 |
 | 审批待办 | 「<任务名> 请你确认：<业务动作摘要>」+ **同意 / 拒绝**（拒绝可附言回对话）；原始命令/路径收详情展开 |
 | agent 定义 | 目录卡片 = 业务名 + 描述；`name@version` 收详情页（v1 无版本操作入口） |
+| workflow 定义 | 发起面名册显示技术名（`defineWorkflow` 无 display 字段）；无 wire 面 → 输入面落 JSON 框；起跑后无会话，选中态即该 run 本身 |
 
 呈现层约定两条：呈现词汇只在 UI 文案与 spec 呈现层使用，引擎/ledger/SDK/session 层仍只认 run 等原名，不存在代码层改名；workflow 的 step 名是定义作者的业务文案义务（写业务可读短语，defineWorkflow 侧约定）。
 
@@ -27,7 +28,7 @@
 
 IA 定案 = **变体 C 收件箱工作台**，三栏：
 
-- **左栏（导航）**：最显眼元素 = 大「+ 新任务」按钮（点击弹 agent 选择面板）；其旁「直接和助手聊」轻对话入口（普通会话不经引擎 run，[#98](https://github.com/0xnicholas/daypaw-pro/issues/98) 接回——任务与对话并列入口）；其下收件箱式分组「等待你确认 / 进行中 / 已完成」（含计数）；底部次要导航 = Agents、设置。
+- **左栏（导航）**：最显眼元素 = 大「+ 新任务」按钮（点击弹定义选择面板：引擎的 agent 与 workflow 定义同行名册）；其旁「直接和助手聊」轻对话入口（普通会话不经引擎 run，[#98](https://github.com/0xnicholas/daypaw-pro/issues/98) 接回——任务与对话并列入口）；其下收件箱式分组「等待你确认 / 进行中 / 已完成」（含计数）；底部次要导航 = Agents、设置。
 - **中栏（工作区）**：当前选中项的工作区——进行中的任务显示对话流，待确认任务的审批卡置顶。**单壳分层**（[#100](https://github.com/0xnicholas/daypaw-pro/issues/100)）：无全局模式开关，专业面按需展开——trajectory 事件账本作检查器 tab（上游 view-ring 一席）、verbatim 工具卡即专业展开层，业务默认语言不变。
 - **右栏（详情）**：选中任务的详情——进度、子任务内嵌（spawn 子任务单列一节）、产出物、审批历史。
 
@@ -86,7 +87,7 @@ packages/daypaw/
 - **`defineAgent` 展示字段**：下限 = 业务名 + 描述，与注册表只读视图配套；集合细目落定 = `title` + `description`（spec 02 §1.2），未声明时呈现层回落到技术 `name`。
 - **steer 通道**（用户裁决；[#53](https://github.com/0xnicholas/daypaw-pro/issues/53)）：SDK/引擎加 steer，run 从单段变多段。呈现语义：对话中追问进行中的 run 追加进同一任务的对话流，不产生新任务；产出物以 run 终态 `output_json` 为准（§4 `ui-deliverables` 的识别依据），中间段不单独形成产出物区。
 
-壳发起面（ADR 0012，票 [#66](https://github.com/0xnicholas/daypaw-pro/issues/66) 引擎/交付侧 + [#67](https://github.com/0xnicholas/daypaw-pro/issues/67) 壳侧，均已落地）：**`durable/startRun`** start-or-attach（runId 由弹窗铸造，提交失败保留至重试成功——同 id 重试接回原 run 不重复建；版本缺省 = 唯一注册版本，多版本要求显式）；注册源 = cwd `daypaw/agents/` 注入式工厂目录装载（`@daypaw/web-app` `agentsDir` 配置，缺目录 = 空名册，坏文件 boot 失败响亮）；CLI 首跑幂等播种 starter agent。`listDefinitions` 视图新增 `inputKind`（`text`/`json`/null）：弹窗选择器只列 agent 行（display 业务名，未声明回落技术 name），据此选自由文本（两种 starter 形状，裸字符串过 wire，`{ task }` 收拢在 SDK wire face）或降级 JSON 框（内联语法校验）；提交后等 session 孪生（sessionId≡runId）入 sessions 列表再开对话，openTask 顺带踢一记 board 刷新。终局裁决：引擎定义即名册（弹窗 + 目录页只读 `listDefinitions`），preset 退上游兼容层（仅影响旧会话：存量 preset 会话照常可开，`ui-agent-preset` 壳内 patch 禁用），#60 双名册 Known Limitation 解除；首跑黄卡命名源 = 名册首 agent。
+壳发起面（ADR 0012，票 [#66](https://github.com/0xnicholas/daypaw-pro/issues/66) 引擎/交付侧 + [#67](https://github.com/0xnicholas/daypaw-pro/issues/67) 壳侧落地；定义行纳入名册随 [#127](https://github.com/0xnicholas/daypaw-pro/issues/127)）：**`durable/startRun`** start-or-attach（runId 由弹窗铸造，提交失败保留至重试成功——同 id 重试接回原 run 不重复建；版本缺省 = 唯一注册版本，多版本要求显式）；注册源 = cwd `daypaw/agents/` 注入式工厂目录装载（`@daypaw/web-app` `agentsDir` 配置，缺目录 = 空名册，坏文件 boot 失败响亮）；CLI 首跑幂等播种 starter agent。`listDefinitions` 视图带 `inputKind`（`text`/`json`/null）：弹窗选择器列引擎**全部定义行**——agent 行取 display 业务名（未声明回落技术 name），workflow 行无 display 字段故显示技术名；输入面按 `inputKind` 选自由文本（两种 starter 形状，裸字符串过 wire，`{ task }` 收拢在 SDK wire face）或 JSON 框（内联语法校验 + 定义自己的 input 契约在 engine 边界校验；workflow 定义无 wire 面，`inputKind` 为 null，与 json 同面）。提交后按定义家族分流：agent 行等 session 孪生（sessionId≡runId）入 sessions 列表再开对话，workflow run 无会话（ADR 0016）故直接以 run 为选中态落地；两者都顺带踢一记 board 刷新。终局裁决：引擎定义即名册（弹窗与目录页只读 `listDefinitions`；目录页只投影 agent 行——它是 agent 目录，发起面才是全集），preset 退上游兼容层（仅影响旧会话：存量 preset 会话照常可开，`ui-agent-preset` 壳内 patch 禁用），#60 双名册 Known Limitation 解除；首跑黄卡命名源 = 名册首 agent。
 
 host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjections`/mux 投影**（attach 路径 `pollMs` 为现成先例）。
 
