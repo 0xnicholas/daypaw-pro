@@ -97,6 +97,10 @@ run 内的一个幂等执行单元（含 LLM/工具调用），由 `ctx.step(nam
 
 workflow body 可用的五个显式原语：`ctx.step`（去重单元）、`ctx.sleep`（持久 timer）、`ctx.waitFor`（gate）、`ctx.agent`（调 agent 定义）、`ctx.spawn`（火后不管子 run）。其余靠语言本身；副作用不经 ctx 的代码不受引擎去重保护。命名不进口 Palantir 三原语（Event/Context 与 dsh 既有词汇撞名）；同构关系只记文档。
 
+### Spawn（火后不管子 run）
+
+`ctx.spawn(def, input)` 启动的子 run：父不等待其结局，只等它「已落账启动」，并取回子 runId 作关联用。生命周期独立——自持父子链、被 boot 扫描独立复活、失败不进父的失败面；父被取消时随父一起取消（取消级联），父正常完结则子继续跑。对比**等待式子 run**（`ctx.agent` 与 `ctx.step` 内裸 `run()`）：后者是父的一个 step，父等其类型化结果。
+
 ### Effect
 
 step 内对外部世界的一次副作用（LLM 调用、工具调用、写文件）。ledger 记录 effect + 结果 + 幂等键。

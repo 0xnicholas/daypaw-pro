@@ -31,7 +31,7 @@ durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑�
 - `steer(runId, input)` —— 向未完 run 追加一个追问段（issue #53）：runId 未知、run 已终态、或本进程已注册而未以 `steerable: true` 声明的定义均 loud throw。input 按原样落账——进程内调用者传入已过契约校验的值，本进程解析不到定义的 run 也照常落段（消费侧复检：跨写者防线）。落账先于投递：segment 行先落账，本进程 parked body 随即唤醒；别进程由 parked 等待的 `pollMs` 轮询或下一次 boot 扫描观察到。返回从 1 起的段序号。方法携带 `@Remote` 标记，浏览器经 `durable/steer` 端点触达（`listDefinitions` 先例）。
 - `steerText(runId, text)` —— 追加一个自由文本追问段（ticket #94）：浏览器追问席位的通道。先解析 run 的定义并经其 wire face 校验文本（与 `startRun` 同规的起始文本规则），再经 `steer` 落账。run 未知、定义未注册、定义无 wire face、或 wire 契约拒绝自由文本（json 类定义不收）均 loud throw，失败时零落账。携带 `@Remote` 标记（`durable/steerText`，`steer` 先例）。
 - `rerun(runId)` —— 重试一个终态顶层 run（issue #57）：runId 未知、run 未终态、子 run（对子 run 重试会把 attempt 链从父 run 的 step journal 上扯脱——应重试顶层 run）、或定义未在本进程注册，均 loud throw。否则经与 `run()` 启动分支共享的 `insertAndDrive()` 抽取插入一行新记录——定义身份与输入相同、`attempt = 源.attempt + 1`、`retried_from_run_id = 源.run_id`——并立即驱动，返回新 run id。方法携带 `@Remote` 标记（`durable/rerun`）。
-- `cancel(runId, cause?)` —— 请求取消一个未终态 run（ticket #74）：先落带 cause 的终态 `cancelled` 行，pending gate 结算 cancelled，本进程 driver abort。对终态 run 幂等——已结束的 run 已满足请求，滞留的 driver 仍会 abort（终态写入与 abort 之间的故障可能留下一只）——未知 runId loud throw。携带 `@Remote` 标记（`durable/cancel`，`steer` 先例）。
+- `cancel(runId, cause?)` —— 请求取消一个 run 及其启动的一切（ticket #74，ADR 0016 §3）：先落带 cause 的终态 `cancelled` 行，pending gate 结算 cancelled，本进程 driver abort；每个未完结子孙经同一写递归，故活得比父自己的工作长的 spawn 子仍在停止请求的射程内，而已完结的子孙一字不动（取消从不改写已发生的事）。对终态 run 幂等——已结束的 run 已满足请求，其未完结子孙仍会被取消，滞留的 driver 仍会 abort（终态写入与 abort 之间的故障可能留下一只）——未知 runId loud throw。携带 `@Remote` 标记（`durable/cancel`，`steer` 先例）。
 
 查询方法（`listRuns` / `runLineage` / `journalTimeline`）是 ledger 的唯一查询出口（spec 05 §5）：host 经 `ctx.durable` 读 run、血缘与 step 时间线，永不自带 SQL，查询知识随 schema 演进同步。呈现词汇不进此缝——行保持引擎原名。三者均携带 `@Remote` 标记（`listDefinitions` 先例），浏览器板块经 gateway 以 `durable/listRuns` / `durable/runLineage` / `durable/journalTimeline` 触达，无需改动 apiproxy。其 wire 类型经本包 `types.ts` 从 [`@daypaw/store/types`](../store/README.zh.md)（及 `seams.ts` / `core.ts`）转出，因为 Typert 分析器扫描的是声明所属包的 exports 子路径；`RunLineage` 成员为 `| null` 而非 `undefined`——JSON 丢弃 undefined 值的键，wire 值必须与声明类型一致。
 
@@ -47,11 +47,11 @@ run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键
 
 `ctx.waitFor(gate, { schema?, timeout? })` 是 HITL 挂起原语（spec 第 1 章 §6）：登记 `(runId, gate)` 键的 pending promise 行、run 转 `waiting` 并让出驱动——等待零算力，进程死掉由 boot 扫描复活，重驱动在同一 `waitFor` 读到已落账的结局直接返回。终态以 `GateResolution` 联合值返回（`resolved` / `rejected` / `timedout` / `cancelled`），超时、拒绝、取消是可编程分支而非异常。`timeout` 为毫秒时长；进程内 `setTimeout` 到点 first-wins 写 `timedout`，进程错过则由 boot 扫描先扫 overdue 再续跑。
 
-`ctx.sleep(durationMs)` 是持久 timer（spec 第 1 章 §6）：以本调用的键落一行 `timers`——键按调用序派生 `sleep:<occurrence>`（前缀保留，同 `steer:`）——并挂起驱动至截止。已录的唤醒不再重等；仍未到期的已录截止按录等，故崩溃既不重等也不延长；进程不在时的过期截止立即续跑。唤醒先落账再投递（先写 `fired` 行、body 随即续跑），run 的 ledger 状态保持 `running`（sleep 不是 gate），死进程期间错过的截止由 boot 扫描的 overdue 扫尾补记。
+`ctx.sleep(durationMs)` 是持久 timer（spec 第 1 章 §6）：以本调用的键落一行 `timers`——键按作用域在调用序内计数 `sleep:<n>`（调用发生在步内时为 `<stepKey>/sleep:<n>`，前缀保留，同 `steer:`）——并挂起驱动至截止。已录的唤醒不再重等；仍未到期的已录截止按录等，故崩溃既不重等也不延长；进程不在时的过期截止立即续跑。唤醒先落账再投递（先写 `fired` 行、body 随即续跑），run 的 ledger 状态保持 `running`（sleep 不是 gate），死进程期间错过的截止由 boot 扫描的 overdue 扫尾补记。
 
 steer 通道（spec 第 1 章 §5）把 opt-in 的 run（定义上 `steerable: true`）从单段变多段：段 0 是 `runs` 行上的 run 输入，每次 `steer()` 追加一行 `journal kind='segment'`——step 键 `steer:<seq>`（从 1 起；`steer:` 前缀与 step 键不撞）、插入即 `completed`、值为 JSON 输入、永不重执行。body 内 `ctx.steers()` 按记录序读全部已落账段输入（纯读——跨重驱动的消费去重归 body 管），`ctx.awaitSteer(known)` 以零算力挂起驱动直至有超过 `known` 的段落账，已录够即立即返回，取消或销毁时 reject `RUN_CANCELLED` / `ENGINE_DISPOSED`。parked run 的 ledger 状态保持 `running`；对 gate `waiting` 的 run steer 只落账、不唤醒 gate。boot 扫描复活按已落账段重驱动 body。
 
-step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间，`currentStepScope()` 返回 ambient 作用域 `{ runId, stepKey }`；在其中启动的子 run 派生确定性 runId `<runId>/<stepKey>/<kind>:<name>#<occurrence>` 并记录父子血缘——重驱动的父 run attach 子 run 而非重开（SDK 的 `ctx.agent` 与裸子 workflow 惯用式都走这条机制）。
+step ctx 另暴露 `runId`、驱动者的 `signal` 与 `slot(kind)`——`sleep:<n>` 与 SDK 的 `spawn:<n>` 背后的保留键位分配器：计数器按作用域各一份（顶层一份，每个步作用域各一份），故 `fn` 被重驱动跳过的步不会挤掉外层调用的序号。step 的 `fn` await 期间，`currentStepScope()` 返回 ambient 作用域 `{ runId, stepKey }`；在其中启动的子 run 派生确定性 runId `<runId>/<stepKey>/<kind>:<name>#<occurrence>` 并记录父子血缘——重驱动的父 run attach 子 run 而非重开（SDK 的 `ctx.agent`、`ctx.spawn` 与裸子 workflow 惯用式都走这条机制）。
 
 ## 扩展点
 
@@ -76,7 +76,7 @@ step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间
 
 ## Known Limitations and Deferred Work
 
-- **走骨原语集** —— `ctx.step`、`ctx.waitFor`、`ctx.sleep` 与 steer 通道（`steers` / `awaitSteer`）已落地；`spawn` 随其状态机按需落地（`agent` 面在 SDK 侧已有）。
+- **原语集** —— `ctx.step`、`ctx.waitFor`、`ctx.sleep`、steer 通道（`steers` / `awaitSteer`）以及它们背后的保留键位分配器 `ctx.slot` 已落地；`agent` 与 `spawn` 面在 SDK 侧（ADR 0010、ADR 0016）。
 - **timer 准时性需要活进程** —— sleep 只在有进程驱动其 run 时唤醒；所有进程都不在时，过期的截止要到下一次 boot 扫描才被补记，没有东西准时唤醒该 run（spec 第 1 章 §10）。
 - **跨进程结算无写侧 schema 校验** —— 落盘的 `schema_json` 只是渲染投影；无 live schema 的进程写入不经校验，等待方交付前必验，不合格以 step 级失败收场。
 - **`steerable` 仅在定义已注册处校验** —— 经未注册该定义所在引擎实例发起的 `steer()` 不经检查直接落账；SDK 面在 steer 时校验输入，agent body 在消费段时复检，不合格以 run 级失败收场；opt-in 的 throw 只存在于 body 可知之处。

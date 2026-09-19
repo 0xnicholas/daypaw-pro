@@ -23,7 +23,7 @@ import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
 import { durableFailure } from './failures.ts'
 
-export { DurableEngineCore, EngineRunError, currentStepScope } from './core.ts'
+export { DurableEngineCore, EngineRunError, childRunIdOf, currentStepScope } from './core.ts'
 export { durableFailure } from './failures.ts'
 export type { DurableFailureCode, DurableFailureDetailsMap } from './failures.ts'
 export type { Json } from './types.ts'

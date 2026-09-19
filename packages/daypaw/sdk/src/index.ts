@@ -12,9 +12,11 @@
 import { z } from 'zod'
 import type { ZodType } from 'zod'
 import type DurableEngine from '@daypaw/engine'
+import { EngineRunError, childRunIdOf } from '@daypaw/engine'
 import type { EngineDefinition, EngineStepCtx, GateResolution, GateSchema } from '@daypaw/engine'
-import type { AgentDefinition, BoundAgent } from './agent.ts'
-import { boundAgentFor } from './agent.ts'
+import type { AgentDefinition } from './agent.ts'
+import type { BoundFace } from './bound.ts'
+import { boundFaceFor, registerBoundFace } from './bound.ts'
 import type { RunHandle, RunOptions } from './run-handle.ts'
 import { startRun } from './run-handle.ts'
 import { wireFace } from './wire.ts'
@@ -51,6 +53,11 @@ function adaptGateSchema<T>(schema: ZodType<T>): GateSchema<T> {
   }
 }
 
+/** A definition `ctx.spawn` accepts: either family, because the ledger knows only runs. */
+export type SpawnableDefinition<I extends ZodType = ZodType, O extends ZodType = ZodType> =
+  | WorkflowDefinition<I, O>
+  | AgentDefinition<I, O>
+
 /** Execution context handed to a workflow body; grows with the ctx primitives. */
 export interface WorkflowCtx extends EngineStepCtx {
   /**
@@ -65,6 +72,22 @@ export interface WorkflowCtx extends EngineStepCtx {
    * @returns the child's output-validated result.
    */
   agent<I extends ZodType, O extends ZodType>(def: AgentDefinition<I, O>, input: Infer<I>): Promise<Infer<O>>
+  /**
+   * Fire-and-forget child run (ADR 0016): starts `def` on the deterministic
+   * child runId derived from this run, the spawn's slot key, and the child's
+   * definition identity — recording the parent linkage — and returns that id
+   * without waiting for the child. The await covers the child's *start*: once
+   * it resolves, the child run is durably recorded and driving. From there
+   * the child lives its own life — a boot scan revives it without its parent,
+   * its failure never enters this run's status, and only cancelling this run
+   * (or the child itself) takes it down. Detached work is the point: use
+   * `ctx.spawn` to start work this run does not wait for, and {@link WorkflowCtx.agent}
+   * or a bare `run()` inside `ctx.step` when the result is wanted.
+   * @param def - bound definition to start (agent or workflow); an unbound definition throws.
+   * @param input - child run input, validated against the definition's contract.
+   * @returns the child's persistent runId.
+   */
+  spawn<I extends ZodType, O extends ZodType>(def: SpawnableDefinition<I, O>, input: Infer<I>): Promise<string>
   /**
    * Durable gate (HITL suspension, spec 01 §6): register a pending promise
    * keyed by `(runId, gate)`, move the run to `waiting`, and yield — waiting
@@ -132,11 +155,12 @@ export interface BoundWorkflow<I extends ZodType = ZodType, O extends ZodType = 
   run(input: Infer<I>, opts?: RunOptions): Promise<RunHandle<Infer<O>, Infer<I>>>
 }
 
-/** Wrap the engine's step ctx with the SDK's `ctx.agent` primitive. */
+/** Wrap the engine's step ctx with the SDK's `ctx.agent` and `ctx.spawn` primitives. */
 function enrichStepCtx(ctx: EngineStepCtx): WorkflowCtx {
   return {
     runId: ctx.runId,
     signal: ctx.signal,
+    slot: kind => ctx.slot(kind),
     step: (name, fn, opts) => ctx.step(name, fn, opts),
     steers: () => ctx.steers(),
     awaitSteer: known => ctx.awaitSteer(known),
@@ -146,14 +170,33 @@ function enrichStepCtx(ctx: EngineStepCtx): WorkflowCtx {
     }),
     sleep: durationMs => ctx.sleep(durationMs),
     agent: async (def, input) => {
-      const bound = boundAgentFor(def) as BoundAgent<typeof def.input, typeof def.output> | undefined
+      const bound = boundFaceFor(def) as BoundFace<typeof def.input, typeof def.output> | undefined
       if (bound === undefined) {
         throw new Error(`agent definition "${def.name}@${def.version}" is not bound; call bindAgent(def, ctx) before ctx.agent`)
       }
       return ctx.step(`agent:${def.name}`, async () => {
-        const handle = await bound.run(input)
+        const handle = await bound.face.run(input)
         return handle.result
       })
+    },
+    spawn: async (def, input) => {
+      const bound = boundFaceFor(def)
+      if (bound === undefined) {
+        throw new Error(`definition "${def.name}@${def.version}" is not bound; call bind/bindAgent before ctx.spawn`)
+      }
+      // A body the driver already aborted starts no new work: the run's
+      // terminal row is written before its abort, and this call is the next
+      // primitive it reaches.
+      if (ctx.signal.aborted) throw new EngineRunError('RUN_CANCELLED', ctx.runId)
+      const slot = ctx.slot('spawn')
+      // The engine's own start-or-attach dedups the re-drive: the derived id
+      // already exists, so the spawn attaches to that child instead of
+      // starting a second one.
+      const handle = await bound.engine.run(bound.engineDef, bound.input.parse(input), {
+        runId: childRunIdOf(ctx.runId, slot, def.kind, def.name, 0),
+        parent: { runId: ctx.runId, stepKey: slot },
+      })
+      return handle.id
     },
   }
 }
@@ -163,8 +206,10 @@ const engineDefs = new WeakMap<WorkflowDefinition, EngineDefinition>()
 
 /**
  * Bind a definition to a durable engine: registers it for execution and
- * boot-time revival and returns the runnable face. Binding the same
- * definition object twice is a no-op.
+ * boot-time revival and returns the runnable face. A second `bind` of the
+ * same definition object registers that engine's record and hands back a
+ * face for it — the engine passed in is the one the returned face runs on —
+ * while `ctx.agent`/`ctx.spawn` resolve the newest binding.
  * @param def - definition from {@link defineWorkflow}.
  * @param engine - the `ctx.durable` service of the app's Cordis composition.
  * @returns the bound workflow.
@@ -187,7 +232,9 @@ export async function bind<I extends ZodType, O extends ZodType>(
     engineDefs.set(def, engineDef)
   }
   await engine.register(engineDef)
-  return {
+  const bound: BoundWorkflow<I, O> = {
     run: (input: Infer<I>, opts?: RunOptions) => startRun(engine, engineDef, def, input, opts),
   }
+  registerBoundFace(def, { engine, engineDef, input: def.input, face: bound })
+  return bound
 }

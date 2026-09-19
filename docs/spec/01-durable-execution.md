@@ -77,7 +77,7 @@ PK `(run_id, gate)`；列：`state`（`pending | resolved | rejected | timedout 
 
 ### 3.4 `timers`（§6）
 
-PK `(run_id, step_key)`（sleep 属 step 族，占幂等键位）；列：`wake_at`、`fired`（0/1）、`created_at`。boot 扫描 overdue 查询 = `WHERE fired = 0 AND wake_at <= ?`。
+PK `(run_id, step_key)`（sleep 属 step 族，占幂等键位；键 = 顶层 `sleep:<n>`、步作用域内 `<stepKey>/sleep:<n>`，见 §6 与 ADR 0016 §6）；列：`wake_at`、`fired`（0/1）、`created_at`。boot 扫描 overdue 查询 = `WHERE fired = 0 AND wake_at <= ?`。
 
 ### 3.5 并发模型
 
@@ -111,7 +111,7 @@ DB 级：**WAL 一写多读**——引擎进程单写者，Manager host / 其它
 
 **steer 段（segment，issue #53）**：定义以 `steerable: true` opt-in 后，run 从单段变多段。段 0 = `runs.input_json`（隐式边界）；每次 `steer(runId, input)` 追加一行 `journal kind='segment'`：step_key `steer:<seq>`（seq 从 1 起按记录序递增；`steer:` 前缀与 step 键永不碰撞）、`occurrence=seq`、插入即 `completed`、`value_json` = JSON 输入——段是事实而非执行单元，任何重驱动都不重执行它。`steer` loud 失败三态：runId 未知、run 已终态、本进程已注册而未声明 `steerable` 的定义（经未注册该定义的实例跨进程 steer 不经此检查）。落账先于投递：本进程 parked driver 直推唤醒；跨进程由 parked 等待的 `pollMs` 轮询兜底；进程已死由 boot 扫描重驱动、body 消费已落账段。body 侧两原语：`ctx.steers()` 按记录序读全部段输入（纯读，跨重驱动的消费去重归 body 管）；`ctx.awaitSteer(known)` 挂起至有超过 `known` 的段落账（已录够立即返回，与先查后等不构成竞态；取消/销毁 reject `RUN_CANCELLED` / `ENGINE_DISPOSED`；轮询同时观察他写者落下的行）。parked run 的 ledger 状态保持 `running`（gate `waiting` 语义不动）；对 gate 等待中的 run steer 只落账、不唤醒 gate。
 
-**cancel**：写 `status='cancelled'` + `cancel_cause` → driver 侧 AbortSignal 触发；已完成 step 记录保留。重跑语义（新 runId + attempt 链）归 Manager 章（远期子项目方向文档）。
+**cancel**：写 `status='cancelled'` + `cancel_cause` → driver 侧 AbortSignal 触发；已完成 step 记录保留。**取消级联**（ADR 0016 §3）：写自身终态后递归对每个未完结子孙执行同一写（已完结子孙不动），`done` / `failed` 永不级联（子 run 继续跑、继续被 boot 扫描独立复活），对已终态 run 的 `cancel` 同样级联（处理「父已完成、spawn 子仍在跑」的孤儿态）；对已取消子树幂等。重跑语义（新 runId + attempt 链）归 Manager 章（远期子项目方向文档）。
 
 ## 6. Durable promise（gate）与持久 timer
 
@@ -122,7 +122,7 @@ DB 级：**WAL 一写多读**——引擎进程单写者，Manager host / 其它
 - **幂等 resolve**：同 `(run_id, gate)` 第一写入者胜（first-wins，对齐 dsh jobs settlement 与 Resonate `strict`）。
 - **终态非异常**：返回 `GateResolution` 联合值 `{state:'resolved',value} | {state:'rejected',reason} | {state:'timedout'} | {state:'cancelled'}`；超时/拒绝是可编程分支，不抛异常。
 
-**`ctx.sleep(duration)`**：timers 行 `wake_at = now + duration`，占 step 族幂等键位——键按调用序派生为 `sleep:<occurrence>`（`sleep:` 前缀保留，与 `steer:` 同类），重驱动处序确定即去重：`fired = 1` 直接返回，未 fired 按**已录的** `wake_at` 等（重驱动不重算时长，崩溃既不重等也不延长）。进程活着 = `setTimeout` 自唤醒；进程死 = boot 扫描补发 overdue（`fired=0 AND wake_at <= now`；重驱动的 body 自身读到过期截止也走同一条 first-wins 写）。唤醒**先落账再投递**：到期时先写 `fired = 1`，body 随即续跑。run 在 sleep 期间 ledger 状态保持 `running`（sleep 不是 gate，`waiting_gate` 只记 gate）。语义 = **至少醒一次、迟到不丢**——准时性受拉起时机约束（§10 运维注记）。
+**`ctx.sleep(duration)`**：timers 行 `wake_at = now + duration`，占 step 族幂等键位——键按调用序在**环境作用域**内派生（顶层 `sleep:<occurrence>`；步作用域内 `<stepKey>/sleep:<occurrence>`，计数器按作用域各一份；`sleep:` 前缀保留，与 `steer:` 同类，ADR 0016 §6）：已完成步的 `fn` 被重驱动跳过时，其后调用的原语不会错取更早的序号。重驱动处序确定即去重：`fired = 1` 直接返回，未 fired 按**已录的** `wake_at` 等（重驱动不重算时长，崩溃既不重等也不延长）。进程活着 = `setTimeout` 自唤醒；进程死 = boot 扫描补发 overdue（`fired=0 AND wake_at <= now`；重驱动的 body 自身读到过期截止也走同一条 first-wins 写）。唤醒**先落账再投递**：到期时先写 `fired = 1`，body 随即续跑。run 在 sleep 期间 ledger 状态保持 `running`（sleep 不是 gate，`waiting_gate` 只记 gate）。语义 = **至少醒一次、迟到不丢**——准时性受拉起时机约束（§10 运维注记）。
 
 ## 7. 可替换三缝（daemon 化 / 服务化留口）
 
@@ -153,7 +153,7 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 
 - **崩溃/重放双层**（keyless）：主力 = 进程内故障注入——包装 journal 写入层，穷举「每个 append 点前后抛异常」，注入时钟跨「重启」推进 durable timer；断言每 effect 恰执行一次、重放不重不漏、step 去重、gate 状态机五态、boot 扫描、claim 夺权；同一包装面覆盖 steer 追加点（段列出 / 段插入 / parked 等待的轮询观察，含行消失、他处终态、重复 park 各分支）。补充 = 真 SIGKILL——tsx spawn 子进程跑 run、杀掉、重启验恢复（半写路径/文件锁）；steerable agent 场景：run 在 parked 态被杀，重启后凭已落账段续跑到 done、journal 留下 `steer:1` 段行；如需进上游 `processBoundTests` 单列 lane 则逐条 core-touch 登记。
 - **golden 库迁移 fixture**：§4 逐段比对。
-- **契约断言清单**：step 恰一次、幂等键去重（自动派生 + `opts.key` 逃生口）、boot 复活不需原调用者、单写者拒绝双驱动、promise 幂等 resolve（first-wins）+ 超时终态、timer overdue 补发、attach 三态（在驱动/已完成/跨进程轮询）、steer loud 失败三态 + 段按记录序消费 + parked run 崩溃复活后消费已落账段不重复投递。
+- **契约断言清单**：step 恰一次、幂等键去重（自动派生 + `opts.key` 逃生口）、boot 复活不需原调用者、单写者拒绝双驱动、promise 幂等 resolve（first-wins）+ 超时终态、timer overdue 补发、attach 三态（在驱动/已完成/跨进程轮询）、steer loud 失败三态 + 段按记录序消费 + parked run 崩溃复活后消费已落账段不重复投递、**取消级联**（未完结子孙递归、已完结子孙不动、已终态父的孤儿清扫、调用方信号路径、重入幂等）、**spawn**（确定性子 id 与父链落账、re-drive attach 不重复、失败不进父面）、**键作用域化**（步内发起的原语不错取外层序号）。
 - **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader；canonical example（walking skeleton 宿主，`examples/daypaw-*`）拥有 keyless 验收 + with-key smoke（无 key 自跳）。
 - **invariant companion**：engine 包 `src/invariant.ts`（journal 追加性、runs/journal 引用完整性、run/promise 状态机合法迁移）。
 - **覆盖率**：per-file 100% 门，`packages/*/*` glob 零配置纳入。
@@ -175,4 +175,4 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 | §6 promise / timer | promise ✅（`ctx.waitFor` gate 原语，含超时与 boot overdue 扫尾）/ timer ✅（`ctx.sleep` timer 原语，含重驱动去重与 boot overdue 补发） |
 | §7 三缝接口 | ✅ 以进程内实现落地（接口成型即留口） |
 | §9 双层崩溃 + golden fixture + canonical example | ✅ 随包落地（证明线：3-step example 真 SIGKILL 续跑） |
-| retry 面 / spawn / defineAgent / profile 接线 / bin 冒烟 | ❌ 全部在外 |
+| retry 面 | ❌ 在外（spawn 随 ADR 0016 落地、defineAgent 随 ADR 0010 落地、profile 接线与 bin 冒烟随交付落地） |

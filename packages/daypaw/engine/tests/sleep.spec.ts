@@ -161,7 +161,10 @@ describe('durable timers (ctx.sleep)', () => {
   it('waits for the recorded deadline rather than a re-declared duration', async () => {
     const path = await tmpPath('daypaw-sleep-recorded-')
     const now = Date.now()
-    await stageRunWithTimer(path, 'sleep-recorded-1', 'sleep:0', now + 120, 0, now)
+    // The margin leaves room for boot + revival under a loaded suite: the
+    // assertion is about which deadline governs, not about how fast the
+    // fixture reaches its first park.
+    await stageRunWithTimer(path, 'sleep-recorded-1', 'sleep:0', now + 1_000, 0, now)
     const { ctx, engine } = await boot(path)
     contexts.push(ctx)
     const def = workflowDef(async (run) => {
@@ -173,10 +176,10 @@ describe('durable timers (ctx.sleep)', () => {
     const revived = await engine.run(def, null, { runId: 'sleep-recorded-1' })
     await expect(revived.result).resolves.toBe('woken')
     const elapsed = Date.now() - started
-    // The recorded deadline governs: the revived body waits for the remaining
-    // 120ms, not for the 60s it declares on this drive.
-    expect(elapsed).toBeGreaterThanOrEqual(100)
-    expect(elapsed).toBeLessThan(2_000)
+    // The recorded deadline governs: the revived body waits out the remaining
+    // second, not the 60s it declares on this drive.
+    expect(elapsed).toBeGreaterThanOrEqual(500)
+    expect(elapsed).toBeLessThan(5_000)
     expect(readTimers(path)[0]?.fired).toBe(1)
   })
 
@@ -391,5 +394,51 @@ describe('durable timers (ctx.sleep)', () => {
       return detail instanceof Error && detail.message.includes('settled while a sleep wait was still pending')
     })
     expect(readTimers(path)[0]?.fired).toBe(0)
+  })
+
+  it('keys a sleep inside a step under that step', async () => {
+    const path = await tmpPath('daypaw-sleep-scoped-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    const def = workflowDef(async (run) => {
+      await run.step('outer', async () => { await run.sleep(10); return 'inner' })
+      return 'outer'
+    })
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'sleep-scoped-1' })
+    await expect(handle.result).resolves.toBe('outer')
+    expect(readTimers(path).map(row => row.step_key)).toEqual(['outer#0/sleep:0'])
+  })
+
+  it('does not deliver an outer sleep from a step-scoped timer after a re-drive', async () => {
+    const path = await tmpPath('daypaw-sleep-scope-redrive-')
+    const first = await boot(path)
+    const def = workflowDef(async (run) => {
+      const inner = await run.step('outer', async () => { await run.sleep(1); return 'inner' })
+      await run.sleep(60_000)
+      return inner
+    })
+    await first.engine.register(def)
+    const handle = await first.engine.run(def, null, { runId: 'sleep-scope-redrive-1' })
+    await until(() => readTimers(path).length === 2)
+    await first.ctx.fiber.dispose()
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => runError(error).code === 'ENGINE_DISPOSED')
+
+    const second = await boot(path)
+    contexts.push(second.ctx)
+    await second.engine.register(def)
+    const revived = await second.engine.run(def, null, { runId: 'sleep-scope-redrive-1' })
+    // The completed step's fn is skipped on the re-drive, so the outer sleep
+    // is this drive's first sleep call: its own slot is `sleep:0`, never the
+    // step's already-fired timer. Reading the wrong row would hand the run a
+    // wake it never took and let it return early.
+    await new Promise(resolve => setTimeout(resolve, 60))
+    expect(readRuns(path)[0]?.status).toBe('running')
+    expect(readTimers(path).map(row => [row.step_key, row.fired])).toEqual([
+      ['outer#0/sleep:0', 1],
+      ['sleep:0', 0],
+    ])
+    await revived.cancel('cleanup')
+    await revived.result.catch(() => {})
   })
 })

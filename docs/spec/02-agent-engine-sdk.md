@@ -1,6 +1,6 @@
 # 第 2 章：Agent Engine + SDK（workflow 面写满，defineAgent 面已裁）
 
-> 状态：**workflow 面与 defineAgent 面均已实现**（支柱②落地 ADR 0010 §4 范围：defineAgent/bindAgent + 确定性子 runId 派生 + `ctx.agent` + 子 workflow 惯用式；`ctx.spawn` 仍排除）。决策依据 [ADR 0003](../adr/0003-engine-sdk-programming-model.md) / [ADR 0010](../adr/0010-define-agent-compilation-and-execution.md)；引擎语义见 ADR 0002 与 spec 第 1 章。
+> 状态：**workflow 面与 defineAgent 面均已实现，五原语齐**（defineAgent/bindAgent + 确定性子 runId 派生 + `ctx.agent` + 子 workflow 惯用式，ADR 0010；`ctx.spawn` 与取消级联，ADR 0016）。决策依据 [ADR 0003](../adr/0003-engine-sdk-programming-model.md) / [ADR 0010](../adr/0010-define-agent-compilation-and-execution.md) / [ADR 0016](../adr/0016-spawn-and-child-run-lifecycle.md)；引擎语义见 ADR 0002 与 spec 第 1 章。
 
 ## 1. 编程模型
 
@@ -68,7 +68,7 @@ export interface WorkflowCtx {
   step<T>(name: string, fn: () => Promise<T>, opts?: StepOptions): Promise<T>
   /** durable gate（HITL 挂起，spec 01 §6）；终态以 GateResolution 联合值返回。 */
   waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
-  // sleep：继承引擎 ctx（spec 01 §6，已实现）；agent 见 §1.2；spawn 未设计
+  // sleep / slot：继承引擎 ctx（spec 01 §6，已实现）；agent 见 §1.2；spawn 见 §2
 }
 
 export interface StepOptions {
@@ -169,12 +169,14 @@ steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无
 
 ## 2. ctx 原语面
 
-五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。`step`/`agent` 面已定案（上节与 ADR 0010）；`waitFor` 语义 spec 01 §6、已实现；`sleep` 语义同节、已实现（`WorkflowCtx` 自引擎 ctx 继承）；`spawn` 语义未设计（ADR 0010 §4 排除）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
+五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2），**全部已落地**。`step`/`agent` 面已定案（上节与 ADR 0010）；`waitFor` / `sleep` 语义 spec 01 §6、已实现（`WorkflowCtx` 自引擎 ctx 继承）；**`spawn` 语义 ADR 0016、已实现**：`ctx.spawn(def, input): Promise<string>`——占保留的 step 族键位 `spawn:<n>`（步作用域内 `<stepKey>/spawn:<n>`），派生确定性子 runId、带父链 start-or-attach、返回子 runId；**await 它等的是「子 run 已落账启动」，不是子 run 的结局**（不给 handle / `result` / `cancel`）；派发事实住子 run 行的父链（`parent_step_key = 'spawn:<n>'`，零新 journal kind、零迁移、浏览器面零随波）；子 run 独立复活、失败不进父的失败面，父取消时随父级联取消（ADR 0016 §3）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
 
 - **子 workflow 等待式调用 = 惯用式**，不加第六原语：`ctx.step` 内裸 `def.run()` 等待 `.result`；前提是引擎从 `(parentRunId, stepKey, occurrence)` 派生**确定性子 runId**（重驱动 attach 而非重开，副作用不翻倍）。
 - **step 幂等键**：默认 `runId + name + occurrence` 自动派生（重驱动遍历顺序须确定，map 顺序稳定、手写乱序 await 不稳——运维注记）；`opts.key` 显式逃生口。
 - **错误与门结局**：gate 超时/拒绝 = 联合类型值 `GateResolution`（终态非异常，ADR 0002 §5 的类型化呈现，四态含 `cancelled` 以 spec 01 §6 为准）；`RunStatus` 用判别联合（`{state:'waiting', gate}` 等，修订 ADR 0003 的 `'waiting:<gate>'` 字符串草案）；（retry 面）`PermanentStepError` 止重试——随 retry 面推迟；`RunHandle.result` 仅 failed/cancelled 时 reject；LLM 级重试留 dsh llm-retry waterfall，不进 SDK 面。
 - **step 结果序列化**：运行时校验（ledger 写账时），编译期 `T extends Json` 约束与 zod optional 推断冲突，不做。
+- **分离与观察的分工**：分离用 `ctx.spawn`，观察用 `ctx.agent` / step 内裸 `run()`；观察或 join 一个已 spawn 的子 run（以及它的 `status()` / `cancel()` 句柄）需新原语，留口（ADR 0016 §2）。
+- **并发无闸**：v1 无上限（与 `Promise.all` 跑等待式子 run 同级）；真背压需要队列，触发条件见 ADR 0016 §5。
 
 ## 3. 定义注册表与组合
 
@@ -197,10 +199,11 @@ steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无
 | `ctx.step(name, fn)` | INSERT `journal` `started` → 执行 → `completed`+`value_json` / `failed`+`error_json`（PK `(run_id, step_key)` 即去重闸） | — |
 | 重驱动遇已完成 step | 读 `value_json` 返回，不重执行 | — |
 | `ctx.waitFor` | `promises` 行 pending + `runs`→`waiting`/`waiting_gate` | `status()` = `{state:'waiting', gate}` |
-| `ctx.sleep(duration)` | `timers` 行 `wake_at`（键 `sleep:<occurrence>`）；到期先写 `fired = 1` 再投递；未 fired 的已录截止按录等、过期的立即续跑；boot 扫描补发 overdue | `status()` 保持 `{state:'running'}` |
-| `handle.cancel(cause)` | UPDATE `runs`→`cancelled`+`cancel_cause` → driver AbortSignal | `result` reject `RunCancelledError` |
+| `ctx.sleep(duration)` | `timers` 行 `wake_at`（键：顶层 `sleep:<n>`、步作用域内 `<stepKey>/sleep:<n>`）；到期先写 `fired = 1` 再投递；未 fired 的已录截止按录等、过期的立即续跑；boot 扫描补发 overdue | `status()` 保持 `{state:'running'}` |
+| `ctx.spawn(def, input)` | INSERT 子 `runs` 行（记 `parent_run_id` + `parent_step_key = 'spawn:<n>'`，键位同睡眠按作用域派生）并驱动；重驱动按同序派生同一子 id → attach，不重复 spawn | 返回子 runId（不返回 handle 与 `result`） |
+| `handle.cancel(cause)` | UPDATE `runs`→`cancelled`+`cancel_cause` → driver AbortSignal；并递归对每个**未完结**子孙执行同一写（已完结子孙不动；对已终态 run 亦级联——ADR 0016 §3） | `result` reject `RunCancelledError` |
 | `handle.steer(input)`（steerable 定义，issue #53） | INSERT `journal` `kind='segment'`（`steer:<seq>`，插入即 `completed`）→ 本进程 parked driver 直推唤醒 / 跨进程 `pollMs` 轮询兜底 | parked run 的 `status()` 保持 `{state:'running'}` |
-| `durable/cancel`（Remote，ticket #74） | 终态 `cancelled` 行 + `cancel_cause` 先落，pending gate 结算 cancelled，本进程 driver abort；终态 run 幂等（滞留 driver 仍 abort），未知 runId loud | — |
+| `durable/cancel`（Remote，ticket #74） | 终态 `cancelled` 行 + `cancel_cause` 先落，pending gate 结算 cancelled，本进程 driver abort，未完结子孙递归同写（ADR 0016 §3）；终态 run 幂等（滞留 driver 仍 abort），未知 runId loud | — |
 | steerable run 段边界消费 | 段输入作为 user message 进入同一 session（`agent.steer`），一次唤醒跑一个 turn 到 quiescence | — |
 | step 失败（v1 无 retry 面） | `journal` `failed` + `runs`→`failed`+`error_json` | `result` reject `RunFailedError` |
 | 成功收尾 | output schema 校验后写 `output_json`，`runs`→`done` | `result` resolve 类型化结果 |
@@ -218,8 +221,8 @@ preset / composition / session / subagent seam / `session/event` ↔ 新模型�
 
 [ADR 0007](../adr/0007-test-strategy.md) 定调：
 
-- **崩溃/重放双层**（engine 本体，keyless）：主力 = 进程内故障注入——包装 ledger 写入层，穷举「每个 append 点前后抛异常」，配注入时钟跨「重启」推进 durable timer；断言每 effect 恰执行一次、重放不重不漏、step 去重、gate 状态机、boot 扫描。补充 = 真 SIGKILL——tsx spawn 子进程跑 run、杀掉、重启验恢复（半写路径/文件锁）；如需进上游 `processBoundTests` 单列 lane 则逐条 core-touch 登记。
-- **SDK 行为面**：跑真 engine（进程内 + 临时目录 SQLite，mock 边界仅 LLM/时钟）；五原语各配契约测试（含确定性子 runId 派生、`opts.key` 逃生口、GateResolution/RunStatus 判别联合）、steerable 多段生命周期（submit-less turn park、段边界投递、parked/死期落账/中断 turn 三种复活分支、序数去重）；tsc 类型面独立断言套件（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/issues/10)原型路径）。
+- **崩溃/重放双层**（engine 本体，keyless）：主力 = 进程内故障注入——包装 ledger 写入层，穷举「每个 append 点前后抛异常」，配注入时钟跨「重启」推进 durable timer；断言每 effect 恰执行一次、重放不重不漏、step 去重、gate 状态机、boot 扫描。补充 = 真 SIGKILL——tsx spawn 子进程跑 run、杀掉、重启验恢复（半写路径/文件锁）；取消级联与键作用域化的契约断言见 spec 01 §9。如需进上游 `processBoundTests` 单列 lane 则逐条 core-touch 登记。
+- **SDK 行为面**：跑真 engine（进程内 + 临时目录 SQLite，mock 边界仅 LLM/时钟）；五原语各配契约测试（含确定性子 runId 派生、`opts.key` 逃生口、GateResolution/RunStatus 判别联合、`ctx.spawn` 的派生 id / re-drive attach / 父取消随动 / 未绑定 loud）、steerable 多段生命周期（submit-less turn park、段边界投递、parked/死期落账/中断 turn 三种复活分支、序数去重）；tsc 类型面独立断言套件（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/issues/10)原型路径）。
 - **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader 的组合测试；canonical example（walking skeleton 宿主，`examples/daypaw-*`）拥有 keyless snapshot + with-key smoke（无 key 自跳）。
 - **invariant companion**：engine 包必须带 `src/invariant.ts`（上游 glob 约定自动接入不变量宿主，缺即 throw）。
 - **覆盖率**：per-file 100% 门（CI ci-coverage lane）。

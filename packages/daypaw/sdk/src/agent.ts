@@ -21,6 +21,7 @@ import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import type { PromptSection } from '@deepseek-ai/dsh-system-prompt'
 import type { JsonSchemaNode, ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type { DefinitionDisplay, EngineDefinition, EngineStepCtx } from '@daypaw/engine'
+import { boundFaceFor, registerBoundFace } from './bound.ts'
 import type { RunHandle, RunOptions } from './run-handle.ts'
 import { startRun } from './run-handle.ts'
 import { wireFace } from './wire.ts'
@@ -436,18 +437,6 @@ function compileBody(def: AgentDefinition, host: Context): EngineDefinition['bod
   }
 }
 
-/** Bound faces per definition object; doubles as the `ctx.agent` lookup registry. */
-const boundAgents = new WeakMap<AgentDefinition, BoundAgent>()
-
-/**
- * @param def - declared agent definition.
- * @returns the bound face when {@link bindAgent} has bound the definition,
- * `undefined` otherwise (`ctx.agent` fails loud on the undefined branch).
- */
-export function boundAgentFor(def: AgentDefinition): BoundAgent | undefined {
-  return boundAgents.get(def)
-}
-
 /**
  * Bind an agent definition to a host composition: compiles it into an opaque
  * engine body (the engine stays agent-blind), registers it on `ctx.durable`
@@ -463,8 +452,10 @@ export async function bindAgent<I extends ZodType, O extends ZodType>(
   def: AgentDefinition<I, O>,
   ctx: Context,
 ): Promise<BoundAgent<I, O>> {
-  const existing = boundAgents.get(def)
-  if (existing !== undefined) return existing
+  const existing = boundFaceFor(def)
+  // Same definition object, same contracts: the record's erased face is this
+  // definition's face, already returned to the first binder.
+  if (existing !== undefined) return existing.face as unknown as BoundAgent<I, O>
   const engine = ctx.get('durable')
   if (engine === undefined) {
     throw new Error('bindAgent requires the durable engine service (mount @daypaw/engine)')
@@ -482,6 +473,6 @@ export async function bindAgent<I extends ZodType, O extends ZodType>(
   const bound: BoundAgent<I, O> = {
     run: (input, opts) => startRun(engine, engineDef, def, input, opts),
   }
-  boundAgents.set(def, bound)
+  registerBoundFace(def, { engine, engineDef, input: def.input, face: bound })
   return bound
 }

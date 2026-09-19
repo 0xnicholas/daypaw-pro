@@ -30,7 +30,7 @@ workflow body 可用的显式原语：
 | `ctx.sleep(duration)` | 持久 timer（ADR 0002 决策 2） |
 | `ctx.waitFor(gate, {schema, timeout})` | durable promise / HITL gate（ADR 0002 决策 5） |
 | `ctx.agent(def, input)` | 调 agent 定义（挂 session、应用组合） |
-| `ctx.spawn(def, input)` | 火后不管子 run（ledger 记父子链，boot 扫描独立复活） |
+| `ctx.spawn(def, input)` | 火后不管子 run：返回子 runId，派发事实 = 子 run 行的父链（`parent_step_key = 'spawn:<n>'`，与 `sleep:` / `steer:` 同类保留键位），boot 扫描独立复活，父取消时随父取消（ADR 0016） |
 
 parallel = `Promise.all`、condition = `if`/`try`——**普通 TypeScript，不是原语**（与无确定性约束的恢复谱系一致）。
 
@@ -52,7 +52,7 @@ parallel = `Promise.all`、condition = `if`/`try`——**普通 TypeScript，不
 - `RunHandle = { id, result: Promise<T>, status(), cancel(cause), meta }`；`status()` 返回 `RunStatus` 判别联合（`{state:'running'}` / `{state:'waiting', gate}` / `{state:'done'}` / `{state:'failed'}` / `{state:'cancelled'}`，类型面见 spec 第 2 章 §2；替代早先的 `'waiting:<gate>'` 字符串草案）（Manager 的数据底座）。
 - **结果 = output schema 校验后的类型化输出**——run 级因果归因在引擎层解决，不继承 dsh wire `finalResponse` 无归因的缺陷。
 - 持久身份 = runId；内存 promise 诚实地不承诺跨进程——跨进程重连走 attach。
-- boot 扫描复活未完 run **不需要原调用者**；`ctx.spawn` 的子 run 同样被独立复活。
+- boot 扫描复活未完 run **不需要原调用者**；`ctx.spawn` 的子 run 同样被独立复活（父子链与取消级联见 ADR 0016）。
 
 ### 5. 进程形态：v1 纯库，API 运输无关留口
 

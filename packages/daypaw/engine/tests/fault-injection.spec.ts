@@ -1227,3 +1227,67 @@ describe('fault injection at timer append points (ctx.sleep)', () => {
     expect(f.store.selectTimer('tf-8', 'sleep:0')?.fired).toBe(1)
   })
 })
+
+describe('fault injection across the cancellable subtree (ADR 0016)', () => {
+  it('records the addressed run\'s stop before the subtree walk, and a retry sweeps what the fault skipped', async () => {
+    const f = await fixture()
+    const core = f.makeCore()
+    const parkedChild = workflowDef(async (ctx) => {
+      await ctx.waitFor('child-hold')
+      return 'child'
+    }, 'child')
+    const root = workflowDef(async (ctx) => {
+      core.run(parkedChild, null, {
+        runId: 'cascade-fault-child',
+        parent: { runId: ctx.runId, stepKey: 'spawn:0' },
+      })
+      await ctx.waitFor('root-hold')
+      return 'root'
+    }, 'root')
+    core.register(parkedChild)
+    core.register(root)
+    const handle = core.run(root, null, { runId: 'cascade-fault-root' })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(f.store.selectRun('cascade-fault-child')?.status).toBe('waiting')
+
+    f.overrides.selectChildRuns = () => { throw new Error('boom-children') }
+    await expect(core.cancel('cascade-fault-root', 'stop')).rejects.toThrow('boom-children')
+    // The addressed run's stop is durable before the walk, so the operator
+    // learns the walk failed while the stop itself stands; the descendant is
+    // untouched and stays revivable.
+    expect(f.store.selectRun('cascade-fault-root')?.status).toBe('cancelled')
+    expect(f.store.selectRun('cascade-fault-child')?.status).toBe('waiting')
+
+    delete f.overrides.selectChildRuns
+    await core.cancel('cascade-fault-root', 'stop-again')
+    expect(f.store.selectRun('cascade-fault-child')?.status).toBe('cancelled')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) =>
+      error instanceof Error && error.message === 'RUN_CANCELLED on run cascade-fault-root')
+  })
+
+  it('warns and still reports the cancellation when the driver-side subtree walk faults', async () => {
+    const f = await fixture()
+    let release!: () => void
+    const hold = new Promise<void>((resolve) => { release = resolve })
+    const def = workflowDef(async (ctx) => {
+      await ctx.step('hold', async () => { await hold; return 1 })
+      await ctx.step('after', async () => 2)
+      return 'done'
+    })
+    const core = f.makeCore()
+    core.register(def)
+    const controller = new AbortController()
+    const handle = core.run(def, null, { runId: 'cascade-driver-fault-1', signal: controller.signal })
+    await new Promise(resolve => setTimeout(resolve, 15))
+
+    f.overrides.selectChildRuns = () => { throw new Error('boom-children') }
+    controller.abort('stop')
+    release()
+    // The run's outcome is the cancellation; a store outage while recording
+    // it degrades the ledger copy and is logged, never left hanging the
+    // driver's result promise.
+    await expect(handle.result).rejects.toSatisfy((error: unknown) =>
+      error instanceof Error && error.message === 'RUN_CANCELLED on run cascade-driver-fault-1')
+    expect(f.warnings.some(message => message.includes('recording cancellation of run cascade-driver-fault-1 failed'))).toBe(true)
+  })
+})

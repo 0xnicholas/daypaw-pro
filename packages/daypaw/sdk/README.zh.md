@@ -107,6 +107,7 @@ export async function compose(ctx: Context) {
 - 一次 agent run = 一个 dsh session，sessionId ≡ runId：首驱动 create，复活 resume 并以合成续跑消息唤醒。每个 dsh step 落一条引擎 journal step（`dsh-step:<turn>:<step>`），重驱动的 body 重放 session log 而不再调模型。
 - **多段 run**（`steerable: true`，issue #53）：不带 `submit` 收尾的 turn 让 run 以零算力 park 而非失败；每次 `handle.steer(input)` 在下一个段边界以 user message 投递（`agent.steer`，JSON text，形状与初始输入相同）——一次唤醒恰好跑一个 turn 到 quiescence。`maxTurns` 预算在每次唤醒前检查、跨段共享。重驱动按 session log 中 user 源（`source.kind === 'user'`）消息的序数计已投递段（排除 resume 唤醒；生产者注入的上下文如 runtime-context 快照不计入），崩溃不会重复投递，内容相同的追问也互不相同；进程不在时落账的段成为复活唤醒、无合成续跑消息，而干净 parked 的 run 复活时重新 park、不消耗 turn。未声明 steerable 的定义保持单段契约：不带 submit 的 turn 使 run 失败，`ctx.agent` 子 run 因而不会挂住父 workflow。产出物不变——`output_json` 只由终态 finalize 写入，中间段永不形成产出物。
 - `ctx.agent(def, input)` —— 确定性派生子 runId（`<parentRunId>/<stepKey>/<kind>:<name>#<occurrence>`）上的等待式子 run，父子联接记 ledger；裸子 workflow 惯用式（`ctx.step` 内 `child.run()`）共享同一派生机制。
+- `ctx.spawn(def, input)` —— 火后不管子 run（ADR 0016）：在保留键位下的确定性子 runId 上启动定义（agent 或 workflow，`spawn:<n>`；步内为 `<stepKey>/spawn:<n>`），父子联接落账，返回该子 runId。await 它等的是子 run 的**启动**，不是它的结果——不返回 handle、`result`、`cancel`。此后子 run 自走一生：boot 扫描不需父即可复活它，它的失败不进父的 status 与 output，父被取消则其未完结子树随父一起取消。定义须经 `bind`/`bindAgent` 绑定（未绑定 throw），body 在取消后到达的 spawn 以 `RUN_CANCELLED` 拒绝。要分离用 `ctx.spawn`，要结果用 `ctx.agent` 或 `ctx.step` 内裸 `run()`。
 
 ## Model Experience
 
@@ -127,7 +128,8 @@ prompt 段与工具表按定义稳定，一个 run 的请求共享一个前缀�
 ## Known Limitations and Deferred Work
 
 - **仅静态组合行** —— 动态 `compose(input)` 逃生口在 ADR 0010 声明但未开放；EVO 变体算子以静态维度为目标。
-- **`ctx.spawn` 排除** —— 火后不管子 run 不在 ADR 0010 §4 范围内；`ctx.agent` 是等待式形态。
+- **无并发上限、无 join** —— `ctx.spawn` 不设子 run 数量闸（与 `Promise.all` 跑等待式子 run 的敏感面同级），也没有原语能观察或 join 一个已 spawn 的 run：拿它的状态或取消它需要直接读 ledger 或未来的原语（ADR 0016 §2/§5）。
+- **spawn 的分类事实尚未上 wire** —— 壳的 spawn 子任务节按 `parent_step_key` 的 `spawn:` 前缀分类，而 `WireRun` 未暴露该字段；它随消费它的壳侧改动一并落地（ADR 0016 §7）。
 - **agent run 必须有 persistence 后端** —— 缺失时 `bindAgent` loud throw：耐久是 agent 面的存在理由，不是可选项。
 - **retry 面推迟** —— `StepOptions.retry` 与 `PermanentStepError` 随 retry 迁移到来；v1 首次 step 失败即 run failed。
 - **`meta` 仅调用方侧** —— 走骨不落盘；见引擎 README。

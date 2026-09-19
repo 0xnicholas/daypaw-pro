@@ -22,7 +22,7 @@ sessionId = runId 恒等派生（`SessionId` 为编译期 brand 无格式校验�
 
 ### 4. 组合缝：子 run 模型（裁决 7、8、9）
 
-`ctx.agent(def, input)` = 语法糖：SDK 从 `(parentRunId, stepKey, occurrence)` 派生确定性子 runId（与子 workflow 惯用式共享同一机制），启动子 agent run（`parent_run_id` 落账）、await 类型化结果。agent 直呼与被调账目同形（ledger 只认 run）；两级各自耐久（父步去重 attach 子终态；子 run 半途死由 boot 扫描复活）。agent run 的 session 身份是恒等式不冗余存储（runs 不加列）；journal 行携 `(session_id, session_seq)` 双向引用（列已在）。里程碑范围：defineAgent + bindAgent + 派生机制 + `ctx.agent` + 子 workflow 惯用式一次落齐；`ctx.spawn` 排除（语义无人设计、无消费者——按需落地裁决拦截）。
+`ctx.agent(def, input)` = 语法糖：SDK 从 `(parentRunId, stepKey, occurrence)` 派生确定性子 runId（与子 workflow 惯用式共享同一机制），启动子 agent run（`parent_run_id` 落账）、await 类型化结果。agent 直呼与被调账目同形（ledger 只认 run）；两级各自耐久（父步去重 attach 子终态；子 run 半途死由 boot 扫描复活）。agent run 的 session 身份是恒等式不冗余存储（runs 不加列）；journal 行携 `(session_id, session_seq)` 双向引用（列已在）。里程碑范围：defineAgent + bindAgent + 派生机制 + `ctx.agent` + 子 workflow 惯用式一次落齐；`ctx.spawn` 排除（语义无人设计、无消费者——按需落地裁决拦截；该排除已由 [ADR 0016](0016-spawn-and-child-run-lifecycle.md) 解除：语义裁定并落地）。
 
 否决：内联模型（父 journal 混编排与推理；直呼与被调账目异形）。
 

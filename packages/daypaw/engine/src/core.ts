@@ -149,6 +149,20 @@ export interface EngineStepCtx {
    */
   sleep(durationMs: number): Promise<void>
   /**
+   * Allocate the next key of one reserved step-family slot (`sleep:<n>`,
+   * `spawn:<n>`) — the kernel behind the primitives that occupy a key slot
+   * without being a `step` (ADR 0016). Counters are per scope: a call made
+   * inside a step keys under that step (`<stepKey>/<kind>:<n>`), a call in
+   * the body keys under the run (`<kind>:<n>`) — so a step whose `fn` a
+   * re-drive skips never shifts an outer call's occurrence, and replaying a
+   * step in the same call order re-derives the same keys. Primitive authors
+   * allocate here (`ctx.sleep` does, as does the SDK's `ctx.spawn`);
+   * application bodies never call it.
+   * @param kind - reserved slot family.
+   * @returns the next key of that family in the ambient scope.
+   */
+  slot(kind: 'sleep' | 'spawn'): string
+  /**
    * Read every recorded steer segment input in record order (issue #53).
    * Segment 0 is the run input on the `runs` row and is not listed; segment
    * `i` of this list is journal row `steer:<i + 1>`. A plain read — a
@@ -198,6 +212,29 @@ const stepScopeStorage = new AsyncLocalStorage<EngineStepScope>()
  */
 export function currentStepScope(): EngineStepScope | undefined {
   return stepScopeStorage.getStore()
+}
+
+/**
+ * Derive one child run's persistent identity: the parent run, the parent-side
+ * key the child hangs off (a step key, or a reserved slot key under ADR
+ * 0016), the child's definition identity, and the call ordinal within that
+ * key. Replaying the same call order re-derives the same id, which is what
+ * makes a child start attach instead of restart on re-drive.
+ * @param parentRunId - the run starting the child.
+ * @param parentKey - the parent-side key the child hangs off.
+ * @param kind - child definition family.
+ * @param name - child definition name; readability only, not uniqueness.
+ * @param occurrence - per-key call ordinal.
+ * @returns the deterministic child runId.
+ */
+export function childRunIdOf(
+  parentRunId: string,
+  parentKey: string,
+  kind: RunDefKind,
+  name: string,
+  occurrence: number,
+): string {
+  return `${parentRunId}/${parentKey}/${kind}:${name}#${occurrence}`
 }
 
 /** Opaque definition record the engine can execute and revive (ADR 0006 §2). */
@@ -1023,7 +1060,19 @@ export class DurableEngineCore {
   private stepCtxFor(entry: DriverEntry, signal: AbortSignal): EngineStepCtx {
     const runId = entry.handle.id
     const occurrences = new Map<string, number>()
-    let sleepOccurrence = 0
+    const slotOccurrences = new Map<string, number>()
+    /**
+     * Allocate the next reserved-slot key (ADR 0016): counters live per
+     * scope, so a step's `fn` that a re-drive skips never shifts an outer
+     * call's occurrence.
+     */
+    const allocateSlot = (kind: 'sleep' | 'spawn'): string => {
+      const scopeKey = currentStepScope()?.stepKey ?? ''
+      const counterKey = `${scopeKey}/${kind}`
+      const occurrence = slotOccurrences.get(counterKey) ?? 0
+      slotOccurrences.set(counterKey, occurrence + 1)
+      return scopeKey === '' ? `${kind}:${occurrence}` : `${scopeKey}/${kind}:${occurrence}`
+    }
     /** Reject a step/gate action whose run is disposed, aborted, lost, or cancelled. */
     const assertDrivable = (): void => {
       this.assertNotDisposed()
@@ -1038,6 +1087,7 @@ export class DurableEngineCore {
     return {
       runId,
       signal,
+      slot: allocateSlot,
       step: async <T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T> => {
         assertDrivable()
         const occurrence = occurrences.get(name) ?? 0
@@ -1056,7 +1106,7 @@ export class DurableEngineCore {
             const key = `${kind}${childName}`
             const childOccurrence = childOccurrences.get(key) ?? 0
             childOccurrences.set(key, childOccurrence + 1)
-            return `${runId}/${stepKey}/${kind}:${childName}#${childOccurrence}`
+            return childRunIdOf(runId, stepKey, kind, childName, childOccurrence)
           },
         }
         try {
@@ -1107,8 +1157,7 @@ export class DurableEngineCore {
       },
       sleep: (durationMs: number): Promise<void> => {
         assertDrivable()
-        const stepKey = `sleep:${sleepOccurrence}`
-        sleepOccurrence += 1
+        const stepKey = allocateSlot('sleep')
         const existing = this.store.selectTimer(runId, stepKey)
         // A recorded wake (written by this call earlier, the boot sweep, or a
         // body re-driven after its deadline passed) never waits again.
@@ -1352,13 +1401,16 @@ export class DurableEngineCore {
   }
 
   /**
-   * Request cancellation of an unfinished run (ticket #74): the terminal
-   * `cancelled` row is written first, pending gates settle cancelled, and a
-   * driver in this process aborts. A terminal run already satisfies the
-   * request's postcondition, so cancel is idempotent on it (the handle-level
-   * precedent) — but a driver can still linger past a terminal row (a fault
-   * between the terminal write and the abort), so the abort always runs; an
-   * unknown run fails loud.
+   * Request cancellation of one run and of everything it started (ADR 0016):
+   * the terminal `cancelled` row is written first, pending gates settle
+   * cancelled, and a driver in this process aborts; unfinished descendants
+   * recurse through the same write, so "stop this work" reaches a spawned
+   * child that outlives its parent's own terminal state. A terminal run
+   * already satisfies the request's postcondition for itself, so cancel is
+   * idempotent on it (the handle-level precedent) — its unfinished
+   * descendants are still cancelled — and a driver can linger past a
+   * terminal row (a fault between the terminal write and the abort), so the
+   * abort always runs; an unknown run fails loud.
    * @param runId - run identity.
    * @param cause - human-readable cancel cause.
    */
@@ -1367,35 +1419,60 @@ export class DurableEngineCore {
     this.assertNotDisposed()
     const row = this.store.selectRun(runId)
     if (row === undefined) throw durableFailure('durable/run-not-found', `durable engine: cancel targets unknown run ${runId}`, { runId })
-    if (isTerminal(row.status)) {
-      this.drivers.get(runId)?.abort(cause)
-      return
-    }
+    if (!isTerminal(row.status)) this.finalizeCancelled(runId, cause)
+    this.drivers.get(runId)?.abort(cause)
+    this.cancelDescendants(runId, cause)
+  }
+
+  /** Write one run's terminal `cancelled` row and settle its pending gates. */
+  private finalizeCancelled(runId: string, cause: string | undefined): void {
+    const at = Date.now()
     this.store.finalizeRun(runId, {
       status: 'cancelled',
       outputJson: undefined,
       errorJson: undefined,
       cancelCause: cause,
-      finishedAt: Date.now(),
+      finishedAt: at,
     })
-    this.store.cancelPendingPromises(runId, Date.now())
-    this.drivers.get(runId)?.abort(cause)
+    this.store.cancelPendingPromises(runId, at)
+  }
+
+  /**
+   * Cancel every unfinished descendant of one run, deepest work included.
+   * A finished descendant is left alone — its work ended on its own terms,
+   * and cancelling a run never rewrites what already happened — and an
+   * already-cancelled subtree short-circuits at its terminal read.
+   * @param runId - the run whose descendants are cancelled.
+   * @param cause - cancel cause propagated down the lineage.
+   */
+  private cancelDescendants(runId: string, cause: string | undefined): void {
+    for (const child of this.store.selectChildRuns(runId)) {
+      if (isTerminal(child.status)) continue
+      this.finalizeCancelled(child.run_id, cause)
+      this.drivers.get(child.run_id)?.abort(cause)
+      this.cancelDescendants(child.run_id, cause)
+    }
   }
 
   private finalizeCancelledFromDriver(runId: string, cause: string | undefined): void {
-    const row = this.store.selectRun(runId)
-    // A same-process cancel already wrote the terminal row; a row cancelled
-    // through another process needs no second write. Anything else means the
-    // row vanished mid-run — nothing to finalize.
-    if (row === undefined || isTerminal(row.status)) return
-    this.store.finalizeRun(runId, {
-      status: 'cancelled',
-      outputJson: undefined,
-      errorJson: undefined,
-      cancelCause: cause,
-      finishedAt: Date.now(),
-    })
-    this.store.cancelPendingPromises(runId, Date.now())
+    try {
+      const row = this.store.selectRun(runId)
+      // A same-process cancel already wrote the terminal row; a row cancelled
+      // through another process needs no second write. Anything else means the
+      // row vanished mid-run — nothing to finalize.
+      if (row === undefined || isTerminal(row.status)) return
+      this.finalizeCancelled(runId, cause)
+      this.cancelDescendants(runId, cause)
+    } catch (finalizeError) {
+      // The cancellation is the outcome to report; a store outage while
+      // recording it or walking the subtree only degrades the ledger copy,
+      // so it is logged and swallowed (the fault-injection suite exercises
+      // both windows, and an unfinished descendant stays revivable for a
+      // later cancel to sweep).
+      this.options.logger.warn(
+        `durable engine: recording cancellation of run ${runId} failed: ${String(finalizeError)}`,
+      )
+    }
   }
 
   private finalizeFailedFromDriver(runId: string, error: unknown): void {
