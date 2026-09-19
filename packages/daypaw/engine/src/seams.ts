@@ -1,14 +1,15 @@
 /**
  * Journal storage seam: the one replaceable interface the walking skeleton
- * lands; `ctx.waitFor` extended it with the promise rows (spec 01 §6).
- * Promise resolution itself lives in the engine core (in-process push plus a
- * poll fallback); the PromiseResolver/TimerScheduler seams extract when a
- * second implementation appears. Wrapping this seam is also the
- * fault-injection surface for the crash test suite (spec 01 §7/§9).
+ * lands; `ctx.waitFor` extended it with the promise rows (spec 01 §6) and
+ * `ctx.sleep` with the timer rows (spec 01 §3.4). Promise resolution itself
+ * lives in the engine core (in-process push plus a poll fallback); the
+ * PromiseResolver/TimerScheduler seams extract when a second implementation
+ * appears. Wrapping this seam is also the fault-injection surface for the
+ * crash test suite (spec 01 §7/§9).
  * @module @daypaw/engine/seams
  */
 
-import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow, RunStatusDb } from '@daypaw/store'
+import type { JournalRow, PromiseResolutionSource, PromiseRow, RunDefKind, RunRow, RunStatusDb, TimerRow } from '@daypaw/store'
 
 /** Status restriction for {@link JournalStore.selectRuns}. */
 export interface RunListFilter {
@@ -89,10 +90,21 @@ export interface PromiseSettle {
   readonly resolvedAt: number
 }
 
+/** Insert payload for one durable sleep's timer row. */
+export interface TimerInsert {
+  readonly runId: string
+  /** Idempotency key the sleep occupies in the step family (`sleep:<occurrence>`). */
+  readonly stepKey: string
+  /** Absolute deadline (epoch ms); a re-driven body waits for this recorded value, not a fresh duration. */
+  readonly wakeAt: number
+  readonly createdAt: number
+}
+
 /**
- * Durable storage behind the engine: runs and journal steps. All methods are
- * synchronous (SQLite `DatabaseSync`); call ordering and state-machine
- * decisions live in the engine core.
+ * Durable storage behind the engine: runs, journal steps and steer segments,
+ * durable gates, and sleep timers. All methods are synchronous (SQLite
+ * `DatabaseSync`); call ordering and state-machine decisions live in the
+ * engine core.
  */
 export interface JournalStore {
   /** @param runId - run identity. @returns the row, or undefined when unknown. */
@@ -206,4 +218,21 @@ export interface JournalStore {
    * @param at - cancellation timestamp (epoch ms).
    */
   cancelPendingPromises(runId: string, at: number): void
+  /** @param row - timer payload for one sleep; `fired` starts at 0. */
+  insertTimer(row: TimerInsert): void
+  /** @returns the timer row, or undefined when the sleep never registered. */
+  selectTimer(runId: string, stepKey: string): TimerRow | undefined
+  /**
+   * Record a sleep's wake (first-wins): applies only while the row is
+   * unfired; a second caller is a no-op. The deadline stands either way, so
+   * both the in-process timer and the boot-scan sweep converge on one write.
+   * @param runId - run identity.
+   * @param stepKey - the sleep's idempotency key.
+   */
+  fireTimer(runId: string, stepKey: string): void
+  /**
+   * @param now - current time (epoch ms).
+   * @returns unfired timers whose deadline already passed, for the boot-scan sweep.
+   */
+  selectOverdueTimers(now: number): TimerRow[]
 }

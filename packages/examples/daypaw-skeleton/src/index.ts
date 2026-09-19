@@ -22,7 +22,9 @@ export interface SkeletonStepHooks {
 /**
  * Build the walking-skeleton workflow: three chained durable steps, each
  * recording its side effect before returning. Survives SIGKILL between steps
- * (ADR 0008 §1 proof line).
+ * (ADR 0008 §1 proof line). An input `sleepMs` adds one durable timer between
+ * the first and second steps, so the same host can be killed mid-sleep and
+ * revived past the deadline (the timer proof line in the SIGKILL suite).
  * @param hooks - side-effect recording and pacing supplied by the host.
  * @returns the workflow definition.
  */
@@ -30,7 +32,7 @@ export function createSkeletonWorkflow(hooks: SkeletonStepHooks): ReturnType<typ
   return defineWorkflow({
     name: 'skeleton-demo',
     version: '0.0.1',
-    input: z.object({ seed: z.number() }),
+    input: z.object({ seed: z.number(), sleepMs: z.number().nonnegative().optional() }),
     output: z.object({ total: z.number() }),
     body: async (ctx, input) => {
       const first = await ctx.step('first', async () => {
@@ -38,6 +40,7 @@ export function createSkeletonWorkflow(hooks: SkeletonStepHooks): ReturnType<typ
         await hooks.record('first')
         return input.seed + 1
       })
+      if (input.sleepMs !== undefined && input.sleepMs > 0) await ctx.sleep(input.sleepMs)
       const second = await ctx.step('second', async () => {
         await hooks.delay()
         await hooks.record('second')

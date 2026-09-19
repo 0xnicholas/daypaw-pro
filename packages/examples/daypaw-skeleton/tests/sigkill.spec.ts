@@ -50,6 +50,20 @@ async function untilEffectsContain(effectsPath: string, name: string): Promise<v
   }
 }
 
+/** Wait until the host recorded the run's timer row, i.e. its body parked in the sleep. */
+async function untilTimersRow(dbPath: string, runId: string): Promise<void> {
+  const deadline = Date.now() + 10_000
+  for (;;) {
+    try {
+      if (timerRows(dbPath, runId).length > 0) return
+    } catch {
+      // Before the host's first ledger write the file does not exist yet; retry next poll.
+    }
+    if (Date.now() > deadline) throw new Error(`run ${runId} never recorded a timer row`)
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+}
+
 async function effectCounts(effectsPath: string): Promise<Record<string, number>> {
   const lines = (await readFile(effectsPath, 'utf8')).split('\n').filter(line => line !== '')
   const counts: Record<string, number> = {}
@@ -72,6 +86,15 @@ function journalRows(dbPath: string, runId: string): Array<Record<string, unknow
   const db = new DatabaseSync(dbPath, { readOnly: true })
   try {
     return db.prepare('SELECT * FROM journal WHERE run_id = ? ORDER BY rowid').all(runId)
+  } finally {
+    db.close()
+  }
+}
+
+function timerRows(dbPath: string, runId: string): Array<Record<string, unknown>> {
+  const db = new DatabaseSync(dbPath, { readOnly: true })
+  try {
+    return db.prepare('SELECT * FROM timers WHERE run_id = ? ORDER BY rowid').all(runId)
   } finally {
     db.close()
   }
@@ -151,6 +174,44 @@ describe('walking skeleton under a real SIGKILL', () => {
       const row = runRowOf(db, 'sig-1')
       expect(row.status).toBe('done')
       expect(JSON.parse(row.output_json as string)).toEqual({ total: 4 })
+    } finally {
+      await cleanup()
+    }
+  }, 30_000)
+
+  it('revives a run killed mid-sleep once its deadline passed, without re-running the steps around it', async () => {
+    const { db, effects, cleanup } = await stage()
+    try {
+      const first = spawnHost(['--db', db, '--effects', effects, '--run-id', 'sig-sleep-1', '--sleep-ms', '400'])
+      // The recorded timer row proves the body parked in the sleep: the first
+      // step's effect lands before it, the second step's never does.
+      await untilTimersRow(db, 'sig-sleep-1')
+      process.kill(first.pid, 'SIGKILL')
+      await first.exit
+
+      const countsMidKill = await effectCounts(effects)
+      expect(countsMidKill.first).toBe(1)
+      expect(countsMidKill.second ?? 0).toBe(0)
+
+      // The deadline passes while no process is running the run.
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const restart = spawnHost(['--db', db, '--effects', effects])
+      const { code } = await restart.exit
+      expect(code).toBe(0)
+      expect(JSON.parse(restart.stdout)).toEqual({ revived: true })
+
+      const counts = await effectCounts(effects)
+      expect(counts.first).toBe(1)
+      expect(counts.second).toBe(1)
+      expect(counts.third).toBe(1)
+
+      const row = runRowOf(db, 'sig-sleep-1')
+      expect(row.status).toBe('done')
+      expect(JSON.parse(row.output_json as string)).toEqual({ total: 4 })
+      const [timer] = timerRows(db, 'sig-sleep-1')
+      expect(timer?.step_key).toBe('sleep:0')
+      expect(timer?.fired).toBe(1)
     } finally {
       await cleanup()
     }

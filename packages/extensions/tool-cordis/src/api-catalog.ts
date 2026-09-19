@@ -4306,7 +4306,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EngineStepCtx',
-    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n    waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>;\n    steers(): readonly unknown[];\n    awaitSteer(known: number): Promise<void>;\n}',
+    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n    waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>;\n    sleep(durationMs: number): Promise<void>;\n    steers(): readonly unknown[];\n    awaitSteer(known: number): Promise<void>;\n}',
   },
   {
     name: 'EngineStepOptions',

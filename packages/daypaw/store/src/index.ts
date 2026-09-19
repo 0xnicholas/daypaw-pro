@@ -19,6 +19,8 @@ export const RUNS_TABLE = 'runs'
 export const JOURNAL_TABLE = 'journal'
 /** `promises` table name (spec §3.3). */
 export const PROMISES_TABLE = 'promises'
+/** `timers` table name (spec §3.4). */
+export const TIMERS_TABLE = 'timers'
 
 /** Current on-disk layout version: the last migration segment's version. */
 export const DAYPAW_STORE_SCHEMA_VERSION: number = newestVersionOf(MIGRATIONS)
@@ -108,6 +110,22 @@ export interface PromiseRow {
   readonly resolution_source: PromiseResolutionSource | null
   readonly created_at: number
   readonly resolved_at: number | null
+}
+
+/**
+ * One `timers` row (spec §3.4): a durable sleep's recorded deadline. A sleep
+ * occupies the step-family idempotency key slot, so `(run_id, step_key)`
+ * dedupes a re-driven body's `ctx.sleep`; `fired` records that the deadline
+ * passed and the wake was accounted for.
+ */
+export interface TimerRow {
+  readonly run_id: string
+  readonly step_key: string
+  /** Absolute deadline (epoch ms). */
+  readonly wake_at: number
+  /** 0 while the deadline is still ahead, 1 once the wake is recorded. */
+  readonly fired: number
+  readonly created_at: number
 }
 
 /**

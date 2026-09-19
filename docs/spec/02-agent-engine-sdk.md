@@ -68,7 +68,7 @@ export interface WorkflowCtx {
   step<T>(name: string, fn: () => Promise<T>, opts?: StepOptions): Promise<T>
   /** durable gate（HITL 挂起，spec 01 §6）；终态以 GateResolution 联合值返回。 */
   waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
-  // sleep / agent / spawn：sleep 语义已定（§2）按需落地；agent 见 §1.2；spawn 未设计
+  // sleep：继承引擎 ctx（spec 01 §6，已实现）；agent 见 §1.2；spawn 未设计
 }
 
 export interface StepOptions {
@@ -169,7 +169,7 @@ steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无
 
 ## 2. ctx 原语面
 
-五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。`step`/`agent` 面已定案（上节与 ADR 0010）；`waitFor` 语义 spec 01 §6、已实现；`sleep` 语义同节已定、按需落地；`spawn` 语义未设计（ADR 0010 §4 排除）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
+五原语：`step` / `sleep` / `waitFor` / `agent` / `spawn`（ADR 0003 §2）。`step`/`agent` 面已定案（上节与 ADR 0010）；`waitFor` 语义 spec 01 §6、已实现；`sleep` 语义同节、已实现（`WorkflowCtx` 自引擎 ctx 继承）；`spawn` 语义未设计（ADR 0010 §4 排除）。已定型（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/tree/prototype/sdk-api-surface) 原型验证，类型草案 `prototype/sdk-api/sdk.d.ts`）：
 
 - **子 workflow 等待式调用 = 惯用式**，不加第六原语：`ctx.step` 内裸 `def.run()` 等待 `.result`；前提是引擎从 `(parentRunId, stepKey, occurrence)` 派生**确定性子 runId**（重驱动 attach 而非重开，副作用不翻倍）。
 - **step 幂等键**：默认 `runId + name + occurrence` 自动派生（重驱动遍历顺序须确定，map 顺序稳定、手写乱序 await 不稳——运维注记）；`opts.key` 显式逃生口。
@@ -196,7 +196,8 @@ steerable 定义的编译 body 是段循环（issue #53）：turn quiesce 而无
 | `def.run`，已有行 | attach 三态：本进程在驱动→挂完成通知；终态→直读行；他进程驱动→`pollMs` 轮询 | 终态直接 settle |
 | `ctx.step(name, fn)` | INSERT `journal` `started` → 执行 → `completed`+`value_json` / `failed`+`error_json`（PK `(run_id, step_key)` 即去重闸） | — |
 | 重驱动遇已完成 step | 读 `value_json` 返回，不重执行 | — |
-| `ctx.waitFor`（已实现）/ `ctx.sleep`（按需落地） | `promises` 行 pending + `runs`→`waiting`/`waiting_gate`；`timers` 行 `wake_at` | `status()` = `{state:'waiting', gate}` |
+| `ctx.waitFor` | `promises` 行 pending + `runs`→`waiting`/`waiting_gate` | `status()` = `{state:'waiting', gate}` |
+| `ctx.sleep(duration)` | `timers` 行 `wake_at`（键 `sleep:<occurrence>`）；到期先写 `fired = 1` 再投递；未 fired 的已录截止按录等、过期的立即续跑；boot 扫描补发 overdue | `status()` 保持 `{state:'running'}` |
 | `handle.cancel(cause)` | UPDATE `runs`→`cancelled`+`cancel_cause` → driver AbortSignal | `result` reject `RunCancelledError` |
 | `handle.steer(input)`（steerable 定义，issue #53） | INSERT `journal` `kind='segment'`（`steer:<seq>`，插入即 `completed`）→ 本进程 parked driver 直推唤醒 / 跨进程 `pollMs` 轮询兜底 | parked run 的 `status()` 保持 `{state:'running'}` |
 | `durable/cancel`（Remote，ticket #74） | 终态 `cancelled` 行 + `cancel_cause` 先落，pending gate 结算 cancelled，本进程 driver abort；终态 run 幂等（滞留 driver 仍 abort），未知 runId loud | — |

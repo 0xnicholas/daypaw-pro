@@ -144,6 +144,7 @@ function enrichStepCtx(ctx: EngineStepCtx): WorkflowCtx {
       ...(opts?.schema === undefined ? {} : { schema: adaptGateSchema(opts.schema) }),
       ...(opts?.timeout === undefined ? {} : { timeout: opts.timeout }),
     }),
+    sleep: durationMs => ctx.sleep(durationMs),
     agent: async (def, input) => {
       const bound = boundAgentFor(def) as BoundAgent<typeof def.input, typeof def.output> | undefined
       if (bound === undefined) {

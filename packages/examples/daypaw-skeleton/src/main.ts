@@ -23,8 +23,9 @@ const dbPath = argOf('db')
 const effectsPath = argOf('effects')
 const runId = argOf('run-id')
 const stepDelayMs = Number(argOf('step-delay-ms') ?? 0)
+const sleepMs = argOf('sleep-ms')
 if (dbPath === undefined || effectsPath === undefined) {
-  console.error('usage: main.ts --db <ledger.db> --effects <file> [--run-id <id>] [--step-delay-ms <n>]')
+  console.error('usage: main.ts --db <ledger.db> --effects <file> [--run-id <id>] [--step-delay-ms <n>] [--sleep-ms <n>]')
   process.exit(2)
 }
 
@@ -41,7 +42,10 @@ try {
     await ctx.durable.idle()
     console.log(JSON.stringify({ revived: true }))
   } else {
-    const handle = await workflow.run({ seed: 1 }, { runId })
+    const handle = await workflow.run(
+      sleepMs === undefined ? { seed: 1 } : { seed: 1, sleepMs: Number(sleepMs) },
+      { runId },
+    )
     console.log(JSON.stringify(await handle.result))
   }
 } finally {

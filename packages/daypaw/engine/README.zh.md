@@ -1,5 +1,5 @@
 ---
-description: "durable 执行引擎（ctx.durable）：run 生命周期、step 去重续跑、durable gate（ctx.waitFor）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 ledger 之上。作为 Cordis 插件"
+description: "durable 执行引擎（ctx.durable）：run 生命周期、step 去重续跑、durable gate（ctx.waitFor）、持久 timer（ctx.sleep）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 ledger 之上。作为 Cordis 插件"
 kind: "package-reference"
 ---
 
@@ -13,7 +13,7 @@ kind: "package-reference"
 
 
 
-durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑、durable gate（`ctx.waitFor`）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 [`@daypaw/store`](../store/README.zh.md) ledger 之上。作为 Cordis 插件加载；应用经类型化 [`@daypaw/sdk`](../sdk/README.zh.md) facade 调用。语义：[spec 第 1 章](../../../docs/spec/01-durable-execution.md)；走骨范围：[ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md)。
+durable 执行引擎（`ctx.durable`）：run 生命周期、step 去重续跑、durable gate（`ctx.waitFor`）、持久 timer（`ctx.sleep`）、面向 opt-in 定义的 steer 通道、单写者认领与 boot 扫描复活，落在 [`@daypaw/store`](../store/README.zh.md) ledger 之上。作为 Cordis 插件加载；应用经类型化 [`@daypaw/sdk`](../sdk/README.zh.md) facade 调用。语义：[spec 第 1 章](../../../docs/spec/01-durable-execution.md)；走骨范围：[ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md)。
 
 ## Service API
 
@@ -47,13 +47,15 @@ run 以 step ctx 驱动其 body。`ctx.step(name, fn, { key? })` 派生幂等键
 
 `ctx.waitFor(gate, { schema?, timeout? })` 是 HITL 挂起原语（spec 第 1 章 §6）：登记 `(runId, gate)` 键的 pending promise 行、run 转 `waiting` 并让出驱动——等待零算力，进程死掉由 boot 扫描复活，重驱动在同一 `waitFor` 读到已落账的结局直接返回。终态以 `GateResolution` 联合值返回（`resolved` / `rejected` / `timedout` / `cancelled`），超时、拒绝、取消是可编程分支而非异常。`timeout` 为毫秒时长；进程内 `setTimeout` 到点 first-wins 写 `timedout`，进程错过则由 boot 扫描先扫 overdue 再续跑。
 
+`ctx.sleep(durationMs)` 是持久 timer（spec 第 1 章 §6）：以本调用的键落一行 `timers`——键按调用序派生 `sleep:<occurrence>`（前缀保留，同 `steer:`）——并挂起驱动至截止。已录的唤醒不再重等；仍未到期的已录截止按录等，故崩溃既不重等也不延长；进程不在时的过期截止立即续跑。唤醒先落账再投递（先写 `fired` 行、body 随即续跑），run 的 ledger 状态保持 `running`（sleep 不是 gate），死进程期间错过的截止由 boot 扫描的 overdue 扫尾补记。
+
 steer 通道（spec 第 1 章 §5）把 opt-in 的 run（定义上 `steerable: true`）从单段变多段：段 0 是 `runs` 行上的 run 输入，每次 `steer()` 追加一行 `journal kind='segment'`——step 键 `steer:<seq>`（从 1 起；`steer:` 前缀与 step 键不撞）、插入即 `completed`、值为 JSON 输入、永不重执行。body 内 `ctx.steers()` 按记录序读全部已落账段输入（纯读——跨重驱动的消费去重归 body 管），`ctx.awaitSteer(known)` 以零算力挂起驱动直至有超过 `known` 的段落账，已录够即立即返回，取消或销毁时 reject `RUN_CANCELLED` / `ENGINE_DISPOSED`。parked run 的 ledger 状态保持 `running`；对 gate `waiting` 的 run steer 只落账、不唤醒 gate。boot 扫描复活按已落账段重驱动 body。
 
 step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间，`currentStepScope()` 返回 ambient 作用域 `{ runId, stepKey }`；在其中启动的子 run 派生确定性 runId `<runId>/<stepKey>/<kind>:<name>#<occurrence>` 并记录父子血缘——重驱动的父 run attach 子 run 而非重开（SDK 的 `ctx.agent` 与裸子 workflow 惯用式都走这条机制）。
 
 ## 扩展点
 
-- **`JournalStore` 缝**（`./seams`）—— 引擎存储的唯一可替换接口（含 promise 行与 segment 行读写）；SQLite 实现为 `SqliteJournalStore`。它也是崩溃测试套件的故障注入面。promise 结算路由收在 core 内（进程内直推 + 轮询兜底）；`PromiseResolver` / `TimerScheduler` 缝待第二个实现出现时抽取。
+- **`JournalStore` 缝**（`./seams`）—— 引擎存储的唯一可替换接口（含 promise 行、timer 行与 segment 行读写）；SQLite 实现为 `SqliteJournalStore`。它也是崩溃测试套件的故障注入面。promise 结算路由收在 core 内（进程内直推 + 轮询兜底）；`PromiseResolver` / `TimerScheduler` 缝待第二个实现出现时抽取。
 - **定义注册表** —— 内置（ADR 0006 §2）：boot 复活需要脱离原调用者的 body。
 
 ## Model Experience
@@ -74,7 +76,8 @@ step ctx 另暴露 `runId` 与驱动者的 `signal`。step 的 `fn` await 期间
 
 ## Known Limitations and Deferred Work
 
-- **走骨原语集** —— `ctx.step`、`ctx.waitFor` 与 steer 通道（`steers` / `awaitSteer`）已落地；`sleep` / `spawn` 随其状态机按需落地（`agent` 面在 SDK 侧已有）。
+- **走骨原语集** —— `ctx.step`、`ctx.waitFor`、`ctx.sleep` 与 steer 通道（`steers` / `awaitSteer`）已落地；`spawn` 随其状态机按需落地（`agent` 面在 SDK 侧已有）。
+- **timer 准时性需要活进程** —— sleep 只在有进程驱动其 run 时唤醒；所有进程都不在时，过期的截止要到下一次 boot 扫描才被补记，没有东西准时唤醒该 run（spec 第 1 章 §10）。
 - **跨进程结算无写侧 schema 校验** —— 落盘的 `schema_json` 只是渲染投影；无 live schema 的进程写入不经校验，等待方交付前必验，不合格以 step 级失败收场。
 - **`steerable` 仅在定义已注册处校验** —— 经未注册该定义所在引擎实例发起的 `steer()` 不经检查直接落账；SDK 面在 steer 时校验输入，agent body 在消费段时复检，不合格以 run 级失败收场；opt-in 的 throw 只存在于 body 可知之处。
 - **跨进程并发 `steer()` 可能撞段主键** —— seq 是读-改-写（`count + 1`），两进程对同一 run 并发 steer 可竞出同一 `steer:n` 主键；失败方收约束错误后重试。同进程 steer 在事件循环上天然串行。

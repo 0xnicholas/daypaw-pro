@@ -81,6 +81,17 @@ CREATE TABLE promises (
 ) STRICT;
 `
 
+const TIMERS_SQL = `
+CREATE TABLE timers (
+  run_id     TEXT NOT NULL REFERENCES runs(run_id),
+  step_key   TEXT NOT NULL,
+  wake_at    INTEGER NOT NULL,
+  fired      INTEGER NOT NULL DEFAULT 0 CHECK (fired IN (0, 1)),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (run_id, step_key)
+) STRICT;
+`
+
 /**
  * Ordered migration segments; the last entry's version is the current
  * schema version. Append-only: never edit a shipped segment.
@@ -88,4 +99,5 @@ CREATE TABLE promises (
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'init', sql: INIT_SQL },
   { version: 2, name: 'promises', sql: PROMISES_SQL },
+  { version: 3, name: 'timers', sql: TIMERS_SQL },
 ]

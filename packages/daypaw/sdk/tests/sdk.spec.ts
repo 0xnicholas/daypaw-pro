@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { Context } from '@deepseek-ai/cordis'
 import DurableEngine from '@daypaw/engine'
 import { bind, defineWorkflow } from '@daypaw/sdk'
-import type { RunHandle, RunStatus } from '@daypaw/sdk'
+import type { RunHandle, RunStatus, WorkflowCtx } from '@daypaw/sdk'
 import { z } from 'zod'
 
 let root: string | undefined
@@ -403,5 +403,34 @@ describe('ctx.waitFor through the SDK face', () => {
     await until(() => handle.status().state === 'waiting')
     await engine.resolveGate('sdk-gate-4', 'ping', { state: 'resolved', value: 'pong' }, 'sdk')
     await expect(handle.result).resolves.toBe('pong')
+  })
+})
+
+describe('ctx.sleep through the SDK face', () => {
+  const pacedWorkflow = defineWorkflow({
+    name: 'paced-flow',
+    version: '1',
+    input: z.object({}),
+    output: z.string(),
+    body: async (ctx) => {
+      const before = await ctx.step('before', async () => 'first')
+      await ctx.sleep(40)
+      const after = await ctx.step('after', async () => 'second')
+      return `${before}+${after}`
+    },
+  })
+
+  it('parks the run on a durable timer and resumes it past the deadline', async () => {
+    const engine = await bootEngine(await tmpPath('daypaw-sdk-sleep-'))
+    const workflow = await bind(pacedWorkflow, engine)
+    const started = Date.now()
+    const handle = await workflow.run({}, { runId: 'sdk-sleep-1' })
+    await expect(handle.result).resolves.toBe('first+second')
+    expect(Date.now() - started).toBeGreaterThanOrEqual(30)
+    expect(handle.status()).toEqual({ state: 'done' })
+  })
+
+  it('types the primitive as a void-returning duration call', () => {
+    expectTypeOf<WorkflowCtx['sleep']>().toEqualTypeOf<(durationMs: number) => Promise<void>>()
   })
 })

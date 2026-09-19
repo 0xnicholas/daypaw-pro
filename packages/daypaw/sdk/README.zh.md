@@ -49,6 +49,7 @@ const { total } = await handle.result   // typed: { total: number }
 - `DurableEngine` —— 引擎 Cordis 插件类的再导出，消费方无需直接 import vendored 的 `@daypaw/engine` 副本。
 - `RunHandle` —— `id`、`definition`、类型化 `result`（启动前校验输入，resolve 前校验输出）、`status()`（`RunStatus` 判别联合）、`cancel(cause?)`、`meta`。`steer(input)` 向 run 追加一个追问输入（issue #53）：先按定义的输入契约校验，再落账为 journal segment，在该 run 的下一个段边界以同一 runId 被消费；对终态 run 与未声明 steer 的定义 loud 失败。
 - `ctx.waitFor(gate, { schema?, timeout? })` —— durable gate（HITL 挂起）：body 内挂起 run（`status()` 报 `{state:'waiting', gate}`），等待零算力、进程可退出；结局以 `GateResolution` 联合值返回（`resolved` / `rejected` / `timedout` / `cancelled`，终态非异常）。经 `ctx.durable.resolveGate(runId, gate, settlement, source)` 结算，first-wins 幂等；zod `schema` 在写入侧与投递侧双重校验。
+- `ctx.sleep(durationMs)` —— 持久 timer：按本调用在 body 中的位置落一条截止，挂起 run 至截止（ledger 状态保持 `running`）。已录唤醒不重等、已录截止按录等、进程不在期间过期的截止立即续跑——崩溃既不重等也不延长；死进程期间错过的截止由下一次 boot 扫描补记（spec 第 1 章 §6）。
 - 错误 —— 引擎失败以 `RunFailedError`（附 cause）浮出，取消以 `RunCancelledError`；输入/输出契约违反以 zod 错误 reject。
 
 ### agents 目录装载器（ADR 0012，`@daypaw/sdk/agents-dir`）

@@ -1,5 +1,5 @@
 ---
-description: "Shared SQLite contract for the daypaw engine ledger. This package owns the physical layout — schema constants, row types, numbered SQL m"
+description: "Shared SQLite contract for the daypaw engine ledger (runs, journal, promises, timers). This package owns the physical layout — schema constants, row types, numbered SQL m"
 kind: "package-reference"
 ---
 
@@ -22,12 +22,13 @@ One standalone SQLite database file (WAL, `busy_timeout`, `foreign_keys ON`), cr
 - `runs` — one row per durable run: definition identity, input, status, claim, parent link, attempt chain (`attempt` / `retried_from_run_id`, written by the engine's `rerun`), typed output/failure.
 - `journal` — one row per idempotent step (`(run_id, step_key)` primary key is the dedup gate) or per steer segment boundary (`kind = 'segment'`, recorded complete at insert): name, occurrence, status, recorded result or failure.
 - `promises` — one row per durable gate (`(run_id, gate)` primary key): five-state settlement, payload, JSON Schema rendering projection, deadline, resolution source.
+- `timers` — one row per durable sleep (`(run_id, step_key)` primary key, the step-family idempotency slot): the recorded deadline `wake_at`, the `fired` flag the wake sets, and the row's creation time.
 
 ## API
 
 - `openLedgerDatabase(path)` — open (creating owner-only) and migrate a ledger file, or `:memory:`.
 - `migrateDatabase(db, migrations?)` — apply pending segments; each segment commits its SQL plus its `PRAGMA user_version` stamp in one transaction.
-- `MIGRATIONS`, `DAYPAW_STORE_SCHEMA_VERSION`, `RUNS_TABLE` / `JOURNAL_TABLE` / `PROMISES_TABLE`, `RunRow` / `JournalRow` / `PromiseRow` — the contract constants and row types.
+- `MIGRATIONS`, `DAYPAW_STORE_SCHEMA_VERSION`, `RUNS_TABLE` / `JOURNAL_TABLE` / `PROMISES_TABLE` / `TIMERS_TABLE`, `RunRow` / `JournalRow` / `PromiseRow` / `TimerRow` — the contract constants and row types.
 - `./types` subpath — a runtime-free re-export of the wire-facing row types (`RunRow` / `JournalRow` / `RunStatusDb` / `RunDefKind` / `JournalKindDb` / `JournalStatusDb`): the engine's Remote endpoints return these rows, and the Typert analyzer scans the exports subpaths of the package owning the declaration, so remote clients import the types from this outlet alone.
 
 Migrations are numbered, monotonic, hand-written SQL (as reviewable TS template strings so compiled `lib/` stays self-contained). Databases stamped newer than this build reject on open; forward compatibility comes from migrations, backward is not promised.
@@ -38,7 +39,7 @@ Migrations are numbered, monotonic, hand-written SQL (as reviewable TS template 
 
 #### What the model sees
 
-Nothing. This package contributes no prompt, tool, or schema; it persists the engine's `runs`, `journal`, and `promises` tables behind `openLedgerDatabase`.
+Nothing. This package contributes no prompt, tool, or schema; it persists the engine's `runs`, `journal`, `promises`, and `timers` tables behind `openLedgerDatabase`.
 
 #### Token effect
 
@@ -50,7 +51,7 @@ None — the ledger is never part of a live request prefix.
 
 ## Known Limitations and Deferred Work
 
-- **No timer or command tables** — `timers` (with `ctx.sleep`), command and correlation tables stay deferred: timers land with the sleep primitive, the rest belong to the Manager/EVO subprojects (ADR 0009) and are intentionally absent.
+- **No command or correlation tables** — the Manager/EVO subprojects own those (ADR 0009) and they are intentionally absent.
 - **No `retry_policy_json` column yet** — the retry surface is deferred; the column arrives by a later migration when that surface lands (simplification ruling, issue #24).
 - **Single-process ownership discipline is the engine's job** — this package neither enforces nor documents cross-process write policy beyond SQLite WAL semantics.
 - **Not independently published** — the store ships vendored inside the `@daypaw/sdk` tarball (ADR 0011).

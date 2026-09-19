@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { openLedgerDatabase } from '@daypaw/store'
 import { DurableEngineCore, SqliteJournalStore } from '@daypaw/engine'
-import type { EngineDefinition, EngineStepCtx, JournalStore } from '@daypaw/engine'
+import type { EngineDefinition, EngineRunHandle, EngineStepCtx, JournalStore } from '@daypaw/engine'
 
 /** Fault points: every JournalStore method, as the injectable surface. */
 type Faults = Partial<Record<keyof JournalStore, Error>>
@@ -61,6 +61,29 @@ async function fixture(): Promise<Fixture> {
       logger: { warn: message => warnings.push(message) },
     }),
   }
+}
+
+/**
+ * Start one run whose body parks on a suspension, and give the body time to
+ * reach that park before the case inspects or perturbs the ledger.
+ * @param f - fault-injection fixture.
+ * @param runId - run identity.
+ * @param body - parked body; each suspension supplies its own.
+ * @param define - definition factory (the steer cases need a `steerable` definition).
+ * @returns the driving core and the run handle.
+ */
+async function startParkedRun(
+  f: Fixture,
+  runId: string,
+  body: (ctx: EngineStepCtx) => Promise<unknown>,
+  define: (parked: (ctx: EngineStepCtx) => Promise<unknown>) => EngineDefinition = workflowDef,
+): Promise<{ core: DurableEngineCore; handle: EngineRunHandle }> {
+  const core = f.makeCore()
+  const def = define(body)
+  core.register(def)
+  const handle = core.run(def, null, { runId })
+  await new Promise(resolve => setTimeout(resolve, 15))
+  return { core, handle }
 }
 
 describe('fault injection at journal append points', () => {
@@ -678,24 +701,13 @@ describe('fault injection at journal append points', () => {
 })
 
 describe('fault injection at gate append points', () => {
-  /** Start a run parked on one gate; resolves once the pending row exists. */
-  async function startWaiting(
-    f: Fixture,
-    runId: string,
-    body: (ctx: EngineStepCtx) => Promise<unknown> = async run => (await run.waitFor('approval')),
-  ) {
-    const core = f.makeCore()
-    const def = workflowDef(body)
-    core.register(def)
-    const handle = core.run(def, null, { runId })
-    await new Promise(resolve => setTimeout(resolve, 15))
-    return { core, handle }
-  }
+  /** The default parked body: one gate the case settles or lets time out. */
+  const waitOnGate = (run: EngineStepCtx): Promise<unknown> => run.waitFor('approval')
 
   it('fails the run when the gate lookup faults at waitFor entry', async () => {
     const f = await fixture()
     f.faults.selectPromise = new Error('inject: selectPromise')
-    const { handle } = await startWaiting(f, 'gf-1')
+    const { handle } = await startParkedRun(f, 'gf-1', waitOnGate)
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message === 'inject: selectPromise'
@@ -706,7 +718,7 @@ describe('fault injection at gate append points', () => {
   it('fails the run when the pending-row insert faults', async () => {
     const f = await fixture()
     f.faults.insertPromise = new Error('inject: insertPromise')
-    const { handle } = await startWaiting(f, 'gf-2')
+    const { handle } = await startParkedRun(f, 'gf-2', waitOnGate)
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message === 'inject: insertPromise'
@@ -718,7 +730,7 @@ describe('fault injection at gate append points', () => {
   it('fails the run when the waiting transition faults', async () => {
     const f = await fixture()
     f.faults.setRunWaiting = new Error('inject: setRunWaiting')
-    const { handle } = await startWaiting(f, 'gf-3')
+    const { handle } = await startParkedRun(f, 'gf-3', waitOnGate)
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message === 'inject: setRunWaiting'
@@ -730,7 +742,7 @@ describe('fault injection at gate append points', () => {
   it('fails the run when the wait starts after the run row vanished', async () => {
     const f = await fixture()
     f.overrides.selectRun = () => undefined
-    const { handle } = await startWaiting(f, 'gf-4')
+    const { handle } = await startParkedRun(f, 'gf-4', waitOnGate)
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message.includes('ledger lost run gf-4')
@@ -740,7 +752,7 @@ describe('fault injection at gate append points', () => {
 
   it('propagates a settle fault out of resolveGate and keeps the gate pending', async () => {
     const f = await fixture()
-    const { core, handle } = await startWaiting(f, 'gf-5')
+    const { core, handle } = await startParkedRun(f, 'gf-5', waitOnGate)
     f.faults.settlePromise = new Error('inject: settlePromise')
     expect(() =>{  core.resolveGate('gf-5', 'approval', { state: 'resolved', value: 1 }, 'sdk') })
       .toThrow('inject: settlePromise')
@@ -753,7 +765,7 @@ describe('fault injection at gate append points', () => {
   it('fails the run when the timeout write faults', async () => {
     const f = await fixture()
     f.faults.settlePromise = new Error('inject: settlePromise')
-    const { handle } = await startWaiting(f, 'gf-6', async run => (await run.waitFor('approval', { timeout: 10 })))
+    const { handle } = await startParkedRun(f, 'gf-6', async (run) => { await run.waitFor('approval', { timeout: 10 }) })
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message === 'inject: settlePromise'
@@ -763,7 +775,7 @@ describe('fault injection at gate append points', () => {
 
   it('fails the run when the poll-tick lookup faults', async () => {
     const f = await fixture()
-    const { handle } = await startWaiting(f, 'gf-7')
+    const { handle } = await startParkedRun(f, 'gf-7', waitOnGate)
     f.faults.selectPromise = new Error('inject: selectPromise')
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
@@ -774,7 +786,7 @@ describe('fault injection at gate append points', () => {
 
   it('fails the run when the poll tick finds the promise row vanished', async () => {
     const f = await fixture()
-    const { handle } = await startWaiting(f, 'gf-8')
+    const { handle } = await startParkedRun(f, 'gf-8', waitOnGate)
     f.overrides.selectPromise = () => undefined
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
@@ -785,7 +797,7 @@ describe('fault injection at gate append points', () => {
 
   it('fails the wait when delivery reads a still-pending row', async () => {
     const f = await fixture()
-    const { core, handle } = await startWaiting(f, 'gf-9')
+    const { core, handle } = await startParkedRun(f, 'gf-9', waitOnGate)
     const pending = f.store.selectPromise('gf-9', 'approval')
     f.overrides.selectPromise = () => pending
     core.resolveGate('gf-9', 'approval', { state: 'resolved', value: 1 }, 'sdk')
@@ -798,7 +810,7 @@ describe('fault injection at gate append points', () => {
 
   it('fails the wait when delivery reads a vanished row', async () => {
     const f = await fixture()
-    const { core, handle } = await startWaiting(f, 'gf-10')
+    const { core, handle } = await startParkedRun(f, 'gf-10', waitOnGate)
     f.overrides.selectPromise = () => undefined
     core.resolveGate('gf-10', 'approval', { state: 'resolved', value: 1 }, 'sdk')
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
@@ -810,7 +822,7 @@ describe('fault injection at gate append points', () => {
 
   it('fails the wait when the resume write faults during delivery', async () => {
     const f = await fixture()
-    const { core, handle } = await startWaiting(f, 'gf-11')
+    const { core, handle } = await startParkedRun(f, 'gf-11', waitOnGate)
     f.faults.resumeRun = new Error('inject: resumeRun')
     core.resolveGate('gf-11', 'approval', { state: 'resolved', value: 1 }, 'sdk')
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
@@ -822,7 +834,7 @@ describe('fault injection at gate append points', () => {
 
   it('rejects cancel() when the promise-cancellation write faults', async () => {
     const f = await fixture()
-    const { handle } = await startWaiting(f, 'gf-12')
+    const { handle } = await startParkedRun(f, 'gf-12', waitOnGate)
     f.faults.cancelPendingPromises = new Error('inject: cancelPendingPromises')
     await expect(handle.cancel('stop')).rejects.toThrow('inject: cancelPendingPromises')
     delete f.faults.cancelPendingPromises
@@ -859,7 +871,7 @@ describe('fault injection at gate append points', () => {
   it('fails an abandoned gate wait when the body settles without awaiting it', async () => {
     const f = await fixture()
     let parked: Promise<unknown> | undefined
-    const { handle } = await startWaiting(f, 'gf-15', async (run) => {
+    const { handle } = await startParkedRun(f, 'gf-15', async (run) => {
       parked = run.waitFor('approval')
       return 'done-anyway'
     })
@@ -886,23 +898,12 @@ describe('fault injection at steer append points (issue #53)', () => {
     return { kind: 'workflow', name: 'steerable', version: '1', steerable: true, body }
   }
 
-  /** Start a run parked for its first steer; resolves once the body reached the park. */
-  async function startParked(
-    f: Fixture,
-    runId: string,
-    body: (ctx: EngineStepCtx) => Promise<unknown> = async (run) => { await run.awaitSteer(0); return 'steered' },
-  ) {
-    const core = f.makeCore()
-    const def = steerableDef(body)
-    core.register(def)
-    const handle = core.run(def, null, { runId })
-    await new Promise(resolve => setTimeout(resolve, 15))
-    return { core, handle }
-  }
+  /** The default parked body: park for the first steer segment. */
+  const parkForSteer = async (run: EngineStepCtx): Promise<unknown> => { await run.awaitSteer(0); return 'steered' }
 
   it('propagates a segment-listing failure out of steer()', async () => {
     const f = await fixture()
-    const { core } = await startParked(f, 'sf-1')
+    const { core } = await startParkedRun(f, 'sf-1', parkForSteer, steerableDef)
     f.faults.selectJournalSegments = new Error('inject: selectJournalSegments')
     expect(() =>{  core.steer('sf-1', 'x') }).toThrow('inject: selectJournalSegments')
     delete f.faults.selectJournalSegments
@@ -911,7 +912,7 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('propagates a segment-insert failure out of steer() and records nothing', async () => {
     const f = await fixture()
-    const { core } = await startParked(f, 'sf-2')
+    const { core } = await startParkedRun(f, 'sf-2', parkForSteer, steerableDef)
     f.faults.insertJournalSegment = new Error('inject: insertJournalSegment')
     expect(() =>{  core.steer('sf-2', 'x') }).toThrow('inject: insertJournalSegment')
     expect(f.store.selectJournalSegments('sf-2')).toEqual([])
@@ -921,7 +922,7 @@ describe('fault injection at steer append points (issue #53)', () => {
   it('fails the run when the segment listing faults at awaitSteer entry', async () => {
     const f = await fixture()
     f.faults.selectJournalSegments = new Error('inject: selectJournalSegments')
-    const { handle } = await startParked(f, 'sf-3')
+    const { handle } = await startParkedRun(f, 'sf-3', parkForSteer, steerableDef)
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message === 'inject: selectJournalSegments'
@@ -931,7 +932,7 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('fails the parked wait when the poll tick finds the run row vanished', async () => {
     const f = await fixture()
-    const { handle } = await startParked(f, 'sf-4')
+    const { handle } = await startParkedRun(f, 'sf-4', parkForSteer, steerableDef)
     f.overrides.selectRun = () => undefined
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
@@ -942,7 +943,7 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('fails the parked wait when the poll tick finds the run failed elsewhere', async () => {
     const f = await fixture()
-    const { handle } = await startParked(f, 'sf-5')
+    const { handle } = await startParkedRun(f, 'sf-5', parkForSteer, steerableDef)
     f.store.finalizeRun('sf-5', {
       status: 'failed', outputJson: undefined, errorJson: JSON.stringify({ message: 'elsewhere' }),
       cancelCause: undefined, finishedAt: Date.now(),
@@ -955,7 +956,7 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('cancels the parked wait when the poll tick finds the run cancelled elsewhere', async () => {
     const f = await fixture()
-    const { handle } = await startParked(f, 'sf-6')
+    const { handle } = await startParkedRun(f, 'sf-6', parkForSteer, steerableDef)
     f.store.finalizeRun('sf-6', {
       status: 'cancelled', outputJson: undefined, errorJson: undefined,
       cancelCause: undefined, finishedAt: Date.now(),
@@ -968,7 +969,7 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('fails the parked wait when the poll-tick segment listing faults', async () => {
     const f = await fixture()
-    const { handle } = await startParked(f, 'sf-7')
+    const { handle } = await startParkedRun(f, 'sf-7', parkForSteer, steerableDef)
     f.faults.selectJournalSegments = new Error('inject: selectJournalSegments')
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
@@ -979,10 +980,10 @@ describe('fault injection at steer append points (issue #53)', () => {
 
   it('rejects a second concurrent park on one run', async () => {
     const f = await fixture()
-    const { handle } = await startParked(f, 'sf-8', async (run) => {
+    const { handle } = await startParkedRun(f, 'sf-8', async (run) => {
       await Promise.all([run.awaitSteer(0), run.awaitSteer(0)])
       return 'unreachable'
-    })
+    }, steerableDef)
     await expect(handle.result).rejects.toSatisfy((error: unknown) => {
       const detail = (error as { detail?: unknown }).detail
       return detail instanceof Error && detail.message.includes('already parks for steer')
@@ -992,14 +993,14 @@ describe('fault injection at steer append points (issue #53)', () => {
   it('does not wake a park whose known count the new segment does not exceed', async () => {
     const f = await fixture()
     const wakes: number[] = []
-    const { core, handle } = await startParked(f, 'sf-9', async (run) => {
+    const { core, handle } = await startParkedRun(f, 'sf-9', async (run) => {
       await run.awaitSteer(0)
       wakes.push(1)
       // Skip ahead: park for a third segment while only one exists.
       await run.awaitSteer(2)
       wakes.push(2)
       return run.steers().length
-    })
+    }, steerableDef)
     expect(core.steer('sf-9', 'one')).toBe(1)
     await new Promise(resolve => setTimeout(resolve, 30))
     expect(wakes).toEqual([1])
@@ -1013,10 +1014,10 @@ describe('fault injection at steer append points (issue #53)', () => {
   it('fails an abandoned parked wait when the body settles without awaiting it', async () => {
     const f = await fixture()
     let parked: Promise<unknown> | undefined
-    const { handle } = await startParked(f, 'sf-10', async (run) => {
+    const { handle } = await startParkedRun(f, 'sf-10', async (run) => {
       parked = run.awaitSteer(0)
       return 'done-anyway'
-    })
+    }, steerableDef)
     await expect(handle.result).resolves.toBe('done-anyway')
     // The wait the body left behind ends with its driver instead of outliving it.
     await expect(parked).rejects.toSatisfy((error: unknown) => {
@@ -1088,5 +1089,141 @@ describe('fault injection at steer append points (issue #53)', () => {
     const core = f.makeCore()
     core.dispose()
     expect(() =>{  core.steer('sf-13', null) }).toThrow('ENGINE_DISPOSED')
+  })
+})
+
+describe('fault injection at timer append points (ctx.sleep)', () => {
+  /** The default parked body: one sleep that outlasts the case. */
+  const sleepLong = (run: EngineStepCtx): Promise<void> => run.sleep(60_000)
+
+  it('fails the run when the timer lookup faults at sleep entry', async () => {
+    const f = await fixture()
+    f.faults.selectTimer = new Error('inject: selectTimer')
+    const { handle } = await startParkedRun(f, 'tf-1', sleepLong)
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: selectTimer'
+    })
+    delete f.faults.selectTimer
+  })
+
+  it('fails the run when the timer-row insert faults, recording no deadline', async () => {
+    const f = await fixture()
+    f.faults.insertTimer = new Error('inject: insertTimer')
+    const { handle } = await startParkedRun(f, 'tf-2', sleepLong)
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: insertTimer'
+    })
+    expect(f.store.selectTimer('tf-2', 'sleep:0')).toBeUndefined()
+    delete f.faults.insertTimer
+  })
+
+  it('fails the run when the deadline write faults at expiry', async () => {
+    const f = await fixture()
+    const { handle } = await startParkedRun(f, 'tf-3', async (run) => { await run.sleep(20) })
+    f.faults.fireTimer = new Error('inject: fireTimer')
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: fireTimer'
+    })
+    delete f.faults.fireTimer
+  })
+
+  it('fails the run when recording an overdue wake faults', async () => {
+    const f = await fixture()
+    const core = f.makeCore()
+    // The test's clock: the ledger reports this sleep's deadline as passed.
+    f.overrides.selectTimer = (() => ({
+      run_id: 'tf-4', step_key: 'sleep:0', wake_at: Date.now() - 1, fired: 0, created_at: 0,
+    }))
+    f.faults.fireTimer = new Error('inject: fireTimer')
+    const def = workflowDef(async (run) => { await run.sleep(1_000) })
+    core.register(def)
+    const handle = core.run(def, null, { runId: 'tf-4' })
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message === 'inject: fireTimer'
+    })
+    delete f.faults.fireTimer
+  })
+
+  it('propagates an overdue-timer scan failure out of the boot scan', async () => {
+    const f = await fixture()
+    f.faults.selectOverdueTimers = new Error('inject: selectOverdueTimers')
+    const core = f.makeCore()
+    expect(() =>{  core.bootScan() }).toThrow('inject: selectOverdueTimers')
+    delete f.faults.selectOverdueTimers
+  })
+
+  it('propagates an overdue-timer write failure out of the boot scan', async () => {
+    const f = await fixture()
+    const now = Date.now()
+    f.store.insertRun({
+      runId: 'tf-5', defKind: 'workflow', defName: 'faulted', defVersion: '1', inputJson: 'null',
+      parentRunId: undefined, parentStepKey: undefined, claimedBy: 'dead-instance', claimedAt: now, createdAt: now,
+    })
+    f.store.insertTimer({ runId: 'tf-5', stepKey: 'sleep:0', wakeAt: now - 1, createdAt: now })
+    f.faults.fireTimer = new Error('inject: fireTimer')
+    const core = f.makeCore()
+    expect(() =>{  core.bootScan() }).toThrow('inject: fireTimer')
+    delete f.faults.fireTimer
+  })
+
+  it('fails the parked wait when the poll tick finds the run row vanished', async () => {
+    const f = await fixture()
+    const { handle } = await startParkedRun(f, 'tf-6', sleepLong)
+    f.overrides.selectRun = () => undefined
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error && detail.message.includes('ledger lost run tf-6')
+    })
+    delete f.overrides.selectRun
+  })
+
+  it('fails the parked wait when the poll tick finds the run failed elsewhere', async () => {
+    const f = await fixture()
+    const { handle } = await startParkedRun(f, 'tf-7', sleepLong)
+    f.store.finalizeRun('tf-7', {
+      status: 'failed', outputJson: undefined, errorJson: JSON.stringify({ message: 'elsewhere' }),
+      cancelCause: undefined, finishedAt: Date.now(),
+    })
+    await expect(handle.result).rejects.toSatisfy((error: unknown) => {
+      const detail = (error as { detail?: unknown }).detail
+      return detail instanceof Error
+        && detail.message.includes('terminal state failed while sleeping on timer sleep:0')
+    })
+  })
+
+  it('re-delivers an overdue timer across a restart with the injected clock, without doubling effects', async () => {
+    const f = await fixture()
+    const first = f.makeCore()
+    const effects: string[] = []
+    const def = workflowDef(async (run) => {
+      await run.step('before', async () => { effects.push('before'); return 1 })
+      await run.sleep(600_000)
+      await run.step('after', async () => { effects.push('after'); return 2 })
+      return 'woken'
+    })
+    first.register(def)
+    const handle = first.run(def, null, { runId: 'tf-8' })
+    await new Promise(resolve => setTimeout(resolve, 15))
+    expect(f.store.selectTimer('tf-8', 'sleep:0')?.fired).toBe(0)
+    // The process dies before the deadline, which passes while it is down.
+    first.dispose()
+    await expect(handle.result).rejects.toThrow('ENGINE_DISPOSED')
+    const parked = f.store.selectTimer('tf-8', 'sleep:0')!
+    const passed = { ...parked, wake_at: parked.wake_at - 1_200_000 }
+    f.overrides.selectTimer = (() => passed)
+    f.overrides.selectOverdueTimers = (() => [passed])
+
+    const second = f.makeCore()
+    second.register(def)
+    const revived = second.run(def, null, { runId: 'tf-8' })
+    await expect(revived.result).resolves.toBe('woken')
+    expect(effects).toEqual(['before', 'after'])
+    delete f.overrides.selectTimer
+    delete f.overrides.selectOverdueTimers
+    expect(f.store.selectTimer('tf-8', 'sleep:0')?.fired).toBe(1)
   })
 })

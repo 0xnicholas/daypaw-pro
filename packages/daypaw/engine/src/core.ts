@@ -134,6 +134,21 @@ export interface EngineStepCtx {
    */
   waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
   /**
+   * Durable sleep (spec 01 §6): records a timer row under this call's
+   * derived key (`sleep:<occurrence>`, the call's order in the body — a
+   * reserved prefix, like `steer:`) and parks the driver until its deadline.
+   * The wake happens at least once and a late deadline is never dropped: a
+   * deadline that passed while no process was driving returns immediately on
+   * re-drive, and an unfinished one is waited for as recorded — a crash
+   * neither restarts nor extends it. A non-positive duration records a
+   * deadline at the current time and returns without parking. The run's
+   * ledger status stays `running` while sleeping (a sleep is not a gate),
+   * and a cancelled run or disposed engine ends the park with
+   * `RUN_CANCELLED` / `ENGINE_DISPOSED`.
+   * @param durationMs - sleep duration, when this call records the deadline.
+   */
+  sleep(durationMs: number): Promise<void>
+  /**
    * Read every recorded steer segment input in record order (issue #53).
    * Segment 0 is the run input on the `runs` row and is not listed; segment
    * `i` of this list is journal row `steer:<i + 1>`. A plain read — a
@@ -360,6 +375,12 @@ interface SteerWaiter extends WaitEndings<void> {
   readonly known: number
 }
 
+/** One parked sleep wait. */
+interface SleepWaiter extends WaitEndings<void> {
+  /** The parked run; the driver-exit sweep fails one run's leftovers by it. */
+  readonly runId: string
+}
+
 /**
  * Bodies parked in this process on a recorded fact, keyed by that fact's
  * identity. Owns the parking mechanics both suspensions share — the single
@@ -473,6 +494,10 @@ function gateWaiterKey(runId: string, gate: string): string {
   return `${runId}\u0000${gate}`
 }
 
+function sleepWaiterKey(runId: string, stepKey: string): string {
+  return `${runId}\u0000${stepKey}`
+}
+
 function definitionKey(kind: RunDefKind, name: string, version: string): string {
   return `${kind}\u0000${name}\u0000${version}`
 }
@@ -497,6 +522,7 @@ export class DurableEngineCore {
   private readonly drivers = new Map<string, DriverEntry>()
   private readonly polls = new Map<string, PollEntry>()
   private readonly gateWaiters: WaitTable<GateResolution, GateWaiter>
+  private readonly sleepWaiters: WaitTable<void, SleepWaiter>
   private readonly steerWaiters: WaitTable<void, SteerWaiter>
   private disposed = false
 
@@ -509,6 +535,7 @@ export class DurableEngineCore {
     private readonly options: DurableEngineCoreOptions,
   ) {
     this.gateWaiters = new WaitTable(options.pollMs)
+    this.sleepWaiters = new WaitTable(options.pollMs)
     this.steerWaiters = new WaitTable(options.pollMs)
   }
 
@@ -679,7 +706,8 @@ export class DurableEngineCore {
    * its recorded steps; runs this instance already claimed (an earlier scan
    * that lacked the definition) drive once their definition registers. Runs
    * whose definitions are not registered stay unfinished and are retried on
-   * a later scan.
+   * a later scan. The scan closes by recording every sleep whose deadline
+   * passed while nothing drove it (spec 01 §5).
    */
   bootScan(): void {
     this.assertNotDisposed()
@@ -711,6 +739,14 @@ export class DurableEngineCore {
         continue
       }
       this.drive(runId, def, JSON.parse(row.input_json), undefined)
+    }
+    // Sleeps whose deadline passed while no process was driving: the wake is
+    // recorded for every such timer, including runs nobody revives, so the
+    // ledger carries the passed deadline and a later re-drive returns from
+    // `sleep` without waiting again (the first-wins write the revived body's
+    // own overdue read takes too).
+    for (const timer of this.store.selectOverdueTimers(Date.now())) {
+      this.store.fireTimer(timer.run_id, timer.step_key)
     }
   }
 
@@ -957,21 +993,26 @@ export class DurableEngineCore {
         // A body that died mid-wait (or returned with a gate still pending)
         // leaves its waiter registered; fail it so no timer or poll outlives
         // the driver.
-        this.abandonGateWaiters(runId)
+        this.abandonWaiters(runId)
       }
     })()
     return entry
   }
 
-  /** Fail every gate waiter one run still has registered, plus its steer wait. */
-  private abandonGateWaiters(runId: string): void {
-    // A body that died mid-wait (or returned with a gate still pending)
-    // leaves its waiter registered; fail it so no timer or poll outlives
-    // the driver.
+  /** Fail every parked wait one run still has registered: its gate waits, its sleep timers, and its steer wait. */
+  private abandonWaiters(runId: string): void {
     this.gateWaiters.failWhere(
       waiter => waiter.runId === runId,
       new EngineRunError('RUN_FAILED', runId,
         new Error(`run ${runId} settled while a gate wait was still pending`)),
+    )
+    // A body that died mid-sleep (or returned with a sleep still pending)
+    // leaves its waiter registered; fail it so no timer or poll outlives the
+    // driver.
+    this.sleepWaiters.failWhere(
+      waiter => waiter.runId === runId,
+      new EngineRunError('RUN_FAILED', runId,
+        new Error(`run ${runId} settled while a sleep wait was still pending`)),
     )
     // A body that died mid-park (or returned with a steer wait still pending)
     // leaves its waiter registered; fail it so no poll outlives the driver.
@@ -982,6 +1023,7 @@ export class DurableEngineCore {
   private stepCtxFor(entry: DriverEntry, signal: AbortSignal): EngineStepCtx {
     const runId = entry.handle.id
     const occurrences = new Map<string, number>()
+    let sleepOccurrence = 0
     /** Reject a step/gate action whose run is disposed, aborted, lost, or cancelled. */
     const assertDrivable = (): void => {
       this.assertNotDisposed()
@@ -1063,6 +1105,24 @@ export class DurableEngineCore {
         this.store.setRunWaiting(runId, gate, Date.now())
         return this.suspendOnGate(entry, signal, gate, schema, timeoutAt) as Promise<GateResolution<T>>
       },
+      sleep: (durationMs: number): Promise<void> => {
+        assertDrivable()
+        const stepKey = `sleep:${sleepOccurrence}`
+        sleepOccurrence += 1
+        const existing = this.store.selectTimer(runId, stepKey)
+        // A recorded wake (written by this call earlier, the boot sweep, or a
+        // body re-driven after its deadline passed) never waits again.
+        if (existing !== undefined && existing.fired === 1) return Promise.resolve()
+        const now = Date.now()
+        const wakeAt = existing === undefined ? now + durationMs : existing.wake_at
+        if (existing === undefined) this.store.insertTimer({ runId, stepKey, wakeAt, createdAt: now })
+        // Overdue: the deadline stands recorded, so the body resumes at once.
+        if (wakeAt <= now) {
+          this.store.fireTimer(runId, stepKey)
+          return Promise.resolve()
+        }
+        return this.suspendOnSleep(entry, signal, stepKey, wakeAt)
+      },
       steers: (): readonly unknown[] =>
         this.store.selectJournalSegments(runId).map(row => JSON.parse(row.value_json ?? 'null') as unknown),
       awaitSteer: (known: number): Promise<void> => {
@@ -1140,6 +1200,66 @@ export class DurableEngineCore {
   }
 
   /**
+   * The run-row read every parked wait shares: a vanished run, a cancelled run
+   * (whose driver aborts first, so the rejection codes `RUN_CANCELLED`), and
+   * any other terminal row end the wait; an unfinished run keeps parking.
+   * @param entry - the parked driver.
+   * @param runId - run identity.
+   * @param doing - what the driver is parked on, for the terminal-row diagnostic.
+   * @returns the verdict for the caller's own wait.
+   */
+  private parkedRunVerdict(entry: DriverEntry, runId: string, doing: string): WaitVerdict<void> {
+    const row = this.store.selectRun(runId)
+    if (row === undefined) return { state: 'fail', error: new Error(`durable engine: ledger lost run ${runId}`) }
+    if (row.status === 'cancelled') {
+      // Mirror assertDrivable: abort first so the driver codes the rejection
+      // RUN_CANCELLED instead of wrapping it as a failure.
+      entry.abort(row.cancel_cause ?? undefined)
+      return { state: 'fail', error: new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined) }
+    }
+    if (isTerminal(row.status)) {
+      return { state: 'fail', error: new Error(`durable engine: run ${runId} reached terminal state ${row.status} while ${doing}`) }
+    }
+    return { state: 'wait' }
+  }
+
+  /**
+   * Park the driver until a sleep's recorded deadline: wake on the first of
+   * the timer expiry (which records the wake before it delivers), the
+   * cross-process poll observing cancellation or a terminal row, or driver
+   * abort (cancellation / disposal). A sleeping run keeps the ledger status
+   * `running` — a sleep is not a gate.
+   * @param entry - the driver waiting.
+   * @param signal - driver abort signal.
+   * @param stepKey - the sleep's idempotency key.
+   * @param wakeAt - the recorded deadline (epoch ms).
+   */
+  private suspendOnSleep(entry: DriverEntry, signal: AbortSignal, stepKey: string, wakeAt: number): Promise<void> {
+    const runId = entry.handle.id
+    return this.sleepWaiters.park({
+      key: sleepWaiterKey(runId, stepKey),
+      signal,
+      duplicateMessage: `durable engine: run ${runId} already waits on timer ${stepKey} in this process`,
+      entry: endings => ({ ...endings, runId }),
+      poll: () => this.parkedRunVerdict(entry, runId, `sleeping on timer ${stepKey}`),
+      abort: (waiter) => {
+        // Disposal leaves the run revivable, so its body must not read it as a
+        // cancellation.
+        if (this.disposed) waiter.fail(new EngineRunError('ENGINE_DISPOSED', runId))
+        else waiter.fail(new EngineRunError('RUN_CANCELLED', runId))
+      },
+      deadline: {
+        at: wakeAt,
+        expire: (waiter) => {
+          // Durable before delivery: the wake is recorded, then the body resumes.
+          this.store.fireTimer(runId, stepKey)
+          waiter.deliver()
+        },
+      },
+    })
+  }
+
+  /**
    * Park the driver until a steer segment beyond `known` is recorded: wake on
    * the first of a same-process steer push, the cross-process poll fallback,
    * or driver abort (cancellation / disposal). The poll also observes a row
@@ -1159,20 +1279,8 @@ export class DurableEngineCore {
       duplicateMessage: `durable engine: run ${runId} already parks for steer in this process`,
       entry: endings => ({ ...endings, known }),
       poll: () => {
-        const row = this.store.selectRun(runId)
-        if (row === undefined) return { state: 'fail', error: new Error(`durable engine: ledger lost run ${runId}`) }
-        if (row.status === 'cancelled') {
-          // Mirror assertDrivable: abort first so the driver codes the
-          // rejection RUN_CANCELLED instead of wrapping it as a failure.
-          entry.abort(row.cancel_cause ?? undefined)
-          return { state: 'fail', error: new EngineRunError('RUN_CANCELLED', runId, row.cancel_cause ?? undefined) }
-        }
-        if (isTerminal(row.status)) {
-          return {
-            state: 'fail',
-            error: new Error(`durable engine: run ${runId} reached terminal state ${row.status} while parked for steer`),
-          }
-        }
+        const verdict = this.parkedRunVerdict(entry, runId, 'parked for steer')
+        if (verdict.state !== 'wait') return verdict
         if (this.store.selectJournalSegments(runId).length > known) return { state: 'deliver', outcome: undefined }
         return { state: 'wait' }
       },

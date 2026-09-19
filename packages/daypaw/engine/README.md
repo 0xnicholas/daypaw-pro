@@ -1,5 +1,5 @@
 ---
-description: "The durable execution engine (ctx.durable): run lifecycle, step-dedup re-drive, durable gates (ctx.waitFor), the steer channel for opted"
+description: "The durable execution engine (ctx.durable): run lifecycle, step-dedup re-drive, durable gates (ctx.waitFor), durable timers (ctx.sleep), the steer channel for opted"
 kind: "package-reference"
 ---
 
@@ -13,7 +13,7 @@ English | [中文](README.zh.md)
 
 
 
-The durable execution engine (`ctx.durable`): run lifecycle, step-dedup re-drive, durable gates (`ctx.waitFor`), the steer channel for opted-in definitions, single-writer claims, and boot-scan revival over the [`@daypaw/store`](../store/README.md) ledger. Load it as a Cordis plugin; applications call it through the typed [`@daypaw/sdk`](../sdk/README.md) facade. Semantics: [spec ch.1](../../../docs/spec/01-durable-execution.md); walking-skeleton scope: [ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md).
+The durable execution engine (`ctx.durable`): run lifecycle, step-dedup re-drive, durable gates (`ctx.waitFor`), durable timers (`ctx.sleep`), the steer channel for opted-in definitions, single-writer claims, and boot-scan revival over the [`@daypaw/store`](../store/README.md) ledger. Load it as a Cordis plugin; applications call it through the typed [`@daypaw/sdk`](../sdk/README.md) facade. Semantics: [spec ch.1](../../../docs/spec/01-durable-execution.md); walking-skeleton scope: [ADR 0008](../../../docs/adr/0008-landing-order-walking-skeleton.md).
 
 ## Service API
 
@@ -47,13 +47,15 @@ A run drives its body with a step ctx. `ctx.step(name, fn, { key? })` derives th
 
 `ctx.waitFor(gate, { schema?, timeout? })` is the HITL suspension primitive (spec ch.1 §6): it registers a pending promise row keyed by `(runId, gate)`, moves the run to `waiting`, and yields the driver — waiting costs nothing, and a dead process revives through the boot scan, where the re-driven body reads the recorded outcome at the same `waitFor` without waiting again. The terminal outcome returns as a `GateResolution` union value (`resolved` / `rejected` / `timedout` / `cancelled`): timeout, rejection, and cancellation are programmable branches, never thrown. `timeout` is a millisecond duration; a live process writes `timedout` first-wins from `setTimeout`, and a deadline missed while dead is swept by the boot scan before re-driving.
 
+`ctx.sleep(durationMs)` is the durable timer (spec ch.1 §6): it records a `timers` row under this call's key — `sleep:<occurrence>` in call order, the prefix reserved like `steer:` — and parks the driver until the deadline. A recorded wake returns without waiting again; a recorded deadline still ahead is waited for as recorded, so a crash neither restarts nor extends a sleep; a deadline that passed while no process was driving returns immediately. The wake is durable before it is delivered (the row is fired first, then the body resumes), the run's ledger status stays `running` (a sleep is not a gate), and a deadline missed by a dead process is recorded by the boot scan's overdue sweep.
+
 The steer channel (spec ch.1 §5) turns an opted-in run (`steerable: true` on the definition) multi-segment: segment 0 is the run input on the `runs` row, and each `steer()` appends one journal row `kind='segment'` — step key `steer:<seq>` (1-based; the `steer:` prefix never collides with step keys), `completed` at insert, value the JSON input, never re-executed. Inside the body, `ctx.steers()` reads the recorded segment inputs in record order (a plain read — consumption dedup across re-drives is the body's business), and `ctx.awaitSteer(known)` parks the driver at zero compute until a segment beyond `known` is recorded, returning immediately when enough segments already exist and rejecting `RUN_CANCELLED` / `ENGINE_DISPOSED` on cancellation or disposal. A parked run keeps the ledger status `running`, and steering a gate-`waiting` run records the segment without waking the gate. Boot-scan revival re-drives the body over the recorded segments.
 
 The step ctx also exposes `runId` and the driver's `signal`. While a step's `fn` awaits, `currentStepScope()` returns the ambient scope `{ runId, stepKey }`; a child run started inside it derives its deterministic runId as `<runId>/<stepKey>/<kind>:<name>#<occurrence>` with the parent linkage recorded — a re-driven parent attaches to the child instead of re-opening it (the SDK's `ctx.agent` and the bare sub-workflow idiom both ride this).
 
 ## Extension points
 
-- **`JournalStore` seam** (`./seams`) — the engine's one replaceable storage interface (including promise and segment rows); the SQLite implementation is `SqliteJournalStore`. This is also the fault-injection surface for the crash suite. Promise settlement routing lives in the core (in-process push plus a poll fallback); the `PromiseResolver` / `TimerScheduler` seams extract when a second implementation appears.
+- **`JournalStore` seam** (`./seams`) — the engine's one replaceable storage interface (including promise, timer, and segment rows); the SQLite implementation is `SqliteJournalStore`. This is also the fault-injection surface for the crash suite. Promise settlement routing lives in the core (in-process push plus a poll fallback); the `PromiseResolver` / `TimerScheduler` seams extract when a second implementation appears.
 - **Definition registry** — built in (ADR 0006 §2): boot revival needs bodies without their callers.
 
 ## Model Experience
@@ -74,7 +76,8 @@ None — the ledger is never part of a live request prefix.
 
 ## Known Limitations and Deferred Work
 
-- **Skeleton primitive set** — `ctx.step`, `ctx.waitFor`, and the steer channel (`steers` / `awaitSteer`) are landed; `sleep` / `spawn` land on demand with their state machines (the `agent` face lives in the SDK).
+- **Skeleton primitive set** — `ctx.step`, `ctx.waitFor`, `ctx.sleep`, and the steer channel (`steers` / `awaitSteer`) are landed; `spawn` lands on demand with its state machine (the `agent` face lives in the SDK).
+- **Timer punctuality needs a running process** — a sleep fires while a process drives its run; with every process down, a passed deadline is recorded at the next boot scan, so nothing wakes the run on time (spec ch.1 §10).
 - **No write-side schema validation cross-process** — the persisted `schema_json` is only a rendering projection; a process without the live schema writes unvalidated settlements, and the waiting side always validates on delivery, failing the step loud on a mismatch.
 - **`steerable` is checked only where the definition is registered** — a `steer()` through an engine instance that never registered the run's definition records the segment unchecked; the SDK face validates the input at steer time and the agent body re-validates at consumption, failing the run loud on a mismatch; the opt-in throw exists only where the body is known.
 - **Concurrent cross-process `steer()` can collide on the segment key** — the seq is read-then-insert (`count + 1`), so two processes steering one run can race to the same `steer:n` primary key; the loser fails with a constraint error and retries. Same-process steers serialize on the event loop.

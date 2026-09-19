@@ -27,6 +27,14 @@ node --import tsx/esm examples/daypaw-skeleton/src/main.ts \
 
 `cordis.yml` 是演示组合（engine 落本地 ledger 文件）；[tests/sigkill.spec.ts](tests/sigkill.spec.ts) 是证明线套件——第一步效果出现后杀死，断言已完成 step 恰一次与带类型化结果的 `done` 行。
 
+`--sleep-ms <n>` 在第一步与第二步之间插入一个持久 timer（`ctx.sleep`），即 timer 证明线：趁其 sleep 杀死宿主，待截止已过再回来，boot 扫描让同一个 run 跨过该 sleep 续跑，而不重跑它前后的 step。
+
+```sh
+node --import tsx/esm examples/daypaw-skeleton/src/main.ts \
+  --db /tmp/demo-ledger.db --effects /tmp/demo-effects.log \
+  --run-id demo-sleep-1 --sleep-ms 5000
+```
+
 ## Agent 演示
 
 [src/agent-main.ts](src/agent-main.ts) 跑一个 workflow，其 step 经 `ctx.agent` 等待一个 `defineAgent` 编译的子 run，dsh agent 栈为真实组合，LLM 路由由脚本化 replay override 免 key 供给：

@@ -6,9 +6,10 @@
  */
 
 import type { DatabaseSync } from 'node:sqlite'
-import type { JournalRow, PromiseRow, RunRow } from '@daypaw/store'
+import type { JournalRow, PromiseRow, RunRow, TimerRow } from '@daypaw/store'
 import type {
   JournalSegmentInsert, JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
+  TimerInsert,
 } from './seams.ts'
 
 type Statement = ReturnType<DatabaseSync['prepare']>
@@ -43,6 +44,10 @@ export class SqliteJournalStore implements JournalStore {
   private readonly settlePromiseStmt: Statement
   private readonly selectOverdueStmt: Statement
   private readonly cancelPromisesStmt: Statement
+  private readonly insertTimerStmt: Statement
+  private readonly selectTimerStmt: Statement
+  private readonly fireTimerStmt: Statement
+  private readonly selectOverdueTimersStmt: Statement
 
   /**
    * @param db - the open ledger database (schema already migrated).
@@ -100,6 +105,12 @@ export class SqliteJournalStore implements JournalStore {
     this.cancelPromisesStmt = db.prepare(`UPDATE promises
       SET state = 'cancelled', resolved_at = ?
       WHERE run_id = ? AND state = 'pending'`)
+    this.insertTimerStmt = db.prepare(`INSERT INTO timers (
+      run_id, step_key, wake_at, created_at
+    ) VALUES (?, ?, ?, ?)`)
+    this.selectTimerStmt = db.prepare('SELECT * FROM timers WHERE run_id = ? AND step_key = ?')
+    this.fireTimerStmt = db.prepare('UPDATE timers SET fired = 1 WHERE run_id = ? AND step_key = ? AND fired = 0')
+    this.selectOverdueTimersStmt = db.prepare('SELECT * FROM timers WHERE fired = 0 AND wake_at <= ?')
   }
 
   /** @inheritdoc */
@@ -218,5 +229,25 @@ export class SqliteJournalStore implements JournalStore {
   /** @inheritdoc */
   cancelPendingPromises(runId: string, at: number): void {
     this.cancelPromisesStmt.run(at, runId)
+  }
+
+  /** @inheritdoc */
+  insertTimer(row: TimerInsert): void {
+    this.insertTimerStmt.run(row.runId, row.stepKey, row.wakeAt, row.createdAt)
+  }
+
+  /** @inheritdoc */
+  selectTimer(runId: string, stepKey: string): TimerRow | undefined {
+    return this.selectTimerStmt.get(runId, stepKey) as TimerRow | undefined
+  }
+
+  /** @inheritdoc */
+  fireTimer(runId: string, stepKey: string): void {
+    this.fireTimerStmt.run(runId, stepKey)
+  }
+
+  /** @inheritdoc */
+  selectOverdueTimers(now: number): TimerRow[] {
+    return this.selectOverdueTimersStmt.all(now) as unknown as TimerRow[]
   }
 }

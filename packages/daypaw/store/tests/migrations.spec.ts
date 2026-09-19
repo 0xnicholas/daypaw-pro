@@ -5,13 +5,14 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import {
-  DAYPAW_STORE_SCHEMA_VERSION, JOURNAL_TABLE, MIGRATIONS, PROMISES_TABLE, RUNS_TABLE,
+  DAYPAW_STORE_SCHEMA_VERSION, JOURNAL_TABLE, MIGRATIONS, PROMISES_TABLE, RUNS_TABLE, TIMERS_TABLE,
   migrateDatabase, newestVersionOf, openLedgerDatabase,
 } from '../src/index.ts'
 import type { Migration } from '../src/index.ts'
 
 const goldenV1 = fileURLToPath(new URL('./fixtures/golden/0001-v1.db', import.meta.url))
 const goldenV2 = fileURLToPath(new URL('./fixtures/golden/0002-v2.db', import.meta.url))
+const goldenV3 = fileURLToPath(new URL('./fixtures/golden/0003-v3.db', import.meta.url))
 
 /** Column names of one table, in declaration order. */
 function columnsOf(db: DatabaseSync, table: string): string[] {
@@ -54,6 +55,9 @@ describe('openLedgerDatabase', () => {
       expect(columnsOf(db, PROMISES_TABLE)).toEqual([
         'run_id', 'gate', 'state', 'payload_json', 'schema_json',
         'timeout_at', 'resolution_source', 'created_at', 'resolved_at',
+      ])
+      expect(columnsOf(db, TIMERS_TABLE)).toEqual([
+        'run_id', 'step_key', 'wake_at', 'fired', 'created_at',
       ])
       expect((db.prepare('PRAGMA journal_mode').get() as { journal_mode: string }).journal_mode)
         .toBe('wal')
@@ -116,10 +120,26 @@ describe('openLedgerDatabase', () => {
     }
   })
 
-  it('opens the committed golden v2 fixture without changes', async () => {
+  it('migrates the committed golden v2 fixture to the current schema (spec §4 N-1 → N)', async () => {
     const dir = await tmpDir('daypaw-store-golden-v2-')
     const copy = join(dir, 'golden-copy.db')
     await cp(goldenV2, copy)
+    const golden = await openLedgerDatabase(copy)
+    const fresh = await openLedgerDatabase(':memory:')
+    try {
+      expect((golden.prepare('PRAGMA user_version').get() as { user_version: number }).user_version)
+        .toBe(DAYPAW_STORE_SCHEMA_VERSION)
+      expect(schemaFingerprint(golden)).toEqual(schemaFingerprint(fresh))
+    } finally {
+      golden.close()
+      fresh.close()
+    }
+  })
+
+  it('opens the committed golden v3 fixture without changes', async () => {
+    const dir = await tmpDir('daypaw-store-golden-v3-')
+    const copy = join(dir, 'golden-copy.db')
+    await cp(goldenV3, copy)
     const golden = await openLedgerDatabase(copy)
     const fresh = await openLedgerDatabase(':memory:')
     try {

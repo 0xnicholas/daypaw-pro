@@ -27,4 +27,4 @@ Supporting moves: `retry_policy_json` stays out of migration 0001 (issue #24); m
 
 - The proof line passes: kill after the first step's effect, restart, and the first step runs exactly once while the in-flight one re-executes (at-least-once execution, exactly-once step commits).
 - Two live processes driving one ledger remain outside v1's envelope (documented in the engine README); the attach-poll path covers the ops scenario instead.
-- The promise rows, `waiting` status, and gate resolution this note deferred landed with `ctx.waitFor` (issue #47, [gate note](../feature/2026-08-23-durable-gate-waitfor.md)); the timer table, `ctx.sleep`, and relational invariants remain demand-driven future work.
+- The promise rows, `waiting` status, and gate resolution this note deferred landed with `ctx.waitFor` (issue #47, [gate note](../feature/2026-08-23-durable-gate-waitfor.md)); the timer table and `ctx.sleep` landed with [durable timers](../feature/2026-09-19-daypaw-durable-timer.md); relational invariants remain demand-driven future work.

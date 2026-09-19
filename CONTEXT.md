@@ -109,6 +109,10 @@ step 内对外部世界的一次副作用（LLM 调用、工具调用、写文�
 
 HITL 挂起原语 `ctx.waitFor(gate, {schema, timeout})`：键 = `(runId, gate 名)`，状态机 pending→resolved/rejected/timedout/cancelled，幂等 resolve；等待期间进程可退出（零算力）。
 
+### Durable Timer（Sleep）
+
+持久 sleep 原语 `ctx.sleep(duration)`：键 = `(runId, sleep:<occurrence>)`，行持已录截止 `wake_at` 与 `fired` 标志；语义 = 至少醒一次、迟到不丢（已 fired 不重等，未 fired 按录等，过期的立即续跑）。唤醒先落账再投递；run 状态保持 running（非 gate）。进程不在期间过期的截止由 boot 扫描补记，准时性受拉起时机约束。
+
 ### RunHandle
 
 run 的调用方句柄：id、result（类型化 Promise）、status()、cancel(cause)。内存 promise 不承诺跨进程——跨进程重连走 attach（幂等 start-or-attach）。
@@ -119,7 +123,7 @@ run 的调用方句柄：id、result（类型化 Promise）、status()、cancel(
 
 ### 幂等键（Idempotency Key）
 
-step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知的依据。自动派生 = `runId + name + occurrence`；`opts.key` 显式逃生口。
+step/effect 的去重标识：at-least-once 执行之上凑 exactly-once 感知的依据。自动派生 = `runId + name + occurrence`；`opts.key` 显式逃生口。sleep 无 name，按调用序派生 `sleep:<occurrence>`（`sleep:` 前缀保留，同 `steer:`）。
 
 ### 认领（Claim）
 

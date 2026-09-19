@@ -23,7 +23,7 @@
 |---|---|---|
 | ① | 追加式 journal：effect + result 一起记 | **做**——engine ledger 本体（§3） |
 | ② | 重放/去重 | **做**——DBOS 谱系 step 去重续跑（§5）；无强确定性约束，改版本/改 prompt 不炸旧 run；全史对话重放由 session log 免费提供，引擎不重复 |
-| ③ | 持久 timer | **做**（§6）；按需落地（§11） |
+| ③ | 持久 timer | **做**（§6） |
 | ④ | 持久 promise / HITL gate | **做**（§6）——单一原语 `ctx.waitFor`；按需落地（§11） |
 | ⑤ | 数据化 retry policy | **字段化预留**（journal 行 `attempt` 列，崩溃不丢计数；`retry_policy_json` 待 retry 面落地时以迁移加入，golden 保障）；v1 无自动重试策略面，step 失败即 run failed |
 | ⑥ | 副作用幂等键 | **做**——step 键自动派生 `runId + name + occurrence`，`opts.key` 显式逃生口（原型裁决，见第 2 章 §2） |
@@ -64,7 +64,7 @@ store = 共享数据契约的代码形态：schema 常量 + TS 行类型 + 迁�
 | `run_id` | TEXT | FK → runs |
 | `step_key` | TEXT | 幂等键（自动派生 / `opts.key`）；**PK = (run_id, step_key)，唯一约束即去重闸** |
 | `name` / `occurrence` | TEXT / INTEGER | step 名 / 重驱动遍历序 |
-| `kind` | TEXT | `'step' \| 'segment'`（`'step'` = 幂等执行单元；`'segment'` = steer 段边界事实，见 §5 steer 段；后续扩 `'timer'` / `'sleep'` 族占位；列无 CHECK，新增 kind 零迁移） |
+| `kind` | TEXT | `'step' \| 'segment'`（`'step'` = 幂等执行单元；`'segment'` = steer 段边界事实，见 §5 steer 段；sleep 不占 journal——其行归 `timers` 表，见 §3.4；列无 CHECK，新增 kind 零迁移） |
 | `status` | TEXT | `'started' \| 'completed' \| 'failed'` |
 | `value_json` / `error_json` | TEXT NULL | 结果（ledger 写账时运行时校验）/ 失败 |
 | `attempt` | INTEGER | ⑤预留：重试计数崩溃不丢；`retry_policy_json` 待 retry 面落地时以迁移加入 |
@@ -75,7 +75,7 @@ store = 共享数据契约的代码形态：schema 常量 + TS 行类型 + 迁�
 
 PK `(run_id, gate)`；列：`state`（`pending | resolved | rejected | timedout | cancelled`，对齐 Resonate durable promise spec 状态机）、`payload_json`（resolve 值，引擎侧 zod 校验后落盘）、`schema_json`（zod → JSON Schema 的**渲染投影**，供 Manager/UI 渲染表单；权威校验在引擎侧，渲染投影不作校验依据）、`timeout_at`、`resolution_source`（`'sdk' | 'manager' | 'webhook'`）、`created_at` / `resolved_at`。
 
-### 3.4 `timers`（§6，skeleton 后）
+### 3.4 `timers`（§6）
 
 PK `(run_id, step_key)`（sleep 属 step 族，占幂等键位）；列：`wake_at`、`fired`（0/1）、`created_at`。boot 扫描 overdue 查询 = `WHERE fired = 0 AND wake_at <= ?`。
 
@@ -122,7 +122,7 @@ DB 级：**WAL 一写多读**——引擎进程单写者，Manager host / 其它
 - **幂等 resolve**：同 `(run_id, gate)` 第一写入者胜（first-wins，对齐 dsh jobs settlement 与 Resonate `strict`）。
 - **终态非异常**：返回 `GateResolution` 联合值 `{state:'resolved',value} | {state:'rejected',reason} | {state:'timedout'} | {state:'cancelled'}`；超时/拒绝是可编程分支，不抛异常。
 
-**`ctx.sleep(duration)`**：timers 行 `wake_at = now + duration`，占 step 族幂等键位（重驱动去重：已完成直接返回）。进程活着 = `setTimeout` 自唤醒；进程死 = boot 扫描补发 overdue（`fired=0 AND wake_at <= now`）。语义 = **至少醒一次、迟到不丢**——准时性受拉起时机约束（§10 运维注记）。
+**`ctx.sleep(duration)`**：timers 行 `wake_at = now + duration`，占 step 族幂等键位——键按调用序派生为 `sleep:<occurrence>`（`sleep:` 前缀保留，与 `steer:` 同类），重驱动处序确定即去重：`fired = 1` 直接返回，未 fired 按**已录的** `wake_at` 等（重驱动不重算时长，崩溃既不重等也不延长）。进程活着 = `setTimeout` 自唤醒；进程死 = boot 扫描补发 overdue（`fired=0 AND wake_at <= now`；重驱动的 body 自身读到过期截止也走同一条 first-wins 写）。唤醒**先落账再投递**：到期时先写 `fired = 1`，body 随即续跑。run 在 sleep 期间 ledger 状态保持 `running`（sleep 不是 gate，`waiting_gate` 只记 gate）。语义 = **至少醒一次、迟到不丢**——准时性受拉起时机约束（§10 运维注记）。
 
 ## 7. 可替换三缝（daemon 化 / 服务化留口）
 
@@ -172,7 +172,7 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 | §3.1 runs / §3.2 journal | ✅ 落地 |
 | §4 迁移机制 | ✅ 迁移骨架 + 0001 段 + golden fixture |
 | §5 驱动 / step 去重 / boot 扫描 / claim / start-or-attach | ✅ 落地 |
-| §6 promise / timer | promise ✅（`ctx.waitFor` gate 原语，含超时与 boot overdue 扫尾）/ timer ❌（按需落地：首个需要 sleep 的真实 workflow 出现时实现） |
+| §6 promise / timer | promise ✅（`ctx.waitFor` gate 原语，含超时与 boot overdue 扫尾）/ timer ✅（`ctx.sleep` timer 原语，含重驱动去重与 boot overdue 补发） |
 | §7 三缝接口 | ✅ 以进程内实现落地（接口成型即留口） |
 | §9 双层崩溃 + golden fixture + canonical example | ✅ 随包落地（证明线：3-step example 真 SIGKILL 续跑） |
 | retry 面 / spawn / defineAgent / profile 接线 / bin 冒烟 | ❌ 全部在外 |

@@ -27,6 +27,14 @@ Kill it mid-run (`kill -9`), then restart without `--run-id`: the boot scan revi
 
 `cordis.yml` is the demo composition (engine over a local ledger file); [tests/sigkill.spec.ts](tests/sigkill.spec.ts) is the proof-line suite — kill after the first step's effect, assert exactly-once completed steps and a `done` row with the typed result.
 
+`--sleep-ms <n>` inserts one durable timer (`ctx.sleep`) between the first and second steps, which is the timer proof line: kill the host while it sleeps, come back after the deadline passed, and the boot scan resumes the same run past the sleep without re-running the steps around it.
+
+```sh
+node --import tsx/esm examples/daypaw-skeleton/src/main.ts \
+  --db /tmp/demo-ledger.db --effects /tmp/demo-effects.log \
+  --run-id demo-sleep-1 --sleep-ms 5000
+```
+
 ## Agent demo
 
 [src/agent-main.ts](src/agent-main.ts) runs a workflow whose step awaits a `defineAgent`-compiled child run through `ctx.agent`, over the real dsh agent stack with the LLM route served keylessly from a scripted replay override:
