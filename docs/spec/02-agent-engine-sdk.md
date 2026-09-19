@@ -68,7 +68,16 @@ export interface WorkflowCtx {
   step<T>(name: string, fn: () => Promise<T>, opts?: StepOptions): Promise<T>
   /** durable gate（HITL 挂起，spec 01 §6）；终态以 GateResolution 联合值返回。 */
   waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>
-  // sleep / slot：继承引擎 ctx（spec 01 §6，已实现）；agent 见 §1.2；spawn 见 §2
+  /** 持久 timer（spec 01 §6）：键按作用域派生——顶层 `sleep:<n>`、步内 `<stepKey>/sleep:<n>`。 */
+  sleep(durationMs: number): Promise<void>
+  /**
+   * 火后不管子 run（ADR 0016）：返回子 runId；await 它等的是「子已落账启动」，不是子结局；
+   * 派发事实 = 子 run 行的父链（`parent_step_key = 'spawn:<n>'`）。SDK 侧别名为 `SpawnableDefinition`。
+   */
+  spawn<I extends ZodType, O extends ZodType>(
+    def: AgentDefinition<I, O> | WorkflowDefinition<I, O>, input: Infer<I>,
+  ): Promise<string>
+  // slot：保留键位分配器（ADR 0016 §6），继承引擎 ctx；agent 见 §1.2
 }
 
 export interface StepOptions {
