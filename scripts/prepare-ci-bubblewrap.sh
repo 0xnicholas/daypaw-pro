@@ -4,8 +4,13 @@ set -euo pipefail
 # Ubuntu's package transaction scans the hosted image's full dpkg database and
 # runs post-install hooks. CI needs only the signed-archive payload, so pin and
 # verify that payload before extracting it into the ephemeral runner directory.
-readonly BUBBLEWRAP_VERSION='0.9.0-1ubuntu0.1'
-readonly BUBBLEWRAP_SHA256='1b506492bd9c7fd0cdb4f02ac822f1d3e336b0aead5113c1239baf8db5db562a'
+# Pin the series' release revision: the archive pool drops a superseded security
+# revision as soon as Ubuntu publishes the next one, which turns this download
+# into a 404 until the pin is bumped. The release revision stays for the life of
+# the series, and the hash check plus the functional probe below remain the
+# gates that decide whether the payload is usable.
+readonly BUBBLEWRAP_VERSION='0.9.0-1build1'
+readonly BUBBLEWRAP_SHA256='dde30d1f24da50446d647ed504ec8dc5a714f171974d054c70a589b48ba38b48'
 readonly BUBBLEWRAP_URL="https://archive.ubuntu.com/ubuntu/pool/main/b/bubblewrap/bubblewrap_${BUBBLEWRAP_VERSION}_amd64.deb"
 
 : "${RUNNER_TEMP:?prepare-ci-bubblewrap requires RUNNER_TEMP}"
