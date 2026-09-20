@@ -27,6 +27,7 @@ daypaw-pro 是 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harnes
 - **core-touch 纪律**：默认禁止修改上游文件；一切例外登记在 [docs/fork/CORE_TOUCHES.md](docs/fork/CORE_TOUCHES.md)，每次 sync 逐条重放验证。
 - **经缝扩展**：新包族、merge-extensible 事件、patch-layer（`cordis.patch.yml`）组合是首选挂载点。
 - **交付独立**（ADR 0011）：`@daypaw/*` 走独立 0.x 版本线；`@daypaw/cli` 与 `@daypaw/sdk` 为自含单包（上游 `@deepseek-ai/*` 依赖打包进包、零改名）。
+- **依赖更新**：fork 停用 dependabot 版本更新（仓库设置，零文件差异）；依赖版本随上游的依赖升级经同步仪式进入，安全更新保留（[ADR 0017](docs/adr/0017-dependency-update-posture.md)）。
 
 ## 快速上手
 
