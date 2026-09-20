@@ -6,11 +6,11 @@ English | [中文](2026-08-25-daypaw-define-agent-display-fields.zh.md)
 
 ## Problem
 
-Issue #52 (spec 05 §5, backend increment 3) declares the display metadata the product shell's agent catalog reads through the [definition registry read view](2026-08-25-daypaw-definition-registry-view.md): a business-facing name and description (the #40 minimum set). The engine carrier (`EngineDefinition.display`) shipped with #51, but the SDK declaration face had no way to declare it, and the behavior of a definition that declares nothing was undefined.
+Issue #52 (spec 05 §5) declares the display metadata the product shell's agent catalog reads through the [definition registry read view](2026-08-25-daypaw-definition-registry-view.md): a business-facing name and description (the #40 minimum set). `EngineDefinition.display` carries the display metadata. `defineAgent` declares it optionally; a definition that declares nothing registers without it.
 
 ## Decision
 
-- **`DefineAgentOptions.display?: DefinitionDisplay`** — `defineAgent` gains the optional display pair (`title` + `description`), reusing the engine's carrier type rather than an SDK-local twin. `AgentDefinition` carries it and `bindAgent` passes it through to the `EngineDefinition` it registers, so `ctx.durable.listDefinitions()` reads it back with the identity.
+- **`DefineAgentOptions.display?: DefinitionDisplay`** — `defineAgent` gains the optional display pair (`title` + `description`), reusing the engine's carrier type rather than an SDK-local twin. `AgentDefinition` carries it and `ctx.durable.listDefinitions()` reports the declared display with the definition's identity.
 - **Declaration-time validation** — a declared display with a blank `title` or `description` throws at declaration, the `maxTurns` precedent: a catalog card with an empty business name is a misconfiguration, and misconfiguration fails loud at the earliest resolvable point.
 - **The undeclared fallback** — `display` stays optional end to end: an undeclared definition registers without it, the read view reports `display: undefined`, and the catalog presentation falls back to the technical `name` with no description line. The fallback is a presentation convention, documented in the engine/SDK READMEs and the shell vocabulary in `CONTEXT.md`; the engine itself never reads `display`, and engine-layer vocabulary is unchanged.
 - **Metadata only** — no execution path, prompt, or tool sees the display fields; the model-visible surface is unchanged, so no snapshot fixture moves.

@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目录提供 core 查询：枚举全部已注册定义及其展示元数据。注册表是 `DurableEngineCore` 内部的私有 `Map`——host 够不到——#44 缺口 6 的裁决把落地侧判给引擎：暴露只读视图，core 保持无 Cordis 依赖的 imports。本票与 #52（`defineAgent` 展示字段）配套：#52 负责声明本视图承载的元数据，因此引擎侧现在要同时落下载体字段与读面。
+Issue #51（spec 05 §5）给产品壳的 agent 目录提供 core 查询：枚举全部已注册定义及其展示元数据。注册表是 `DurableEngineCore` 内部的私有 `Map`——host 够不到——读面归引擎：暴露只读视图，core 保持无 Cordis 依赖的 imports。本票与 #52（`defineAgent` 展示字段）配套：#52 负责声明本视图承载的元数据，因此引擎包同时承载载体字段与读面。
 
 ## Decision
 

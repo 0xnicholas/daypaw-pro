@@ -6,7 +6,7 @@ English | [中文](2026-08-25-daypaw-definition-registry-view.zh.md)
 
 ## Problem
 
-Issue #51 (spec 05 §5, backend increment 2) gives the product shell's agent catalog its core query: enumerate every registered definition with its display metadata. The registry is a private `Map` inside `DurableEngineCore` — the host cannot reach it — and the #44 gap-6 ruling assigns the fix to the engine: expose a read-only view while the core keeps its Cordis-free imports. The ticket pairs with #52 (`defineAgent` display fields), which declares the metadata this view carries, so the engine side needed both the carrier field and the read face.
+Issue #51 (spec 05 §5) gives the product shell's agent catalog its core query: enumerate every registered definition with its display metadata. The registry is a private `Map` inside `DurableEngineCore` — the host cannot reach it — and the engine owns the read face: expose a read-only view while the core keeps its Cordis-free imports. The ticket pairs with #52 (`defineAgent` display fields), which declares the metadata this view carries, so the engine package carries both the carrier field and the read face.
 
 ## Decision
 
