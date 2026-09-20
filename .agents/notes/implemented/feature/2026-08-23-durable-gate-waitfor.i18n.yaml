@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-durable-gate-waitfor.md
-2026-08-23-durable-gate-waitfor.md: bab9521aa37f7239e23be6838020654b26e62f56
-2026-08-23-durable-gate-waitfor.zh.md: f7338ef99cbdf9f7a64860d932da87d60f8af4e9
+2026-08-23-durable-gate-waitfor.md: 6e5df051e5880279ea27ad29be71351729c5e319
+2026-08-23-durable-gate-waitfor.zh.md: fbda74abf5263e76af41c4d0aa357b663bb2534e
