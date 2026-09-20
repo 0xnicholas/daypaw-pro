@@ -27,6 +27,7 @@ const CARDS_API: DurableClient = {
   rerun: UNUSED,
   startRun: UNUSED,
   steerText: UNUSED,
+  resolveGate: UNUSED,
 }
 
 /** Wrap one listDefinitions handler as the single wire face (the other endpoints stay unused). */

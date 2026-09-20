@@ -34,6 +34,7 @@ const RUN_ROW = {
   def_kind: 'agent' as const,
   def_name: 'weekly-report',
   status: 'running' as const,
+  waiting_gate: null,
   parent_run_id: null,
   output_json: null,
   updated_at: 1_000,
@@ -50,18 +51,20 @@ describe('createDurableClient', () => {
       'durable/listDefinitions': [{ kind: 'agent', name: 'a', version: '1', inputKind: null }],
       'durable/startRun': { runId: 'run-1' },
       'durable/steerText': 1,
+      'durable/resolveGate': true,
     }, calls))
     await expect(client.listRuns()).resolves.toHaveLength(1)
     await expect(client.runLineage('run-1')).resolves.toEqual({
-      run: { runId: 'run-1', defKind: 'agent', defName: 'weekly-report', status: 'running', parentRunId: null, outputJson: null, updatedAt: 1_000 },
+      run: { runId: 'run-1', defKind: 'agent', defName: 'weekly-report', status: 'running', waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 1_000 },
       parent: undefined,
-      children: [{ runId: 'run-1', defKind: 'agent', defName: 'weekly-report', status: 'running', parentRunId: null, outputJson: null, updatedAt: 1_000 }],
+      children: [{ runId: 'run-1', defKind: 'agent', defName: 'weekly-report', status: 'running', waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 1_000 }],
     })
     await expect(client.journalTimeline('run-1')).resolves.toEqual([])
     await expect(client.rerun('run-1')).resolves.toBe('run-2')
     await expect(client.listDefinitions()).resolves.toEqual([{ kind: 'agent', name: 'a', version: '1', inputKind: null }])
     await expect(client.startRun({ defName: 'a', defVersion: '1', input: 'task', runId: 'run-1' })).resolves.toEqual({ runId: 'run-1' })
     await expect(client.steerText('run-1', 'nudge')).resolves.toBe(1)
+    await expect(client.resolveGate('run-1', 'owner-approval', { state: 'resolved', value: { approve: true } })).resolves.toBe(true)
     expect(calls).toEqual([
       { endpoint: 'durable/listRuns', payload: { args: {} } },
       { endpoint: 'durable/runLineage', payload: { args: { runId: 'run-1' } } },
@@ -70,6 +73,7 @@ describe('createDurableClient', () => {
       { endpoint: 'durable/listDefinitions', payload: { args: {} } },
       { endpoint: 'durable/startRun', payload: { args: { request: { defName: 'a', defVersion: '1', input: 'task', runId: 'run-1' } } } },
       { endpoint: 'durable/steerText', payload: { args: { runId: 'run-1', text: 'nudge' } } },
+      { endpoint: 'durable/resolveGate', payload: { args: { runId: 'run-1', gate: 'owner-approval', settlement: { state: 'resolved', value: { approve: true } } } } },
     ])
   })
 
@@ -90,6 +94,7 @@ describe('createDurableClient', () => {
       'durable/rerun': 7,
       'durable/startRun': { noRunId: true },
       'durable/steerText': '1',
+      'durable/resolveGate': 'settled',
     }))
     await expect(client.listRuns()).rejects.toThrow('durable-client: durable/listRuns answered a non-array')
     await expect(client.runLineage('run-1')).rejects.toThrow('durable-client: durable/runLineage children is a non-array')
@@ -99,6 +104,8 @@ describe('createDurableClient', () => {
     await expect(client.startRun({ defName: 'a', defVersion: '1', input: 'task', runId: 'run-1' }))
       .rejects.toThrow('durable-client: durable/startRun answered no run id')
     await expect(client.steerText('run-1', 'nudge')).rejects.toThrow('durable-client: durable/steerText answered a non-number segment ordinal')
+    await expect(client.resolveGate('run-1', 'owner-approval', { state: 'rejected', reason: 'no' }))
+      .rejects.toThrow('durable-client: durable/resolveGate answered a non-boolean settlement')
   })
 
   it('rejects a non-object lineage payload and a non-object startRun answer', async () => {

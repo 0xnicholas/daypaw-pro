@@ -1,5 +1,5 @@
 ---
-description: "daypaw 浏览器平面对 durable 引擎 Remote 面的唯一 wire 词汇家：七个 durable/* 端点调用、手声明 wire 行类型与 fail-loud 解析、五值 run 状态词表及其 zh/en 文案"
+description: "daypaw 浏览器平面对 durable 引擎 Remote 面的唯一 wire 词汇家：八个 durable/* 端点调用、手声明 wire 行类型与 fail-loud 解析、五值 run 状态词表及其 zh/en 文案"
 kind: "package-reference"
 ---
 
@@ -13,9 +13,9 @@ kind: "package-reference"
 
 
 
-daypaw 浏览器平面对 durable 引擎 Remote 面的唯一 wire 词汇家（[spec 05](../../../docs/spec/05-product-shell.md) §5，[票 #116](https://github.com/0xnicholas/daypaw-pro/issues/116)）：壳今日消费的七个 `durable/*` Remote 端点收在一个客户端 interface 之后，加上各面共享的 run 状态词表。四个 ui-* 包经本包读引擎、从不 import `@daypaw/engine`——端点字符串、`{ args }` 信封、snake_case 行解码、ok/error 解包在这里且只在这里。
+daypaw 浏览器平面对 durable 引擎 Remote 面的唯一 wire 词汇家（[spec 05](../../../docs/spec/05-product-shell.md) §5，[票 #116](https://github.com/0xnicholas/daypaw-pro/issues/116)）：壳今日消费的八个 `durable/*` Remote 端点收在一个客户端 interface 之后，加上各面共享的 run 状态词表。四个 ui-* 包经本包读引擎、从不 import `@daypaw/engine`——端点字符串、`{ args }` 信封、snake_case 行解码、ok/error 解包在这里且只在这里。
 
-- **客户端 face**（[`api.ts`](./src/client/api.ts)）：`createDurableClient(rpc)` 返回一个 `DurableClient`，含 `listRuns` / `runLineage` / `journalTimeline` / `rerun` / `listDefinitions` / `startRun` / `steerText`。结构化 `steer` 与 `cancel` 端点暂无浏览器消费者，待真消费者出现再加。
+- **客户端 face**（[`api.ts`](./src/client/api.ts)）：`createDurableClient(rpc)` 返回一个 `DurableClient`，含 `listRuns` / `runLineage` / `journalTimeline` / `rerun` / `listDefinitions` / `startRun` / `steerText` / `resolveGate`。结构化 `steer` 与 `cancel` 端点暂无浏览器消费者，待真消费者出现再加。`resolveGate`（票 #128）结算挂起的 gate：`{ state: 'resolved', value }` 以 gate 契约校验的值批准，`{ state: 'rejected', reason }` 拒绝；first-wins，故 `false` 表示该 gate 已被结算（他人作答、超时或取消）。`WireRun.waitingGate` 携带停泊 run 所挂的 gate 名，看板的「等待你确认」分诊与详情列的作答卡都以它为据。
 - **手声明 wire 类型**（[`wire.ts`](./src/client/wire.ts)）：行形状在此声明而非 alias 引擎类型——独立声明正是 wire 边界校验的对象，序列化漂移由 [`@daypaw/web-app`](../web-app/README.zh.md) wire-contract spec 的活网关执行测试兜底。浏览器读到的每个字段 fail-loud 校验（错构建、冒牌端点即炸）；需要容错的消费方在自己的调用侧降级，绝不由削弱解析器实现。
 - **状态词表**（[`status.ts`](./src/client/status.ts)、[`locales.ts`](./src/client/locales.ts)）：五值 run 状态 union、`isUnfinishedWireRun`、自持 `'durable'` namespace 的 zh/en 状态文案——状态文本在各面之间不再分叉。各面经绑定的 `ctx.locale.bind('durable')` 翻译函数加 `runStatusKey` 渲染。
 - **插件半边**（[`index.ts`](./src/client/index.ts)）：唯一效果——注册 `'durable'` 词典。node 半边无行为；库本体经连接的通用 RPC 通道直接消费。

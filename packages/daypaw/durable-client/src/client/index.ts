@@ -17,6 +17,7 @@ export type { DurableClient } from './api.ts'
 export { createDurableClient } from './api.ts'
 export type {
   WireDefinition,
+  WireGateSettlement,
   WireJournalEntry,
   WireRun,
   WireRunDefKind,

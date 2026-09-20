@@ -16,8 +16,8 @@ import type { JournalRow, RunRow } from '@daypaw/store'
 import { openLedgerDatabase } from '@daypaw/store'
 import type { DatabaseSync } from 'node:sqlite'
 import { DurableEngineCore } from './core.ts'
-import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, EngineWireFace, GateResolutionSource, GateSettlement, RunLineage } from './core.ts'
-import type { Json } from './types.ts'
+import type { DefinitionView, EngineDefinition, EngineRunHandle, EngineRunOptions, EngineWireFace, GateResolutionSource, RunLineage } from './core.ts'
+import type { Json, WireGateSettlement } from './types.ts'
 import type { StartRunRequest } from './types.ts'
 import type { RunListFilter } from './seams.ts'
 import { SqliteJournalStore } from './sqlite-journal-store.ts'
@@ -32,7 +32,7 @@ export type {
   EngineRunStatus, EngineStepCtx, EngineStepOptions, EngineStepScope, EngineWireFace,
   GateResolution, GateResolutionSource, GateSchema, GateSettlement, RunLineage, WaitForOptions,
 } from './core.ts'
-export type { StartRunRequest } from './types.ts'
+export type { StartRunRequest, WireGateSettlement } from './types.ts'
 export { SqliteJournalStore } from './sqlite-journal-store.ts'
 export type {
   JournalSegmentInsert, JournalStepInsert, JournalStore, PromiseInsert, PromiseSettle, RunFinalize, RunInsert, RunListFilter,
@@ -196,14 +196,26 @@ export default class DurableEngine extends TypertRemoteService {
   /**
    * Settle a gate (first-wins): the one resolve seam for SDK direct calls,
    * Manager UI, and (deferred) webhooks. See {@link DurableEngineCore.resolveGate}.
+   * Served to the browser as the Remote endpoint `durable/resolveGate`
+   * (ticket #128): the browser plane omits `source`, so the shell's answers
+   * record `'manager'` — ADR 0002 §3's Manager UI entry. The settlement value
+   * is {@link Json} (the {@link WireGateSettlement} shape) because it crosses
+   * the Remote boundary; the host seam keeps the wider `unknown`.
    * @param runId - run identity.
    * @param gate - gate name.
    * @param settlement - resolved value or rejection reason.
-   * @param source - who settled, recorded on the row.
-   * @returns whether this call won the settlement.
+   * @param source - who settled, recorded on the row; the browser plane omits
+   *   it and the host records `'manager'` (ADR 0002 §3's Manager UI entry).
+   * @returns whether this call won the settlement (false when the row is already settled).
    */
-  async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean> {
-    return (await this.coreOrFail()).resolveGate(runId, gate, settlement, source)
+  @Remote('resolveGate')
+  async resolveGate(
+    runId: string,
+    gate: string,
+    settlement: WireGateSettlement,
+    source?: GateResolutionSource,
+  ): Promise<boolean> {
+    return (await this.coreOrFail()).resolveGate(runId, gate, settlement, source ?? 'manager')
   }
 
   /**

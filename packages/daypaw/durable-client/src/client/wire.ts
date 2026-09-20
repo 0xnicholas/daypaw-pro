@@ -28,6 +28,12 @@ export interface WireRun {
   readonly defName: string
   /** Durable run status. */
   readonly status: WireRunStatus
+  /**
+   * The gate this run waits on (`runs.waiting_gate`); null unless a parked
+   * body is suspended on `ctx.waitFor`. A waiting run's group and its answer
+   * card key off this field (ticket #128).
+   */
+  readonly waitingGate: string | null
   /** Parent run identity; null for a top-level run (only top-level runs list on the board). */
   readonly parentRunId: string | null
   /** Serialized run output (`runs.output_json`); null until the run settles with one. */
@@ -95,6 +101,15 @@ export interface WireStartRunRequest {
   readonly runId: string
 }
 
+/**
+ * One gate settlement the browser plane sends: approve with a value the gate's
+ * contract validates, or reject with a reason. Timeout and cancellation are
+ * the engine's own outcomes, never a caller's (ticket #128).
+ */
+export type WireGateSettlement =
+  | { readonly state: 'resolved'; readonly value: unknown }
+  | { readonly state: 'rejected'; readonly reason: string }
+
 const DEF_KINDS: readonly WireRunDefKind[] = ['workflow', 'agent']
 const RUN_STATUSES: readonly WireRunStatus[] = ['running', 'waiting', 'done', 'failed', 'cancelled']
 const JOURNAL_KINDS: readonly WireJournalEntry['kind'][] = ['step', 'segment']
@@ -124,6 +139,8 @@ export function parseWireRun(value: unknown): WireRun {
   if (!DEF_KINDS.includes(defKind as WireRunDefKind)) throw new Error('durable-client: run row carries an unknown def_kind')
   const status = row['status']
   if (!RUN_STATUSES.includes(status as WireRunStatus)) throw new Error('durable-client: run row carries an unknown status')
+  const waitingGate = row['waiting_gate']
+  if (typeof waitingGate !== 'string' && waitingGate !== null) throw new Error('durable-client: run row carries a bad waiting_gate')
   const parentRunId = row['parent_run_id']
   if (typeof parentRunId !== 'string' && parentRunId !== null) throw new Error('durable-client: run row carries a bad parent_run_id')
   const outputJson = row['output_json']
@@ -134,6 +151,7 @@ export function parseWireRun(value: unknown): WireRun {
     defKind: defKind as WireRunDefKind,
     defName: row['def_name'],
     status: status as WireRunStatus,
+    waitingGate,
     parentRunId,
     outputJson,
     updatedAt: row['updated_at'],

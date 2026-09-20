@@ -61,6 +61,16 @@ export interface DefinitionView {
  */
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 
+/**
+ * One gate settlement as the browser plane sends it (ticket #128): an
+ * approval carrying a {@link Json} value the gate's contract validates, or a
+ * rejection carrying a reason. The host seam (`GateSettlement` in `./core.ts`)
+ * widens the value to `unknown` for in-process callers.
+ */
+export type WireGateSettlement =
+  | { readonly state: 'resolved'; readonly value: Json }
+  | { readonly state: 'rejected'; readonly reason: string }
+
 // The query-surface Remote boundary (spec 05 §5): `listRuns`'s filter and the
 // row/read types all three query endpoints plus `rerun` share. Re-exported
 // here because the Typert generator requires Remote boundary types on this
@@ -68,3 +78,6 @@ export type Json = null | boolean | number | string | Json[] | { [key: string]: 
 export type { RunDefKind, JournalKindDb, JournalRow, JournalStatusDb, RunRow, RunStatusDb } from '@daypaw/store/types'
 export type { RunListFilter } from './seams.ts'
 export type { RunLineage } from './core.ts'
+// The gate answer face (ticket #128): the shell's settlement crosses the same
+// Remote boundary, so its source union belongs on this subpath too.
+export type { GateResolutionSource } from './core.ts'

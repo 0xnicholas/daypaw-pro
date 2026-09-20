@@ -25,6 +25,7 @@ function apiOf(listDefinitions: DurableClient['listDefinitions']): DurableClient
     rerun: UNUSED,
     startRun: UNUSED,
     steerText: UNUSED,
+    resolveGate: UNUSED,
   }
 }
 

@@ -16,6 +16,7 @@ import {
   parseWireRun,
   type WireDefinition,
   type WireJournalEntry,
+  type WireGateSettlement,
   type WireRun,
   type WireRunLineage,
   type WireStartRunRequest,
@@ -56,6 +57,18 @@ export interface DurableClient {
    * @returns the assigned segment sequence (1-based).
    */
   steerText(runId: string, text: string): Promise<number>
+  /**
+   * Settle one pending gate (ticket #128): approve with a value the gate's
+   * contract validates, or reject with a reason. The browser plane is ADR
+   * 0002 §3's Manager UI entry, so the host records `'manager'` as the
+   * resolution source.
+   * @param runId - run identity.
+   * @param gate - gate name.
+   * @param settlement - the caller's settlement.
+   * @returns whether this call won the settlement; false means the gate was
+   *   already settled (a timeout, another answer, or a cancellation).
+   */
+  resolveGate(runId: string, gate: string, settlement: WireGateSettlement): Promise<boolean>
 }
 
 /**
@@ -119,6 +132,11 @@ export function createDurableClient(rpc: Pick<ClientConnectionRpc, 'call'>): Dur
     async steerText(runId, text) {
       const value = await callEndpoint(rpc, 'durable/steerText', { args: { runId, text } })
       if (typeof value !== 'number') throw new Error('durable-client: durable/steerText answered a non-number segment ordinal')
+      return value
+    },
+    async resolveGate(runId, gate, settlement) {
+      const value = await callEndpoint(rpc, 'durable/resolveGate', { args: { runId, gate, settlement } })
+      if (typeof value !== 'boolean') throw new Error('durable-client: durable/resolveGate answered a non-boolean settlement')
       return value
     },
   }

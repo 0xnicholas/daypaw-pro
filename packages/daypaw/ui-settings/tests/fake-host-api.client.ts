@@ -129,6 +129,7 @@ export class FakeHostApi {
     rerun: () => { throw new Error('settings read the roster only') },
     startRun: () => { throw new Error('settings read the roster only') },
     steerText: () => { throw new Error('settings read the roster only') },
+    resolveGate: () => { throw new Error('settings read the roster only') },
   }
 
   readonly credentials: CredentialsNamespace = {

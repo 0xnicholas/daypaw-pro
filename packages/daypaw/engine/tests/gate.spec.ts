@@ -161,6 +161,21 @@ describe('durable gates (ctx.waitFor)', () => {
     expect(row?.resolution_source).toBe('sdk')
   })
 
+  it('records the browser plane as manager when the caller omits the source', async () => {
+    const path = await tmpPath('daypaw-gate-manager-')
+    const { ctx, engine } = await boot(path)
+    contexts.push(ctx)
+    const def = workflowDef(async run => (await run.waitFor('owner-approval')))
+    await engine.register(def)
+    const handle = await engine.run(def, null, { runId: 'gate-23' })
+    await until(() => handle.status().state === 'waiting')
+    // The shell's answer card omits the source: ADR 0002 §3's Manager UI entry.
+    await expect(engine.resolveGate('gate-23', 'owner-approval', { state: 'resolved', value: { approve: true } })).resolves.toBe(true)
+    await expect(handle.result).resolves.toEqual({ state: 'resolved', value: { approve: true } })
+    const [row] = readPromises(path)
+    expect(row?.resolution_source).toBe('manager')
+  })
+
   it('returns a rejected resolution as a programmable value', async () => {
     const path = await tmpPath('daypaw-gate-reject-')
     const { ctx, engine } = await boot(path)

@@ -14,6 +14,7 @@ function runRow(): Record<string, unknown> {
     def_kind: 'agent',
     def_name: 'weekly-report',
     status: 'running',
+    waiting_gate: null,
     parent_run_id: null,
     output_json: null,
     updated_at: 1_000,
@@ -52,6 +53,7 @@ describe('parseWireRun', () => {
       defKind: 'agent',
       defName: 'weekly-report',
       status: 'running',
+      waitingGate: null,
       parentRunId: null,
       outputJson: null,
       updatedAt: 1_000,
@@ -72,6 +74,10 @@ describe('parseWireRun', () => {
     expect(parsed.defKind).toBe('workflow')
     expect(parsed.parentRunId).toBe('parent-1')
     expect(parsed.outputJson).toBe('{"result":"ok"}')
+    const gated = runRow()
+    gated['status'] = 'waiting'
+    gated['waiting_gate'] = 'owner-approval'
+    expect(parseWireRun(gated).waitingGate).toBe('owner-approval')
   })
 
   it('rejects non-objects', () => {
@@ -85,6 +91,7 @@ describe('parseWireRun', () => {
       ['def_name', 7],
       ['def_kind', 'cron'],
       ['status', 'paused'],
+      ['waiting_gate', 7],
       ['parent_run_id', 7],
       ['output_json', 7],
       ['updated_at', '1000'],
