@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-22-define-agent-compilation.md
-2026-08-22-define-agent-compilation.md: 93565e9ba91b44d08be40a14c268ed5dca38e01b
-2026-08-22-define-agent-compilation.zh.md: b38959f1af650ffba083c9c56eb02b06e83e8d9e
+2026-08-22-define-agent-compilation.md: ee37fe79d2cf1a30110686fe4eaf49bf74946b86
+2026-08-22-define-agent-compilation.zh.md: 5dcd4e5491c212c4b06bb6a205d2baf2bec9631a

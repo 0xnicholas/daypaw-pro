@@ -10,7 +10,7 @@ The advisory coverage lane's first nondeterministic red ([#115](https://github.c
 
 ## Decision
 
-- `shutdown()` is async and the disposer awaits it (cordis awaits async disposers, so fiber disposal resolves only once it settled): `core.dispose()` stays in the disposer's **synchronous prefix**, then the open is awaited (a failed open owns nothing to release), the possibly-late core is disposed again (idempotent; a core created after disposal started owns no drivers or timers), and the database closes.
+- `shutdown()` is async and the disposer awaits it (cordis awaits async disposers, so fiber disposal resolves only once it settled): driver abort stays in the disposer's synchronous prefix, the in-flight `openLedgerDatabase` is awaited, and any core that open creates afterwards is disposed (idempotent), so no ledger write survives disposal.
 - Driver abort deliberately keeps its synchronous-prefix position: an earlier draft awaited `ready` before disposing the core, and that single yield let already-queued sibling teardown (session inbox-projection unregistration) land before the driver abort, surfacing `ReactLoopAgent.cancel`'s inbox read as three unhandled exceptions in `agent.spec.ts`.
 
 ## Testing

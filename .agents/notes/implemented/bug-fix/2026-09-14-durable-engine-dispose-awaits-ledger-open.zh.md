@@ -10,7 +10,7 @@ advisory coverage 道首次非确定性现红（[#115](https://github.com/0xnich
 
 ## Decision
 
-- `shutdown()` 改为 async，disposer await 它（cordis 会 await 异步 disposer，因此 fiber 销毁只在它落定后才 resolve）：`core.dispose()` 保持在 disposer 的**同步前缀**，随后等待打开（打开失败即无可释放者）、再次 dispose 可能迟到的 core（幂等；拆卸开始后才创建的 core 不持有 driver 或定时器）、关闭数据库。
+- `shutdown()` 改为 async，disposer await 它（cordis 会 await 异步 disposer，因此 fiber 销毁只在它落定后才 resolve）：driver 中止留在 disposer 的同步前缀；在飞的 `openLedgerDatabase` 被等待，打开之后新建的 core 随后被 dispose（幂等），故拆卸后不再有 ledger 落笔。
 - driver 中止刻意保持同步前缀位置：早期草稿先 `await ready` 再 dispose core，这一个 yield 让已排队的兄弟拆卸（session inbox 投影注销）先于 driver 中止落定，`agent.spec.ts` 里 `ReactLoopAgent.cancel` 的 inbox 读取以三个未捕获异常浮出。
 
 ## Testing

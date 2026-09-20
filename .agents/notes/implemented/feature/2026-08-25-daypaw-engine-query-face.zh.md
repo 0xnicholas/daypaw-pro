@@ -12,8 +12,8 @@ Issue #50（spec 05 §5 后端增量第一项）为产品壳的任务进度板�
 
 缝恰好长出三个读方法，逐层原样暴露：
 
-- **`JournalStore` 读侧** —— `selectRuns(filter?)`（新者在前，可选单一状态过滤）、`selectChildRuns(parentRunId)`（先来在前）、`selectJournalSteps(runId)`（开始顺序）。`SqliteJournalStore` 构造时一次性 prepare 各语句；`rowid` 把同毫秒时间戳决出真实插入顺序，快跑下「新者在前」依然稳定。无迁移：既有 `idx_runs_status` 服务过滤，其余查询在自用规模下都是主键或单列扫描。
-- **core 委托 + 一处组合** —— `DurableEngineCore.listRuns` 与 `journalTimeline` 直转 store；`runLineage(runId)` 是唯一的组合，以 `selectRun` 加 `selectChildRuns` 一次调用回答「该 run 的父与子」，返回 `{ run, parent, children }`，runId 未知时各字段皆空。查询方法不带 disposal 断言：dispose 后可读与 `handle.status()` 先例一致，数据库可用性归其所有者裁决。
+- **`JournalStore` 读侧** —— `selectRuns(filter?)`（新者在前，可选单一状态过滤）、`selectChildRuns(parentRunId)`（先来在前）、`selectJournalSteps(runId)`（开始顺序）。`selectRuns` 按时间戳排序、以 `rowid` 决出并列，故同一毫秒内创建的 run 之间「新者在前」依然稳定。无迁移：既有 `idx_runs_status` 服务过滤，其余查询在自用规模下都是主键或单列扫描。
+- **core 暴露三个查询。** `DurableEngineCore` 暴露 `listRuns`、`journalTimeline` 与 `runLineage(runId)`；`runLineage` 返回 `{ run, parent, children }`，runId 未知时各字段皆空。查询方法不带 disposal 断言：dispose 后可读与 `handle.status()` 先例一致，数据库可用性归其所有者裁决。
 - **`ctx.durable` 异步包装** —— service 上的 `listRuns` / `runLineage` / `journalTimeline`，与其他方法一样生成进 cordis catalog。呈现词汇留在缝之上：行保持引擎原名（`run`、`journal`），「任务」措辞是 UI 投影的职责。
 - **类型各归其层** —— `RunListFilter` 在 `seams.ts` 与缝同处，`RunLineage` 在 `core.ts` 与组合同处；行仍是 `@daypaw/store` 契约类型。catalog 生成器的 `TYPE_LINK_EXEMPTIONS` 把每个类型指向其 README 所有者。
 

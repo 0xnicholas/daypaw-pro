@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-25-agent-run-steer-segments.md
-2026-08-25-agent-run-steer-segments.md: 552b6544d23ae5d6bdc5a186cc15f677946a6d38
-2026-08-25-agent-run-steer-segments.zh.md: ff2b7a1a8d9d497c55e50c89ef5eec72a7456434
+2026-08-25-agent-run-steer-segments.md: 049072e3041a87ff41008bfce4c3b1fa7a82ab3e
+2026-08-25-agent-run-steer-segments.zh.md: 8602aaed3cf0dde3084fd6825dcd05b11ff25c27

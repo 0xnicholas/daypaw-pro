@@ -11,7 +11,7 @@ Status: implemented
 ## 决策
 
 - **`dsh-app-boot` 导出该治愈逻辑；错误文案参数化。** `ensureSymlink(binName, link, target, manages)` 自 `packages/boot/app-boot/src/profile.ts` 公开；两处文案差异成为参数，两个调用点的错误逐字节不变（`dsh`/`the installation fallback`、`daypaw`/`the profile's engine link`），由 `profile.spec.ts` 与 `seed-profile.spec.ts` 的精确字符串断言钉住。
-- **`@daypaw/cli` 删除内联副本**：`ensureEngineLink` 只算 `link`/`target` 后委托。其 spec 仍以 `node:fs` mock 演 EEXIST 竞态；mock 按模块拦截而非按导入方，故对搬移后的代码同样生效。
+- **`@daypaw/cli` 删除内联副本**：`ensureEngineLink` 调用导出的 `ensureSymlink`。其 spec 仍以 `node:fs` mock 演 EEXIST 竞态；mock 按模块拦截而非按导入方，故对搬移后的代码同样生效。
 - **profile.ts 的改动已登记**：`docs/fork/CORE_TOUCHES.md` 记一行，标为上游 PR 候选（导出 + 诊断参数化在上游自洽）。ADR 0011 §1 的前提获得一个登记在册的例外而非被放弃：发布管线本就打包 fork 工作区闭包（`pnpm deploy` + `bundleDependencies`），打包出的 `@daypaw/cli` 携带 fork 的 `dsh-app-boot` 而管线零改动；上游接受后随下一次 sync 划掉该行。EEXIST 分支保留 `v8 ignore`：导出函数并不使 lstat 到 symlinkSync 之间的窗口可从公开 API 确定性地演出来。
 
 ## 否决的备选

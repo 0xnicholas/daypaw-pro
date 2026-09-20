@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-shell-started-runs-shell-side.md
-2026-08-30-shell-started-runs-shell-side.md: e3998506f2306c226e7e9982e46e3f766b55f116
-2026-08-30-shell-started-runs-shell-side.zh.md: 6b4e59f37895cf14a94c84afc39f0906a68f143b
+2026-08-30-shell-started-runs-shell-side.md: be775bd2dc2a73b12583d3a1fc9d8fde8f3e6917
+2026-08-30-shell-started-runs-shell-side.zh.md: 645c9307e7a2e604262a879bf47e1c95f8b3aaa7

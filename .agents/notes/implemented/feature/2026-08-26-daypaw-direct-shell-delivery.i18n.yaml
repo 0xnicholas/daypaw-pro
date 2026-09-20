@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-26-daypaw-direct-shell-delivery.md
-2026-08-26-daypaw-direct-shell-delivery.md: 6110e41d475e69ed53489c1dc79d2ee55bbfac74
-2026-08-26-daypaw-direct-shell-delivery.zh.md: afc86728f635c6d1929417b84c3a65ea7ae5fc41
+2026-08-26-daypaw-direct-shell-delivery.md: 0f4745fadf6b6eb3fe664d1f573f3a1bf521d1b8
+2026-08-26-daypaw-direct-shell-delivery.zh.md: 83de124574636d9e5c914c773f0fa34f16d7ff36

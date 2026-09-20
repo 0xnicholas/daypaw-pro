@@ -23,5 +23,5 @@ daypaw web 应用打印的 `daypaw web: http://127.0.0.1:<端口>` 不带凭据,
 ## Consequences
 
 - 全新安装的 CLI 打印的 URL 可直接打开壳;冒烟端到端证明种子 profile、闭包、dist,以及如今的认证路径。
-- web-app 测试提供 `authenticatedUrl` 追加 `/?token=t` 的假 `connection`,并断言环回与 LAN 两种令牌行。
+- web-app 测试断言环回与 LAN 两种令牌行。
 - `@daypaw/cli` 与 `@daypaw/web-app` 的 README 说明了令牌行，以及裸源被拒的原因。

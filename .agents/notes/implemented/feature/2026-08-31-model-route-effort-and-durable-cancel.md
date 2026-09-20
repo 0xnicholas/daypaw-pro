@@ -10,7 +10,7 @@ Two product gaps surfaced by the first real shell-hosted run (ticket #74). `Mode
 
 ## Decision
 
-`ModelRoute.reasoningEffort?: ReasoningEffortId` rides the model selection the compiled body already installs — `installModelSelection`'s request waterfall applies the selected effort and clears any inherited one, so the selection is the one owning seam (agent options effort would be stripped by an absent selection effort). `LlmRuntime` validates the effort against the adapter-declared set, so an unsupported effort fails loud per request. Undeclared keeps the provider's configured/default behavior.
+`ModelRoute.reasoningEffort?: ReasoningEffortId` rides the model selection the compiled body installs — that selection owns the requested effort and keeps no inherited one (an effort on agent options would be stripped by an absent selection effort), so it is the one owning seam. `LlmRuntime` validates the effort against the adapter-declared set, so an unsupported effort fails loud per request. Undeclared keeps the provider's configured/default behavior.
 
 The engine's private cancel-run extraction became the public `cancel(runId, cause?)`: terminal `cancelled` row with the cause first, pending gates settle cancelled, then the driver aborts. Cancel is idempotent on a terminal run — the request's postcondition already holds — but the abort always runs, because a fault between the terminal write and the abort can leave a driver lingering past a terminal row (the fault-injection suite pins this). Unknown run ids fail loud. The service exposes it as `@Remote('cancel')`, and the wire-contract spec cancels a gate-waiting run through the live gateway.
 

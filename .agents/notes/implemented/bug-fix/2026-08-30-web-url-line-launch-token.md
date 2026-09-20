@@ -23,5 +23,5 @@ The daypaw web app printed `daypaw web: http://127.0.0.1:<port>` without credent
 ## Consequences
 
 - A freshly installed CLI's printed URL opens the shell directly; the smoke proves the seeded profile, closure, dist, and now the authentication path end to end.
-- Web-app tests provide a fake `connection` whose `authenticatedUrl` appends `/?token=t` and assert the tokened lines for the loopback-only and LAN cases.
+- Web-app tests assert the tokened line for the loopback-only and LAN variants.
 - The README pairs for `@daypaw/cli` and `@daypaw/web-app` state the tokened line and why the bare origin is rejected.

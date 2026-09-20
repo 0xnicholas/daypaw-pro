@@ -11,7 +11,7 @@ English | [中文](2026-08-26-ensure-symlink-shared-from-app-boot.zh.md)
 ## Decision
 
 - **`dsh-app-boot` exports the heal; the error text becomes parameters.** `ensureSymlink(binName, link, target, manages)` is public from `packages/boot/app-boot/src/profile.ts`; the two message deltas become the parameters and both call sites' errors stay byte-identical (`dsh`/`the installation fallback`, `daypaw`/`the profile's engine link`), pinned by exact-string assertions in `profile.spec.ts` and `seed-profile.spec.ts`.
-- **`@daypaw/cli` deletes its inline copy**: `ensureEngineLink` computes `link`/`target` and delegates. Its spec still stages the EEXIST race through the `node:fs` mock, which intercepts the moved code the same way because the mock is keyed on the module, not the importer.
+- **`@daypaw/cli` deletes its inline copy**: `ensureEngineLink` calls the exported `ensureSymlink`. Its spec still stages the EEXIST race through the `node:fs` mock, which intercepts the moved code the same way because the mock is keyed on the module, not the importer.
 - **The profile.ts touch is registered**: `docs/fork/CORE_TOUCHES.md` carries the row, marked as an upstream PR candidate (an export plus parameterized diagnostics is self-contained upstream). ADR 0011 §1's premise gains one registered exception rather than being abandoned: the release pipeline already bundles the fork workspace's closure (`pnpm deploy` plus `bundleDependencies`), so the packed `@daypaw/cli` carries the fork's `dsh-app-boot` with no pipeline change, and upstream acceptance strikes the row at the next sync. The EEXIST arm keeps its `v8 ignore`: exporting the function does not make the lstat-to-symlinkSync window stageable from the public API.
 
 ## Alternatives considered

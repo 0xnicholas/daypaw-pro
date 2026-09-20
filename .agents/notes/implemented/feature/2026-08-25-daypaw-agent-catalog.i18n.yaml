@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-25-daypaw-agent-catalog.md
-2026-08-25-daypaw-agent-catalog.md: 363446eaca6a350a6c3af30496d4fb584ccb2208
-2026-08-25-daypaw-agent-catalog.zh.md: 0a2face2dfcba7c445a1006aa4447aa584a71975
+2026-08-25-daypaw-agent-catalog.md: 642e7e098e3452a8663975929fb9627092d8df42
+2026-08-25-daypaw-agent-catalog.zh.md: ca200e7b5a2dac0e6b9a29884367273cabf2c6a9

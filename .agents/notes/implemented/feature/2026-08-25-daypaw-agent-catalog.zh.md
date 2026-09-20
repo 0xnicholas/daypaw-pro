@@ -12,7 +12,7 @@ Issue #60（spec 05 §3/§5，壳板块增量 ④b）要求壳的 Agents 视图�
 
 - **经 Typert Remote 通道暴露 `listDefinitions`** —— `DurableService` 增加 `@Remote('listDefinitions')` 声明，gateway 在运行时认领 `durable/listDefinitions` 端点，沿用 GoalService 先例。根 `tsdown.config.ts` 的 typertPlugin 在 `build:lib:host` 生成 host/remote-client 描述符；零上游 apiproxy 改动。fixture（`packages/client/connection`）以两个罐头定义应答同一端点，各客户端通道保持免密钥。
 - **目录读定义，不读 preset** —— 定义带 `name@version`（票据的详情标识）与可选展示元数据；preset 既无 version 也无稳定名册标识。新任务弹窗（#56）因此保持 preset 名册，目录页消费引擎注册表。双名册记为 Known Limitation：弹窗提供 preset，目录展示定义，只有当 preset 与定义成对登记时两者才对齐。
-- **新包 `@daypaw/ui-agents` 占据 ui-inbox 新槽 `inbox.agents.page`** —— `scope: 'session-maybe'`（浏览目录不需要 session；发起运行走既有 sessions.create 路径）。上游 ui-agent-preset 行不动：它占据另一个槽、服务另一个面。该包把 `DefinitionView` 投影为卡片模型（`title = display?.title ?? name`、agent-kind 过滤、`name@version` 键），在载荷自网关到达时校验，在 inbox WorkspaceSwitch fallback 之后渲染网格与详情视图。
+- **新包 `@daypaw/ui-agents` 占据 ui-inbox 新槽 `inbox.agents.page`** —— `scope: 'session-maybe'`（浏览目录不需要 session；发起运行走既有 sessions.create 路径）。上游 ui-agent-preset 行不动：它占据另一个槽、服务另一个面。该包从 `DefinitionView` 派生卡片字段（`title = display?.title ?? name`、agent-kind 过滤、`name@version` 键），在载荷自网关到达时校验，经 inbox WorkspaceSwitch fallback 渲染网格与详情视图。
 - **快照通道钉住产物** —— `apps/daypaw-web/tests/agents-catalog.snapshot.ts` 对 fixture 名册录制网格与详情 golden，免密钥。
 
 ## Alternatives considered
