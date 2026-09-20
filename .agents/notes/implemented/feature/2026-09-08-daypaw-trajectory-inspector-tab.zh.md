@@ -26,8 +26,8 @@ fork 的 `cordis.patch.yml` 把 ui-trajectory 行的 `viewSlot` 指到检查器�
 
 **fork 侧重注册上游组件**（require trajectory bundle、把其视图重注册进 fork 环）：死于 bundle 纯度门——禁用行不进模块表（require 抛错），启用行自己的注册已声明 `conversation.trajectory.images` 子槽，第二次注册撞 one-declarer 冲突。
 
-**`mountTrajectoryView(ctx, slot)` 导出**由 fork 宿主消费：违反 client 导出纪律（禁止为解锁加值导出）与禁运行时导入规则；无 owner 签署即弃。
+**`mountTrajectoryView(ctx, slot)` 导出**由 fork 宿主消费：违反 client 导出纪律（禁止为解锁加值导出）与禁运行时导入规则；设计让 UI 只经槽访问，故不提供该导出。
 
-**slot 共声明**（上游 ui-slots 允许相同 spec 的第二声明者共享渲染权）：fork diff 最小，但要重写 slot 核心的装载期不变量、文档与测试；为 fork 局部需求付出最大的上游仲裁成本。
+**slot 共声明**（上游 ui-slots 允许相同 spec 的第二声明者共享渲染权）：它要为 fork 局部需求重写 slot 核心的装载期不变量、文档与测试。
 
 **fork 自研紧凑检查器**（消费 `useTrajectory` 标准钩子）：零上游改动，但重写的恰是 #100 裁决原样露出的层，且上游账本每个改进都变成手工同步。

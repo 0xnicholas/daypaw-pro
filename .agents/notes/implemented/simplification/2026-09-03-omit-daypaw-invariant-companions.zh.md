@@ -17,12 +17,12 @@ Status: implemented
 ## 否决的替代方案
 
 - **给 companion 写真检查后保留。** 否决：没有任何 fork 包拥有「观测可独立分歧」的关系；硬写检查只会复述 spec 或自证自探——恰是上游点名的反模式。
-- **等 sync 被动消化约定漂移。** 否决：裁决要求 fork 侧在 sync 前了结，sync 不携带 daypaw 决策；整体合并还会让 `@daypaw/*` wiring 撞上更严的新 gate。
+- **等 sync 被动消化约定漂移。** 否决：fork 侧在 sync 前了结，sync 不携带 daypaw 决策；整体合并还会让 `@daypaw/*` wiring 撞上更严的新 gate。
 - **即刻全量移植严格 gate（处处拒绝空 installer）。** 否决：会让本 checkpoint 里 208 个前清洗上游自有空壳全部失败，逼着在上游自有包上抢跑重写。
 
 ## 后果
 
-- fork 包不再有 companion 源码、导出、依赖、引用、构建条目或注册测试；README 持有缺席理由，gate 强制其存在与句式，逐包具体性由理由文本自身承载（评审保证，与上游 gate 的检查力一致）。
+- fork 包不带 companion 源码、导出、依赖、引用、构建条目或注册测试；README 持有缺席理由，gate 强制该理由的存在与句式。
 - daypaw 包测试只挂 invariant 服务；穷举拓扑测试仍挂载树内全部已发布 companion。
 - 当某个 fork 包日后长出够格关系（例如跨事件生命周期或 durable 投影），companion 带真检查与负例测试回归，README 句子随之替换——对齐上游的重引入条件。
 - 下次 sync 以上游 gate 版本删除过渡标记分支；`scripts/package-invariants.ts` 的 CORE_TOUCHES 行已记明该差异在彼处消解。

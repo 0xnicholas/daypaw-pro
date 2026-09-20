@@ -10,16 +10,16 @@ CORE_TOUCHES 登记簿是同步仪式的重放清单（ADR 0001 §4）：每行�
 
 ## Decision
 
-审计以 2026-08-28 上游 checkpoint（`cd5ef81481`）为基准做双向核对：每行命名的路径必须存在且所述改动仍在；每个被 fork 改动的上游文件必须被某一行或该行的连带集认领。发现与修正均已落进登记簿：
+审计以 2026-08-28 上游 checkpoint（`cd5ef81481`）为基准做双向核对：每行命名的路径必须存在且所述改动仍在；每个被 fork 改动的上游文件必须被某一行或该行的连带集认领。下列登记行即这次修正的结果：
 
 - built-boot 行：路径更正为 `apps/web/tests/built-boot.expected.e2e.ts`（上游 expected-output 改名；「Waiting for approval」编辑在改名后存活）。
 - ui-theme 行：dialog golden 路径随同一次上游搬迁跟进（`snapshots/` → `expected/`）；`src/client/settings-store.ts` 与 `apply.client.spec.ts` 撤出连带集——两文件经 2026-08-28 sync 取上游演化版后与上游逐字节一致（`settings-store.client.spec.ts` 存活的 fork 编辑仅测试标题一句）。
 - fixture.ts 行补认领自有 spec 伴生物 `packages/client/connection/tests/fixture.client.spec.ts`（callId 配对、fx-gamma question、`flipGammaRunning`、approvalHistory 折叠的断言随动）。
 - 新增一行登记 `apps/web/tests/todo-row.expected.e2e.ts`（头注 turn 编号 74→75），与 built-boot 的适应性文本行同形。
 - session-controller manager 行（#94）补认领文档伴生物：`service.ts` 的 `list` 字段 JSDoc 与 README 的 removal 帧重拉段。
-- Issue 第 1 项（fixture-durable spec 迁出上游树）已随 #90 以 `git mv` 落地为 `apps/daypaw-web/tests/durable-rpc.spec.ts`；`packages/client/connection/tests/` 不再含 fork 新增文件。
+- fixture-durable spec 现住 `apps/daypaw-web/tests/durable-rpc.spec.ts`；`packages/client/connection/tests/` 不再含 fork 新增文件。
 
-未立行、留待 owner 另票跟进的上报项：无行认领的根脚本 fork 改动——`tsdown.config.ts`（types entry glob）、`scripts/gen-doc-graphs.ts`（durable 服务角色）、`scripts/test-invariants.ts` 与 `scripts/verify-built-package-invariants.mjs`（companion 缺席过渡）、`scripts/type-equiv.manifest.json`（daypaw-engine 文档配对）、`scripts/rescope-vendor.ts`（inspector wire-id skips）——以及再生的目录产物（`packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`、`packages/extensions/tool-cordis/src/api-catalog.ts`、`docs/capability-seams*`、`docs/config-catalog*`、`docs/rescope*`、`docs/subsystems/README*`）。
+下列 fork 改动尚无行覆盖，在后续票点名其改动族之前保持未登记：根脚本——`tsdown.config.ts`（types entry glob）、`scripts/gen-doc-graphs.ts`（durable 服务角色）、`scripts/test-invariants.ts` 与 `scripts/verify-built-package-invariants.mjs`（companion 缺席过渡）、`scripts/type-equiv.manifest.json`（daypaw-engine 文档配对）、`scripts/rescope-vendor.ts`（inspector wire-id skips）——以及再生的目录产物（`packages/extensions/cordis-client-runner/src/client/slot-catalog.ts`、`packages/extensions/tool-cordis/src/api-catalog.ts`、`docs/capability-seams*`、`docs/config-catalog*`、`docs/rescope*`、`docs/subsystems/README*`）。
 
 ## Alternatives considered
 

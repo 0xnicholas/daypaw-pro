@@ -16,7 +16,7 @@ ADR 0013 §3 rules the capability base open with the approval guardrail untouche
 - **`tool-ask-user` inserted host-plane** — the one standard-preset capability with no base row (upstream ships it only through presets); without it, retiring presets would silently drop `ask_user_question`, the producer of the mounted ui-user-questions face.
 - **`subagent-model-selection-settings` insert dropped** (with its `@deepseek-ai/dsh-tool-subagent` dependency): its only sampler was the preset's `tool-subagent` rows (`modelSelectionSettings: true`); the base rows do not sample it and no fork surface edits the namespace, so the row was knowingly-inert composition.
 
-The #46 conservative default — workspace-write sandbox, approval `ask`, both host-plane in the base — is untouched and is now the only defense line over the open surface, exactly as ruled.
+The #46 conservative default — workspace-write sandbox, approval `ask`, both host-plane in the base — is untouched and is the only defense line over the open surface.
 
 ## Consequences
 

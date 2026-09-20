@@ -26,8 +26,8 @@ The middle column now carries the professional layer verbatim: the upstream turn
 
 **Fork-side re-registration of the upstream component** (require the trajectory bundle and re-register its view into the fork ring): dead on the bundle-purity gate — a disabled row never enters the module table (require throws), an enabled row's own registration already declares the `conversation.trajectory.images` child, so a second registration throws the one-declarer conflict.
 
-**A `mountTrajectoryView(ctx, slot)` export** consumed by a fork host: violates the client export discipline (no new value exports to unblock a consumer) and the no-runtime-import rule; rejected without owner sign-off.
+**A `mountTrajectoryView(ctx, slot)` export** consumed by a fork host: violates the client export discipline (no new value exports to unblock a consumer) and the no-runtime-import rule; the design keeps UI access to slots only, so the export is not offered.
 
-**Slot co-declaration** (upstream ui-slots allowing identical-spec second declarers to share render rights): the smallest fork diff but rewrites the slot core's load-time invariant, its docs, and its tests; the largest upstream arbitration cost for a fork-local need.
+**Slot co-declaration** (upstream ui-slots allowing identical-spec second declarers to share render rights): it rewrites the slot core's load-time invariant, its docs, and its tests for a fork-local need.
 
 **A fork-reimplemented compact inspector** over the `useTrajectory` standard hook: zero upstream touch, but it rewrites exactly the layer ruling #100 decided to expose as-is, and every upstream ledger improvement becomes manual sync work.

@@ -16,7 +16,7 @@ ADR 0013 §3 裁定能力底座全开、审批护栏不动，[工单 #103](https
 - **`tool-ask-user` 宿主面插入**——standard preset 唯一没有底册行的能力（上游仅随 preset 交付）；不补它，preset 退场会静默丢掉 `ask_user_question`，即已挂 ui-user-questions 面的生产者。
 - **`subagent-model-selection-settings` 插入行撤除**（连同 `@deepseek-ai/dsh-tool-subagent` 依赖）：它唯一的采用者是 preset 的 `tool-subagent` 行（`modelSelectionSettings: true`）；底册行不采样它，fork 也没有任何表面编辑该 namespace，留着是明知无效的组合。
 
-#46 保守默认——workspace-write 沙箱、审批 `ask`，两者本就宿主面挂在底册——原样不动，成为开放面之上的唯一防线，与裁决一致。
+#46 保守默认——workspace-write 沙箱、审批 `ask`，两者本就宿主面挂在底册——原样不动，是开放面之上的唯一防线。
 
 ## 后果
 

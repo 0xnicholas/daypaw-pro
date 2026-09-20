@@ -12,7 +12,7 @@ Status: implemented
 
 daypaw 的 CSS Modules 满足这些 spec。状态在 spec 抵达本树之前即被验证：把上游自己的 spec 文件（连同领先本树的 `corner-shape.css`、`design-platform.css`、`gradient-shadow-text.css`，未提交地铺在上游路径上）跑过本 checkout——每份 repo 级失败清单中 daypaw 条目为零。转换沿用上游 sweep 的补偿映射——四面卡片盒 l2→l4、交互控件与表单字段 l2→l3、分隔线保持 l2——共 15 处中性实线描边；两处全圆角（`InboxNav` `.iconButton`、`settings-page` `.warningDot`）配上 `corner-shape: round`。`agents-page` `.card:hover` 加深为 `--dsw-alias-label-dimmed`（上游 l4 静息卡片的悬停目标）；l3 悬停描边会比 l4 静息描边更浅。daypaw 没有规则把抬升投影与中性描边并置、也没有 1px 填充分隔线，且每个在抬升面上滚动的 sheet 本就带完整 l2 重绑对——这些规则原样通过。
 
-品牌层（[shell brand theme](../feature/2026-08-27-daypaw-shell-brand-theme.zh.md)）按构造在扫描范围外：它是 TS token 覆盖表而非磁盘 CSS，且 `--dsw-alias-scrollbar-*` 全集与 border 阶梯按 scheme 各自完整，故无需改动。描边粗细与圆角配对是壳所复用的上游视觉语言，不是品牌身份——品牌认领的是色板与密度（spec 05 §7），没有任何 fork 记录把身份押在 1px 描边上——因此 [#88](https://github.com/0xnicholas/daypaw-pro/issues/88) 的品牌冲突待裁清单为空，「提请上游收窄扫描范围」的升级路径未启用。
+品牌层（[shell brand theme](../feature/2026-08-27-daypaw-shell-brand-theme.zh.md)）按构造在扫描范围外：它是 TS token 覆盖表而非磁盘 CSS，且 `--dsw-alias-scrollbar-*` 全集与 border 阶梯按 scheme 各自完整，故无需改动。描边粗细与圆角配对是壳所复用的上游视觉语言，不是品牌身份——品牌认领的是色板与密度（spec 05 §7），没有任何 fork 记录把品牌身份押在 1px 描边上。
 
 ## Alternatives considered
 

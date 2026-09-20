@@ -18,7 +18,7 @@ daypaw fork 的 `durable/*` Remote 应答原住在上游浏览器 fixture（`pac
 
 ## 备选方案
 
-保留登记是审计废止的现状：表随每个 durable 特性增长，镜像义务在 sync 上无解。fork connection 插件覆盖 `ctx.connection` 被否：复制整个插件 apply 体，重放面比六臂更宽。经 `./src/*` 子路径导入 fixture 模块被否：非相对 `.ts` 导入在 `rewriteRelativeImportExtensions` 的 emit 面无法改写（TS2877）。从构建产物导入 fixture 被否：构建的 client 入口未导出工厂，源面再导出是同一修复的一行形。
+保留登记会让表随每个 durable 特性增长，且镜像义务在 sync 上无解。fork connection 插件覆盖 `ctx.connection` 被否：复制整个插件 apply 体，重放面比六臂更宽。经 `./src/*` 子路径导入 fixture 模块被否：非相对 `.ts` 导入在 `rewriteRelativeImportExtensions` 的 emit 面无法改写（TS2877）。从构建产物导入 fixture 被否：构建的 client 入口未导出工厂，源面再导出是同一修复的一行形。
 
 ## 测试
 

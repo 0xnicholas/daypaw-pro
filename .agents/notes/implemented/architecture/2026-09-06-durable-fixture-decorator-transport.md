@@ -18,7 +18,7 @@ The upstream fixture keeps only the registered fx-world seed adjustments (approv
 
 ## Alternatives considered
 
-Keeping the arms registered was the status quo the audit retired: the block grows with every durable feature and the mirror obligation has no sync answer. A fork connection plugin overriding `ctx.connection` was rejected: it duplicates the whole plugin apply body, a wider replay surface than the arms. Importing the fixture module through its `./src/*` subpath was rejected: non-relative `.ts` imports cannot be rewritten under `rewriteRelativeImportExtensions` in the emitting client face (TS2877). Importing the fixture from built artifacts was rejected: the built client entry did not export the factory, and a source re-export is the one-line form of the same fix.
+Keeping the arms registered grows the block with every durable feature and leaves the mirror obligation without a sync answer. A fork connection plugin overriding `ctx.connection` was rejected: it duplicates the whole plugin apply body, a wider replay surface than the arms. Importing the fixture module through its `./src/*` subpath was rejected: non-relative `.ts` imports cannot be rewritten under `rewriteRelativeImportExtensions` in the emitting client face (TS2877). Importing the fixture from built artifacts was rejected: the built client entry did not export the factory, and a source re-export is the one-line form of the same fix.
 
 ## Testing
 

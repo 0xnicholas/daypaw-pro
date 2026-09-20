@@ -17,12 +17,12 @@ Every fork-owned package published a `src/invariant.ts` companion with an empty 
 ## Alternatives considered
 
 - **Keep the companions with real checks.** Rejected: no fork package owns a relationship whose observations can independently diverge; writing a check would duplicate a spec or probe the same mutation it claims to verify — exactly the anti-pattern upstream named.
-- **Wait for the sync to resolve convention drift passively.** Rejected: the ruling requires the fork side settled before the sync so the sync carries no daypaw decisions; merging wholesale would also leave the `@daypaw/*` wiring incompatible with the incoming stricter gate.
+- **Wait for the sync to resolve convention drift passively.** Rejected: the fork side settles before the sync so the sync carries no daypaw decisions; merging wholesale would also leave the `@daypaw/*` wiring incompatible with the incoming stricter gate.
 - **Port the full strict gate now (empty installers rejected everywhere).** Rejected: it would fail on the 208 pre-cleanup upstream-owned companions still in this checkpoint and force rewriting upstream-owned packages ahead of the sync.
 
 ## Consequences
 
-- Fork packages carry no companion source, export, dependency, reference, build entry, or registration test; their READMEs own the omission reason, the gate enforces its presence and sentence shape, and per-package specificity is carried by the reason text itself (review-enforced, matching the upstream gate's reach).
+- Fork packages carry no companion source, export, dependency, reference, build entry, or registration test; their READMEs own the omission reason, and the gate enforces the presence and sentence form of that reason.
 - Daypaw package tests mount the invariant service only (service-only roots); the exhaustive topology test still mounts every published companion in the tree.
 - When a fork package later gains a qualifying relationship (for example a cross-event lifecycle or durable projection), the companion returns with a real check and a negative test, and the README sentence is replaced — mirroring upstream's reintroduction condition.
 - The next sync deletes the transitional marker branch with upstream's gate version; the CORE_TOUCHES row for `scripts/package-invariants.ts` records that the delta dissolves there.
