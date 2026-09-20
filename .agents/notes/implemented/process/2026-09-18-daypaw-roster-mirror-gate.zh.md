@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-fork 的浏览器面是一份组合镜像:`packages/daypaw/web-app/cordis.patch.yml` 由 `packages/bundle/web-app/cordis.patch.yml` 派生——上游行保留、有意裁剪、fork 自有行追加。这条镜像律是本 fork 唯一没有执行所有权的组合事实:活在 patch 注释与 sync 仪式对两份 ~470 行 yml 的人工 diff 里。三类事故证明人工 diff 不够:2026-10-09 sync 漏收 `resources`/`ui-sidebar-right` 两个供主行,浏览器 boot 整周期红,直到 [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) 补金样才暴露;`workspace-files` 行直到 release 冒烟才现形(CORE_TOUCHES 有案);而 `ui-deliverables` 形缺失根本不失败——供主齐备时激活正常,静默的 roster 缺席没有任何症状。[组装 golden 车道](../testing/2026-09-14-daypaw-golden-lane-required.zh.md)只盖激活面(缺席致 boot 断);静默缺席此前无探测器。
+fork 的浏览器面是一份组合镜像:`packages/daypaw/web-app/cordis.patch.yml` 由 `packages/bundle/web-app/cordis.patch.yml` 派生——上游行保留、有意裁剪、fork 自有行追加。这条镜像律是本 fork 唯一没有执行所有权的组合事实:活在 patch 注释与 sync 仪式对两份 ~470 行 yml 的人工 diff 里。三类事故证明人工 diff 不够:2026-09-13 sync 漏收 `resources`/`ui-sidebar-right` 两个供主行,浏览器 boot 整周期红,直到 [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) 补金样才暴露;`workspace-files` 行直到 release 冒烟才现形(CORE_TOUCHES 有案);而 `ui-deliverables` 形缺失根本不失败——供主齐备时激活正常,静默的 roster 缺席没有任何症状。[组装 golden 车道](../testing/2026-09-14-daypaw-golden-lane-required.zh.md)只盖激活面(缺席致 boot 断);静默缺席此前无探测器。
 
 ## 决策
 
@@ -28,6 +28,6 @@ fork 的浏览器面是一份组合镜像:`packages/daypaw/web-app/cordis.patch.
 
 ## 后果
 
-- 覆盖面闭合:sync 漏收或未拾取上游 client 行,`verify-cordis-config` 即红,指名该行与两条出路(镜像之,或带理由记入裁剪)。与 golden 车道(激活面)、release 冒烟(依赖闭包面)合拢,2026-10-09 sync 的三类事故全有指名探测器。
+- 覆盖面闭合:sync 漏收或未拾取上游 client 行,`verify-cordis-config` 即红,指名该行与两条出路(镜像之,或带理由记入裁剪)。与 golden 车道(激活面)、release 冒烟(依赖闭包面)合拢,2026-09-13 sync 的三类事故全有指名探测器。
 - fork 自有 client 行仍须手工加 roster 行——镜像律只约束上游行;daypaw cookbook §2 现已点名 ui-* 包的两个追加登记步骤(roster 行 + web-app 依赖行)及其各自的门。
 - host 行缺席按设计不查;若某保留行日后硬等待 fork 裁剪掉的供主行服务,golden 车道会捉住那次 boot 断裂。

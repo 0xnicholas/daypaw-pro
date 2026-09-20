@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-`tests/agent-plane.spec.ts` 以写入 `cordis.patch.yml` overlay 禁用 web-transport 行的方式,无头引导 daypaw 表面的真实 bundle 组合——但「哪些行算 web-transport」被复述成 12 行 `disabled` 字面量。这个集合是 roster 事实:组合行是否走 web 平面,由其包是否声明浏览器半侧(`dsh.client`)决定——正是 roster 镜像门比较所用的同一键。于是上游浏览器 roster 每长出一行就迟红恰好一次——sync 后的首次 agent-plane 运行——并迫使一次追抄进字面量;2026-10-09 sync 的 `ui-deliverables` 行是已记录的实例,并作为 fork 文件的同步耦合改动登记进 `docs/fork/CORE_TOUCHES.md`([#122](https://github.com/0xnicholas/daypaw-pro/issues/122),架构评审二候选③)。
+`tests/agent-plane.spec.ts` 以写入 `cordis.patch.yml` overlay 禁用 web-transport 行的方式,无头引导 daypaw 表面的真实 bundle 组合——但「哪些行算 web-transport」被复述成 12 行 `disabled` 字面量。这个集合是 roster 事实:组合行是否走 web 平面,由其包是否声明浏览器半侧(`dsh.client`)决定——正是 roster 镜像门比较所用的同一键。于是上游浏览器 roster 每长出一行就迟红恰好一次——sync 后的首次 agent-plane 运行——并迫使一次追抄进字面量;2026-09-13 sync 的 `ui-deliverables` 行是已记录的实例,并作为 fork 文件的同步耦合改动登记进 `docs/fork/CORE_TOUCHES.md`([#122](https://github.com/0xnicholas/daypaw-pro/issues/122),架构评审二候选③)。
 
 ## Decision
 

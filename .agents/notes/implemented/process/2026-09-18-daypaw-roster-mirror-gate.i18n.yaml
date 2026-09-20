@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-18-daypaw-roster-mirror-gate.md
-2026-09-18-daypaw-roster-mirror-gate.md: 32b11b96e88531e2dd42d4dbea80f36e444efcc3
-2026-09-18-daypaw-roster-mirror-gate.zh.md: 0fe58745877a60bb566e64ce62f51793b25d43c8
+2026-09-18-daypaw-roster-mirror-gate.md: ada67b61633e1f5c3dc6c702fe2219710217fb22
+2026-09-18-daypaw-roster-mirror-gate.zh.md: 5a7e96fe347f067516cd3f8c49529c0bb4bc9dcf

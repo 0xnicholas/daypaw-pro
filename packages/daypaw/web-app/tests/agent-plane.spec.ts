@@ -116,7 +116,7 @@ function clientPluginPackages(repoRoot: string): Set<string> {
  * answerer occupies the scoped-waterfall seam itself instead of the gateway
  * bridge. Deriving from the roster means upstream growing the browser roster
  * (a new `dsh.client` row the mirror gate forces into the fork patch) flows
- * through with no edit here — the 2026-10-09 sync had to chase the
+ * through with no edit here — the 2026-09-13 sync had to chase the
  * ui-deliverables row into the old 12-line literal.
  * @param roster - the booted profile's composed entry list.
  * @param clientPackages - browser-half package names.

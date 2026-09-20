@@ -2,11 +2,11 @@
 
 Status: implemented
 
-English | [中文](2026-10-09-upstream-sync-0-1-5.zh.md)
+English | [中文](2026-09-13-upstream-sync-0-1-5.zh.md)
 
 ## Problem
 
-The 2026-10-09 sync merged 1301 upstream commits (0.1.3-alpha.1 → 0.1.5-rc.2). Four port hazards do not reduce to conflict resolution: each one leaves the tree green while a runtime surface breaks, so a future sync must recognize them on sight.
+The 2026-09-13 sync merged 1301 upstream commits (0.1.3-alpha.1 → 0.1.5-rc.2). Four port hazards do not reduce to conflict resolution: each one leaves the tree green while a runtime surface breaks, so a future sync must recognize them on sight.
 
 ## Decision
 

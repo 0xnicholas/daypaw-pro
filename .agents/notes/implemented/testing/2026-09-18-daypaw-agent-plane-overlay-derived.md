@@ -6,7 +6,7 @@ English | [中文](2026-09-18-daypaw-agent-plane-overlay-derived.zh.md)
 
 ## Problem
 
-`tests/agent-plane.spec.ts` boots the daypaw surface's real bundle composition headless by writing a `cordis.patch.yml` overlay that disables the web-transport rows — but which rows those are was restated as a 12-line `disabled` literal. That set is a roster fact: a composed row rides the web plane when its package declares a browser half (`dsh.client`), the same key the roster mirror gate compares on. Every upstream browser-roster growth therefore went red exactly once — at the first agent-plane run after the sync — and forced a chase edit into the literal; the 2026-10-09 sync's `ui-deliverables` row was the recorded instance, registered in `docs/fork/CORE_TOUCHES.md` as a recurring sync-coupled edit to a fork file ([#122](https://github.com/0xnicholas/daypaw-pro/issues/122), architecture review two candidate ③).
+`tests/agent-plane.spec.ts` boots the daypaw surface's real bundle composition headless by writing a `cordis.patch.yml` overlay that disables the web-transport rows — but which rows those are was restated as a 12-line `disabled` literal. That set is a roster fact: a composed row rides the web plane when its package declares a browser half (`dsh.client`), the same key the roster mirror gate compares on. Every upstream browser-roster growth therefore went red exactly once — at the first agent-plane run after the sync — and forced a chase edit into the literal; the 2026-09-13 sync's `ui-deliverables` row was the recorded instance, registered in `docs/fork/CORE_TOUCHES.md` as a recurring sync-coupled edit to a fork file ([#122](https://github.com/0xnicholas/daypaw-pro/issues/122), architecture review two candidate ③).
 
 ## Decision
 

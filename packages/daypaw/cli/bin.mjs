@@ -5,7 +5,7 @@
 // run the dsh bin from the bundled closure. The argv rewrite happens before
 // the dynamic import so the dsh bin never sees the raw arguments, and that
 // import keeps the dsh bin from evaluating before seeding completes. The
-// dsh bin guards its self-execution behind import.meta.main (2026-10-09
+// dsh bin guards its self-execution behind import.meta.main (2026-09-13
 // sync), so the vendored front door calls the exported runCli explicitly.
 import { seedDaypawProfile, seedStarterAgent, withDefaultProfile } from './lib/index.js'
 

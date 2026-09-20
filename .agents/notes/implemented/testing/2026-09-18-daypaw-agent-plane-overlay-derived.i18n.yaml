@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-09-18-daypaw-agent-plane-overlay-derived.md
-2026-09-18-daypaw-agent-plane-overlay-derived.md: 98bab2600c36c7b8a15686470facf1ce788eb47d
-2026-09-18-daypaw-agent-plane-overlay-derived.zh.md: e50793b12ed736efb8ca4591d53c63a948eed525
+2026-09-18-daypaw-agent-plane-overlay-derived.md: 813f8bf0f89bc56bacebaa1828a4afdb4e4197fa
+2026-09-18-daypaw-agent-plane-overlay-derived.zh.md: b81a1f69b0039a3bc7019a88fcbbe66f0fa38dcf

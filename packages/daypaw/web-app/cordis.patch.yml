@@ -216,7 +216,7 @@
       name: '@deepseek-ai/dsh-client-ui-session'
 
     # Unified resource model: protocol providers behind the useResource hook.
-    # Kept upstream rows hard-require its service since the 2026-10-09 sync
+    # Kept upstream rows hard-require its service since the 2026-09-13 sync
     # (api-workspace-files waits on `resources`; ui-sidebar-right chains it to
     # `sidebarRight`, which ui-chat/ui-skill/ui-reference wait on) — the fork
     # roster mirror must carry the provider rows its kept rows inject.

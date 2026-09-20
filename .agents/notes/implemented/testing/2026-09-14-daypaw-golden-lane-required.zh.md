@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-没有任何 CI 车道跑 daypaw 组装 golden 车道（`vitest.web.daypaw.config.ts`，`apps/daypaw-web/tests/**/*.golden.ts`）：必需的 `ci-daypaw-hosted` 聚合载的是上游确定性 gate，advisory 作业跑三条时敏全量道（[车道拆分](2026-08-30-coverage-gate-main-ci-lane.zh.md)）。2026-10-09 上游 sync 漏收 `resources` 与 `ui-sidebar-right` 两 roster 供主行——上游 `11d6bd05f3` 起保留行硬等待 `sidebarRight`/`resources`——daypaw 浏览器 boot 在 HEAD 上已断：产品壳与全部组装 golden 红了整个 sync 周期，直到 [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) 补 golden 才撞上（roster 修复已登记 core touch；见[连接恢复 note](../feature/2026-09-13-daypaw-connection-recovery-notice.zh.md)）。修复收掉了这一例；检测缺口仍在——未来 sync 再漏一行保留行所注入的 roster，CI 依旧什么都不红。
+没有任何 CI 车道跑 daypaw 组装 golden 车道（`vitest.web.daypaw.config.ts`，`apps/daypaw-web/tests/**/*.golden.ts`）：必需的 `ci-daypaw-hosted` 聚合载的是上游确定性 gate，advisory 作业跑三条时敏全量道（[车道拆分](2026-08-30-coverage-gate-main-ci-lane.zh.md)）。2026-09-13 上游 sync 漏收 `resources` 与 `ui-sidebar-right` 两 roster 供主行——上游 `11d6bd05f3` 起保留行硬等待 `sidebarRight`/`resources`——daypaw 浏览器 boot 在 HEAD 上已断：产品壳与全部组装 golden 红了整个 sync 周期，直到 [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) 补 golden 才撞上（roster 修复已登记 core touch；见[连接恢复 note](../feature/2026-09-13-daypaw-connection-recovery-notice.zh.md)）。修复收掉了这一例；检测缺口仍在——未来 sync 再漏一行保留行所注入的 roster，CI 依旧什么都不红。
 
 ## Decision
 

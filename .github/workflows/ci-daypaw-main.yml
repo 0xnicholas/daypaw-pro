@@ -13,7 +13,7 @@ name: CI (daypaw main)
 #   were caught by exactly these gates during the lane's first runs), plus the
 #   fork's assembled daypaw golden lane: jsdom boot of the built roster
 #   against the keyless fixture transport is deterministic, so it gates rather
-#   than advises (issue #113 — the 2026-10-09 sync dropped the
+#   than advises (issue #113 — the 2026-09-13 sync dropped the
 #   resources/ui-sidebar-right roster rows and broke daypaw boot at HEAD
 #   undetected because no lane ran it).
 # - linux / timing-sensitive lanes (advisory): the three full-suite lanes —
