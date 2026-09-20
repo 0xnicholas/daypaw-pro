@@ -11,7 +11,7 @@ Status: implemented
 ## Decision
 
 - **依赖面**：apiproxy → `dsh-api-{session,settings,workspace}-controller`；`dsh-client-runtime` → `dsh-client-store` + `dsh-api-session-controller` + `dsh-client-ui-session`；`dsh-client-web-react` → `dsh-client-ui-renderer`/`dsh-client-test-runtime`；`dsh-acp-snapshot` → `dsh-session-snapshot`；`dsh-client-runtime/client` 的 32 处导入全部重映射。
-- **fork UI 壳线移植**（#54–#62 全部代码面）：`ctx.slots` → ui-renderer；会话标准件 → `useChat`/`useSession`/`useSessionPendingInteraction`（声明合并）；pending 审批 → ui-approval 的 `PendingApproval` 类（`answer()` 通道）；`IApiClient` → `ctx.remote` 命名空间（含子路径 inject）；`host.describe` → `session/modelCatalog`；`agentPreset` 行字段退役；conversation 座位 session-maybe → session 域。
+- **fork UI 壳线移植**（#54–#62 新增的全部 fork 壳文件）：`ctx.slots` → ui-renderer；会话标准件 → `useChat`/`useSession`/`useSessionPendingInteraction`（声明合并）；pending 审批 → ui-approval 的 `PendingApproval` 类（`answer()` 通道）；`IApiClient` → `ctx.remote` 命名空间（含子路径 inject）；`host.describe` → `session/modelCatalog`；`agentPreset` 行字段退役；conversation 座位 session-maybe → session 域。
 - **fixture.ts 重写**：上游 mux 模型 → Remote Event 瀑布模型；fork 的 `durable/*` 端点、审批历史投影、turn-75 配对全部在新架构重放（`fixture-durable.client.spec.ts` 改走 control 流）。
 - **web-app roster**：删除 storage 族/session-projection-cache/client-runtime/api-gateway；新增 session-reference/file-reference-local/subagent-model-selection-settings/三 controller/ui-renderer/ui-session/ui-approval/ui-chat。
 - **skeleton 迁移**：`examples/daypaw-skeleton` → `packages/examples/daypaw-skeleton`（上游 examples 新家），补 `src/index.ts`（`createSkeletonWorkflow` 工厂）、invariant 配套、tsdown 构建纳入。

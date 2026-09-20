@@ -6,7 +6,7 @@ English | [中文](2026-09-03-omit-daypaw-invariant-companions.zh.md)
 
 ## Problem
 
-Every fork-owned package published a `src/invariant.ts` companion with an empty installer explained by a comment — eleven under `packages/daypaw/` plus the `daypaw-skeleton-example`. Upstream commit `15f2997bcb` judged that shape an anti-pattern and deleted 207 explained-empty companions: a companion earns publication only when it compares observations that may independently diverge (cross-event protocols, events against authoritative state, multi-producer assembly, durable data consumed elsewhere), and service presence, plugin effects, or pure-package reasons never qualify. Wayfinder #80 ruling 2 adopted the criterion and required the fork audit before the next sync.
+Every fork-owned package published a `src/invariant.ts` companion with an empty installer explained by a comment — eleven under `packages/daypaw/` plus the `daypaw-skeleton-example`. Upstream commit `15f2997bcb` judged the empty-installer file an anti-pattern and deleted 207 explained-empty companions: a companion earns publication only when it compares observations that may independently diverge (cross-event protocols, events against authoritative state, multi-producer assembly, durable data consumed elsewhere), and service presence, plugin effects, or pure-package reasons never qualify. Wayfinder #80 ruling 2 adopted the criterion and required the fork audit before the next sync.
 
 ## Decision
 

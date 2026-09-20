@@ -16,9 +16,9 @@ The 2026-09-13 sync merged 1301 upstream commits (0.1.3-alpha.1 → 0.1.5-rc.2).
 
 **The npm closure drifts ahead of the fork patch.** The release restores missing closure packages from the registry, so upstream's newest published runtime rides the tarball even when the fork tree pins older semantics. New upstream rows that gain service dependencies (here: `ui-deliverables` waiting on `workspaceFiles`) must gain their provider row in `packages/daypaw/web-app/cordis.patch.yml` in the same sync; upstream's own web bundle is the reference for which rows a service needs.
 
-**Golden names follow the corpus contract.** When `SESSION_FORMAT_VERSION` advances, refreshed owner-local goldens rename with the write face (`session.v2.jsonl` → `session.v3.jsonl`); the corpus spec fails on a filename/header generation mismatch before any replay does.
+**Golden names follow the corpus spec's filename/header pairing.** When `SESSION_FORMAT_VERSION` advances, refreshed owner-local goldens rename with the write face (`session.v2.jsonl` → `session.v3.jsonl`); the corpus spec fails on a filename/header generation mismatch before any replay does.
 
-Slot migrations ride the declaring packages' contracts: `conversation` → `main.conversation` (ui-conversation) and `details` → `rightbar.session` (ui-sidebar-right) under the global-main-panels rework, with the shadow registrant taking a project reference and a `import type {} from '<pkg>/client'` merge on the foreign contract.
+Slot migrations follow the owning packages' exported slot names: `conversation` → `main.conversation` (ui-conversation) and `details` → `rightbar.session` (ui-sidebar-right) under the global-main-panels rework, with the shadow registrant taking a project reference and a `import type {} from '<pkg>/client'` merge on the foreign contract.
 
 ## Alternatives considered
 

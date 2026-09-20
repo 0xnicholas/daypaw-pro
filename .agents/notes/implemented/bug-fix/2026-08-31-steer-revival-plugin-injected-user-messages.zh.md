@@ -10,7 +10,7 @@ steerable agent run 停车时已记录未投递的 segment,进程死亡→复活
 
 ## Decision
 
-`userMessageText` 只接受 user 源消息(`source.kind === 'user'`),已投递序号只数 body 自己投递的消息:初始输入、RESUME 唤醒、steer segment。生产者注入的上下文(runtime-context 快照、relay、recall、tool result)一律不计。消息源判别联合即结构标记;计数与投递读同一字段,不引入文本启发或标记消息。
+`userMessageText` 只接受 user 源消息(`source.kind === 'user'`),已投递序号只数 body 自己投递的消息:初始输入、RESUME 唤醒、steer segment。生产者注入的上下文(runtime-context 快照、relay、recall、tool result)一律不计。判别子即 `MessageSourceMap['source'].kind`；计数与投递都读 `source.kind`，不引入文本启发或标记消息。
 
 ## Alternatives considered
 

@@ -16,7 +16,7 @@ The daypaw web app printed `daypaw web: http://127.0.0.1:<port>` without credent
 
 ## Alternatives considered
 
-**Disable browser auth for the daypaw profile.** Rejected: the fence is the product's local-web security stance; the fork composition should carry it, not strip it.
+**Disable browser auth for the daypaw profile.** Rejected: browser authentication is the product's local-web security stance; the fork composition must enforce it, not disable it.
 
 **Probe an auth-exempt health path in the smoke.** Rejected: the customer path is the handshake; an exempt probe would keep passing while the real path dead-ends.
 

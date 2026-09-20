@@ -16,10 +16,10 @@ Submitting the daypaw new-task dialog failed inline every time, on every instanc
 
 **Rename the engine parameter to defName-and-friends so a flat spread matches.** Rejected: multi-parameter endpoints (`steer(runId, input)`) already pin named-args dispatch, so the client must nest named parameters regardless.
 
-**Validate the payload shape inside the dialog against a hand-copied descriptor.** Rejected: a copy drifts exactly like the bug it guards; the gateway is the descriptor's single fact source.
+**Validate the dialog's `args` keys against a hand-copied descriptor.** Rejected: a copy drifts exactly like the bug it guards; the gateway is the descriptor's single fact source.
 
 **Extend the fixture transport to run descriptor validation.** Rejected: the fixture's job is deterministic canned answers for goldens; duplicating gateway validation there builds a second gateway.
 
 ## Consequences
 
-Dialog submits reach the engine again (verified end to end in a real browser against the rebuilt bundle: run row written, conversation opens). `@daypaw/web-app` dev-depends on `dsh-typert-registry` and `dsh-api-gateway` for the contract spec. Any future `durable/*` client call whose payload the golden lane cannot shape-check (the fixture never rejects) needs the same gateway-backed contract case or a shape change will ship silently again.
+Dialog submits reach the engine again (verified end to end in a real browser against the rebuilt bundle: run row written, conversation opens). `@daypaw/web-app` dev-depends on `dsh-typert-registry` and `dsh-api-gateway` for the contract spec. Any future `durable/*` client call whose args keys the golden lane cannot check (the fixture never rejects) needs the same gateway-backed contract case or an args mismatch will ship silently.

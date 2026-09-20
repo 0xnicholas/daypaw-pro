@@ -17,12 +17,12 @@ spec 01 §6 把 durable promise 定义为 HITL gate：workflow 挂在一个具�
 - **每个 waiter 三路唤醒** —— 本进程 waiter 由 `resolveGate` 直推；跨进程结算靠 `pollMs` 轮询发现；按 `timeoutMs` 武装的 `setTimeout` 结算 `timedout`。abort 投递的是 `cancelled` *值*（workflow 可分支的合法 gate 结局），引擎销毁则 reject `ENGINE_DISPOSED`；waiter promise 预挂 handled 标记，被遗弃的等待永不击垮进程。
 - **boot 扫描扫尾逾期 promise** 先于复活驱动者，将其结算为 `timedout` 并通知存活 waiter；`waiting` 以 `{ state: 'waiting', gate }` 加入 `EngineRunStatus`，从行的 `waiting_gate` 列读回，waiting 行上 gate 为 null 按账实不符上报；`cancelRun`（改为异步）与驱动者侧取消会取消 pending promise，驱动者 `finally` 遗弃孤儿 waiter，使死于等待中的 body 不在 `db.close()` 之后泄漏轮询定时器。
 
-同一次改动浮现并修复了两个潜伏 bug：`finalizeCancelledFromDriver` 的 `status !== 'running'` 守卫会跳过 waiting run 的 finalize（现改为基于 `isTerminal`），修复前的 `cancelRun` 同步抛错破坏了其 promise 契约。
+同一次改动浮现并修复了两个潜伏 bug：`finalizeCancelledFromDriver` 的 `status !== 'running'` 守卫会跳过 waiting run 的 finalize（现改为基于 `isTerminal`），修复前的 `cancelRun` 同步抛错，而不是让返回的 promise 拒绝。
 
 ## 曾考虑的替代方案
 
 - **gate 与 sleep 一起落地** —— 否决于范围：timer 侧有自己开放的语义（delay 还是 cron、漏发策略）且尚无调用方；gate 原语对 HITL 独立可用。
-- **预先抽 `PromiseResolver`/`TimerScheduler` 缝包** —— 否决：实现只有一个；七个 store 方法就是缝，现在抽象是无第二个消费者时臆造边界。
+- **预先抽 `PromiseResolver`/`TimerScheduler` 缝包** —— 否决：实现只有一个；七个 store 方法就是缝，现在抽抽象只是造一个没有第二个实现的 `PromiseResolver` 接口。
 - **仅决议侧校验** —— 否决：跨进程决议方（未来的 Manager/webhook 或裸 SQL）会绕过它；投递侧校验是每个决议必经的唯一点。
 - **last-wins 或先写后报错结算** —— 否决：竞态决议方会翻转已结算的 gate 或让胜者含糊；first-wins 保持 ledger 权威并对齐 jobs 结算先例。
 

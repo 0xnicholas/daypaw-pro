@@ -16,7 +16,7 @@ The surface-catalog audit (wayfinder [#97](https://github.com/0xnicholas/daypaw-
 
 **Hold the rows like `ui-schedule`** — rejected: `ui-schedule` waits on a walk-through verdict; these two are presentation-only rows whose every dependency is already mounted, so a hold would re-litigate the same one-line take after each sync.
 
-**Fork or re-wrap either package** — rejected: the ticket's boundary is 「无 fork 代码」; attachment presentation carries no terminology to translate, and `ui-reference`'s section labels are locale-registered upstream, so the #40 vocabulary mapping has no work here.
+**Fork or re-wrap either package** — rejected: the ticket requires zero fork code (「无 fork 代码」); attachment presentation carries no terminology to translate, and `ui-reference`'s section labels are locale-registered upstream, so the #40 vocabulary mapping has no work here.
 
 **Mount together with the light-conversation surface (#102)** — rejected: roster composition and surface rendering are separate seams; mounting now keeps #102 a pure surface change and lets the assembled lane prove the fork graph carries both halves immediately.
 

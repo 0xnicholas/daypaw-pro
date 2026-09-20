@@ -6,7 +6,7 @@ English | [中文](2026-09-18-daypaw-roster-mirror-gate.zh.md)
 
 ## Problem
 
-The fork's browser surface is a composition mirror: `packages/daypaw/web-app/cordis.patch.yml` derives from `packages/bundle/web-app/cordis.patch.yml` — upstream rows kept, deliberate trims, fork-owned rows added. That mirror law was the fork's only composition fact with no executing owner: it lived in patch comments and in the sync ritual's manual re-diff of two ~470-line yml files. Three incident classes proved the manual diff insufficient: the 2026-09-13 sync dropped the `resources`/`ui-sidebar-right` provider rows and the browser boot broke for a whole cycle, caught only when [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) added goldens; the `workspace-files` row surfaced only in release smoke (a registered core touch); and a missing `ui-deliverables` form never fails at all — with its provider present the shape activates fine, so silent roster absence has no symptom. The [assembled golden lane](../testing/2026-09-14-daypaw-golden-lane-required.md) gates the activation face only (absence that breaks the boot); silent absence had no detector.
+The fork's browser surface is a composition mirror: `packages/daypaw/web-app/cordis.patch.yml` derives from `packages/bundle/web-app/cordis.patch.yml` — upstream rows kept, deliberate trims, fork-owned rows added. That mirror law was the fork's only composition fact with no executing owner: it lived in patch comments and in the sync ritual's manual re-diff of two ~470-line yml files. Three incident classes proved the manual diff insufficient: the 2026-09-13 sync dropped the `resources`/`ui-sidebar-right` provider rows and the browser boot broke for a whole cycle, caught only when [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) added goldens; the `workspace-files` row surfaced only in release smoke (a registered core touch); and a missing `ui-deliverables` form never fails at all — with its provider row present the roster row resolves fine, so a missing roster row produces no failure or diagnostic. The [assembled golden lane](../testing/2026-09-14-daypaw-golden-lane-required.md) gates the activation face only (absence that breaks the boot); silent absence had no detector.
 
 ## Decision
 
@@ -20,7 +20,7 @@ The fork's browser surface is a composition mirror: `packages/daypaw/web-app/cor
 
 **Compare whole rows (id + name + config) instead of package names.** Rejected: id renames and config divergence are legitimate patch semantics — the fork intentionally overrides configs and disables rows; only roster membership decides whether a client half reaches the browser.
 
-**Keep the trim list as yml comments or a sidecar manifest.** Rejected: comments are where the trims already lived, unjudged; a gate-internal const with per-entry reasons sits inside the checking boundary, and stale entries redden.
+**Keep the trim list as yml comments or a sidecar manifest.** Rejected: comments are where the trims already lived, unjudged; a const with per-entry reasons lives in `verify-cordis-config` itself, next to the comparison it feeds, and stale entries redden.
 
 **A dedicated script wired into run-gates.** Rejected: `verify-cordis-config` already collects patch plugin references, workspace manifests, and the yaml loader; a second home would split composition checking for zero added coverage plus one more aggregate row.
 

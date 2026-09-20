@@ -14,7 +14,7 @@ Status: implemented
 
 `decorateDurableRpc` 留在 `apps/daypaw-web/tests`、以载体 transport 的身份注入，共享体内零 daypaw 词汇。`ClientRequest`/`ServerResponse` 桥以 `connectionRpcCarrier` 导出——它只说上游类型。
 
-时机：现在提取，不等上游下次重构该脚手架顺车。两种情形的重放都是「换体 + 重穿三缝」；等待只会在 fork 侧持续演化消费面时长漂移。上游无接受通道（[票 #118](https://github.com/0xnicholas/daypaw-pro/issues/118) 已裁定），「上游形态」因此是保形承诺而非提交：两处上游文件 core touch 标「可提」，退役触发——上游自建同等参数化后下次 sync 换家——记入 README 与 ADR 0015。
+时机：现在提取，不等上游下次重构该脚手架顺车。两种情形的重放都是「换体 + 重穿三缝」；等待只会在 fork 侧持续演化消费面时长漂移。上游无接受通道（[票 #118](https://github.com/0xnicholas/daypaw-pro/issues/118) 已裁定），「上游形态」因此是对交给上游那些文件的承诺，而非提交：两处上游文件 core touch 标「可提」，退役触发——上游自建同等参数化后下次 sync 换家——记入 README 与 ADR 0015。
 
 覆盖率：组合半边导出为可测单元（`loadAssembledPlugins` / `buildBootGraph` / `buildBundleTable`），微花名册 fixture（一个 bootstrap 插件、一个 application 插件、外加覆盖全部跳过分支与 config 转发的行矩阵）不启动真实花名册即驱动分支矩阵。挂载与环境覆盖在包内以微车道过 per-file 100% 门；两条真实车道各自的套件仍是端到端证明。
 

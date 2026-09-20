@@ -10,7 +10,7 @@ daypaw fork 的 `durable/*` Remote 应答原住在上游浏览器 fixture（`pac
 
 ## 决策
 
-应答现居 `apps/daypaw-web/tests/durable-rpc.ts`：`decorateDurableRpc(base)` 拦截六个 `durable/*` 端点、自持表，其余调用与流透传。组装 boot 经 connection 插件既有的载体覆盖缝（`__DSH_TRANSPORT__`）装配：单次调用经 fetch 桥跨真实的 ClientRequest/ServerResponse 信封，流委托 fixture 的进程内 open，带 `?fixture` 查询开关装载则失败报错。会话孪生经 fixture 公开面驱动——`session/create` 注册孪生（sessionId ≡ runId、模型默认值、`api-session/added` 远程事件），`session/prompt` 驱动首轮——窄接口 `ClientConnectionRpc` 足够，不触任何 fixture 内部件（spike 第一问，已答）。上游侧唯一增项是 client 入口公开再导出 `createFixtureConnectionRpc`：载体钩子需要工厂，而 `./src/*` 子路径导入过不了会 emit 的 client 面。
+应答现居 `apps/daypaw-web/tests/durable-rpc.ts`：`decorateDurableRpc(base)` 拦截六个 `durable/*` 端点、自持表，其余调用与流透传。组装 boot 经 connection 插件的 `__DSH_TRANSPORT__` 覆盖装配：单次调用经 fetch 桥跨真实的 ClientRequest/ServerResponse 信封，流委托 fixture 的进程内 open，带 `?fixture` 查询开关装载则失败报错。会话孪生经 fixture 公开面驱动——`session/create` 注册孪生（sessionId ≡ runId、模型默认值、`api-session/added` 远程事件），`session/prompt` 驱动首轮——窄接口 `ClientConnectionRpc` 足够，不触任何 fixture 内部件（spike 第一问，已答）。上游侧唯一增项是 client 入口公开再导出 `createFixtureConnectionRpc`：载体钩子需要工厂，而 `./src/*` 子路径导入过不了会 emit 的 client 面。
 
 ## 后果
 

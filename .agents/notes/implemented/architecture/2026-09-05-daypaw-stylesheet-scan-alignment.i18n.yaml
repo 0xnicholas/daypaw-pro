@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-05-daypaw-stylesheet-scan-alignment.md
-2026-09-05-daypaw-stylesheet-scan-alignment.md: b302374108e8b7ed3972c6431c1d96ff5065cd47
-2026-09-05-daypaw-stylesheet-scan-alignment.zh.md: 41c93bf74ec078f08e934789db1e98a0f10b06ab
+2026-09-05-daypaw-stylesheet-scan-alignment.md: d959e71f3d0626e2f689c4e16b08199c28e07166
+2026-09-05-daypaw-stylesheet-scan-alignment.zh.md: 215cf3d8862aaf565414c4cdf0d46fbacc0255cd

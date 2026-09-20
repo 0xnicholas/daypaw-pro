@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-fork 的浏览器面是一份组合镜像:`packages/daypaw/web-app/cordis.patch.yml` 由 `packages/bundle/web-app/cordis.patch.yml` 派生——上游行保留、有意裁剪、fork 自有行追加。这条镜像律是本 fork 唯一没有执行所有权的组合事实:活在 patch 注释与 sync 仪式对两份 ~470 行 yml 的人工 diff 里。三类事故证明人工 diff 不够:2026-09-13 sync 漏收 `resources`/`ui-sidebar-right` 两个供主行,浏览器 boot 整周期红,直到 [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) 补金样才暴露;`workspace-files` 行直到 release 冒烟才现形(CORE_TOUCHES 有案);而 `ui-deliverables` 形缺失根本不失败——供主齐备时激活正常,静默的 roster 缺席没有任何症状。[组装 golden 车道](../testing/2026-09-14-daypaw-golden-lane-required.zh.md)只盖激活面(缺席致 boot 断);静默缺席此前无探测器。
+fork 的浏览器面是一份组合镜像:`packages/daypaw/web-app/cordis.patch.yml` 由 `packages/bundle/web-app/cordis.patch.yml` 派生——上游行保留、有意裁剪、fork 自有行追加。这条镜像律是本 fork 唯一没有执行所有权的组合事实:活在 patch 注释与 sync 仪式对两份 ~470 行 yml 的人工 diff 里。三类事故证明人工 diff 不够:2026-09-13 sync 漏收 `resources`/`ui-sidebar-right` 两个供主行,浏览器 boot 整周期红,直到 [#93](https://github.com/0xnicholas/daypaw-pro/issues/93) 补金样才暴露;`workspace-files` 行直到 release 冒烟才现形(CORE_TOUCHES 有案);而 `ui-deliverables` 行缺失根本不失败——供主行齐备时 roster 行照常解析，缺席不产生失败或诊断。[组装 golden 车道](../testing/2026-09-14-daypaw-golden-lane-required.zh.md)只盖激活面(缺席致 boot 断);静默缺席此前无探测器。
 
 ## 决策
 
@@ -20,7 +20,7 @@ fork 的浏览器面是一份组合镜像:`packages/daypaw/web-app/cordis.patch.
 
 **按整行(id + name + config)而非包名比较。** 否决:id 改名与 config 分歧是合法 patch 语义——fork 有意覆盖 config、禁用行;决定客户端半边是否抵达浏览器的只有 roster 成员资格。
 
-**裁剪清单留在 yml 注释或 sidecar 清单里。** 否决:注释正是裁剪行此前无人评判的居所;门内 const 携逐项理由落在判定边界之内,残项判红。
+**裁剪清单留在 yml 注释或 sidecar 清单里。** 否决:注释正是裁剪行此前无人评判的居所;逐项理由的 const 就住在 `verify-cordis-config` 里、紧挨它所喂的比较，残项判红。
 
 **新建脚本挂进 run-gates。** 否决:`verify-cordis-config` 已收集 patch 插件引用、workspace manifests 与 yaml loader;第二个家只会分裂组合检查,零新增覆盖还要多一行聚合。
 

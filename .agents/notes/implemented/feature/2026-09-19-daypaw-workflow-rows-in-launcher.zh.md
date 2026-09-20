@@ -10,12 +10,12 @@ Status: implemented
 
 裁决 #65 第 6 条把名册定在注册表本身。挡住 workflow 行的不是名册而是提交序列：它铸造 run id、调 `durable/startRun`，再等该 run 的 session 孪生进 sessions 列表，因为 agent run 的会话身份即其 runId，而 `sessions.open` 拒收未列出的 id。workflow run 没有会话（ADR 0016），所以这个等待会走到边界，为一个引擎其实已正确启动的 run 报通用失败。
 
-定义不带 wire 面时 `inputKind` 为 `null`，而每个 workflow 定义都如此：只有 agent 编译路径会挂 wire 面。渲染器与 `composeInput` 对 `null` 的读法不同——`?? 'text'` 回落渲染自由文本框，而发送侧把草稿当 JSON——于是 workflow 行的两侧对输入面各执一词。
+每个 workflow 定义的 `inputKind` 都是 `null`：只有 agent 编译路径会为定义挂上 wire 面。渲染器与 `composeInput` 对 `null` 的读法不同——`?? 'text'` 回落渲染自由文本框，而发送侧把草稿当 JSON——于是 workflow 行的两侧对输入面各执一词。
 
 ## Decision
 
 - **发起面名册承载注册表持有的全部定义。** `DefinitionOption` 携带定义的 `kind`，选择器列出每一行且不检查它。agent 行保留 display 声明的业务名；workflow 定义不声明 display，显示技术名。
-- **输入种为 null 的定义在渲染与发送两侧共用 JSON 面。** 渲染器把「未选中行」与「选中行的输入种为 `null`」分开，后者渲染 JSON 框，与 `composeInput` 发送的一致：引擎原样插入该值，定义自己的 input 契约在起跑时校验它。
+- **输入种为 `null` 的定义用 JSON 输入框与 JSON 发送路径。** 渲染器把「未选中行」与「选中行的输入种为 `null`」分开，后者渲染 JSON 框，与 `composeInput` 发送的一致：引擎原样插入该值，定义自己的 input 契约在起跑时校验它。
 - **提交回报「开什么」，由定义 kind 决定。** `NewTaskOutcome` 要么是刚建 agent run 的会话（等过孪生），要么是刚建 workflow run 的 id（本就没有孪生可等）。弹窗把 agent 结果交给 `openTask`、workflow 结果交给 `openRun`。
 - **两个 opening 都归收件箱。** `InboxNewTaskDialogOwnerProps` 与 `openTask` 并排携带 `openRun`，三个效果相同：踢一记看板刷新、关闭弹窗、选中刚建之物——无会话 run 选 `{ kind: 'run' }`，选择模型与详情列都渲染它。
 - **选择器文案报的是任务类型而非 agent。** 选择器、空态、JSON 提示与加载失败行在两本词典里都读中性的任务类型措辞，键为类型化键 `dialog.type.*`。

@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-上游提交 `7020c7e122`（2026-08-28 checkpoint..master 同步窗内）在 `ui-theme/tests` 落了 repo 级 stylesheet 契约 spec，遍历 `packages/` 下所有 CSS 文件：每个全圆 `border-radius` 须在同规则内配对 `corner-shape: round`；任何规则不得把 lv/elevation 投影与中性 border token 描边并置；中性 token 实线描边一律 0.5px；border token 填充的分隔线一律 0.5px；`--dsh-scrollbar-*` 重绑须成对，且每个在抬升面上滚动的 sheet 须绑完整 l2 对。扫描根含 `packages/daypaw`，而 sync 不会重写它——gate 落地即在 fork 自营样式上红，且合并侧无处可修。
+上游提交 `7020c7e122`（2026-08-28 checkpoint..master 同步窗内）在 `ui-theme/tests` 落了 repo 级 stylesheet spec，遍历 `packages/` 下所有 CSS 文件：每个全圆 `border-radius` 须在同规则内配对 `corner-shape: round`；任何规则不得把 lv/elevation 投影与中性 border token 描边并置；中性 token 实线描边一律 0.5px；border token 填充的分隔线一律 0.5px；`--dsh-scrollbar-*` 重绑须成对，且每个在抬升面上滚动的 sheet 须绑完整 l2 对。扫描根含 `packages/daypaw`，而 sync 不会重写它——gate 落地即在 fork 自营样式上红，且合并侧无处可修。
 
 ## Decision
 
@@ -22,7 +22,7 @@ daypaw 的 CSS Modules 满足这些 spec。状态在 spec 抵达本树之前即�
 
 ## Consequences
 
-fork 壳即刻渲染 0.5px 发丝线、真圆保持正圆，先于 sync；sync 落地后，新的 ui-theme spec 对 `packages/daypaw` 直接通过，无需合并侧 CSS 修补。0.5px 暖色分隔线（品牌 l2 色调减半宽）是唯一值得在运行壳里目验的面——与上游 sweep 后的自家观感一致，且对 border 阶梯 alpha 的值级品牌微调仍然可行，不必触碰本契约。代价：补偿映射自此成为 sync 跟随义务——上游若再调级别，daypaw 的镜像会静默漂移，直到某条扫描规则破——随 sync 到达的 spec 即是绊线。
+fork 壳即刻渲染 0.5px 发丝线、真圆保持正圆，先于 sync；sync 落地后，新的 ui-theme spec 对 `packages/daypaw` 直接通过，无需合并侧 CSS 修补。0.5px 暖色分隔线（品牌 l2 色调减半宽）是唯一值得在运行壳里目验的面——与上游 sweep 后的自家观感一致，且对 border 阶梯 alpha 的值级品牌微调仍然可行，不改动 spec 断言的那 0.5px 描边宽度与圆角配对。代价：补偿映射自此成为 sync 跟随义务——上游若再调级别，daypaw 的镜像会静默漂移，直到某条扫描规则破——随 sync 到达的 spec 即是绊线。
 
 ## Verification
 

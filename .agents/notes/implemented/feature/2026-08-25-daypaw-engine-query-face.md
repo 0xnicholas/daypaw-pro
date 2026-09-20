@@ -26,7 +26,7 @@ The seam grows exactly three read methods, exposed unchanged through every layer
 
 ## Consequences
 
-The board tickets (inbox grouping, right-panel detail) read everything they need through `ctx.durable` without touching SQL, and the ordering contracts (newest-first runs, oldest-first children, start-order steps) are pinned by tests rather than convention. Costs: the service surface grows by three methods whose rows expose raw engine column names to the host (accepted — the host is internal), and the children query is an unindexed scan until volume proves otherwise. `@daypaw/store` is untouched: the contract rows already carried every column the queries need.
+The board tickets (inbox grouping, right-panel detail) read everything they need through `ctx.durable` without touching SQL, and the ordering guarantees (newest-first runs, oldest-first children, start-order steps) are pinned by tests rather than convention. Costs: the service surface grows by three methods whose rows expose raw engine column names to the host (accepted — the host is internal), and the children query is an unindexed scan until volume proves otherwise. `@daypaw/store` is untouched: the contract rows already carried every column the queries need.
 
 ## Testing
 

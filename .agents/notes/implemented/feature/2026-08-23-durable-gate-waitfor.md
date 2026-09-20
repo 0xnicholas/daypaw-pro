@@ -17,12 +17,12 @@ Spec 01 §6 defines durable promises as the HITL gate: a workflow parks on a nam
 - **Three-way wakeup per waiter** — a same-process waiter is pushed directly out of `resolveGate`; a cross-process settlement is found by `pollMs` polling; a `setTimeout` armed from `timeoutMs` settles `timedout`. Abort delivers a `cancelled` *value* (a valid gate outcome the workflow may switch on), while engine disposal rejects `ENGINE_DISPOSED`; waiter promises are pre-marked handled so abandoned waits never crash the process.
 - **Boot scan sweeps overdue promises** before reviving drivers, settling them `timedout` and notifying live waiters; `waiting` joins `EngineRunStatus` as `{ state: 'waiting', gate }` and is read back from the row's `waiting_gate` column, with a null gate on a waiting row reported as ledger/record mismatch; `cancelRun` (now async) and driver-side cancellation cancel pending promises, and the driver `finally` abandons orphaned waiters so a body dying mid-wait leaks no poll timer past `db.close()`.
 
-Two latent bugs surfaced and were fixed in the same change: `finalizeCancelledFromDriver`'s `status !== 'running'` guard skipped finalization for waiting runs (now `isTerminal`-based), and pre-fix `cancelRun` threw synchronously, breaking its promise contract.
+Two latent bugs surfaced and were fixed in the same change: `finalizeCancelledFromDriver`'s `status !== 'running'` guard skipped finalization for waiting runs (now `isTerminal`-based), and pre-fix `cancelRun` threw synchronously rather than rejecting the returned promise.
 
 ## Alternatives considered
 
 - **Landing gate and sleep together** — rejected on scope: the timer side has its own open semantics (delay vs cron, missed-fire policy) and no caller yet; the gate primitive is independently useful for HITL.
-- **A `PromiseResolver`/`TimerScheduler` seam package up front** — rejected: one implementation exists; the seven store methods are the seam, and extracting an abstraction now would invent a boundary without a second consumer.
+- **A `PromiseResolver`/`TimerScheduler` seam package up front** — rejected: one implementation exists; the seven store methods are the seam, and extracting an abstraction now would invent a `PromiseResolver` interface with no second implementation.
 - **Resolve-side-only validation** — rejected: a cross-process resolver (future Manager/webhook, or raw SQL) bypasses it; delivery-side validation is the only point every resolution must pass.
 - **Last-wins or write-then-error settlement** — rejected: racing resolvers would flip a settled gate or leave the winner ambiguous; first-wins keeps the ledger authoritative and matches the jobs-settlement precedent.
 

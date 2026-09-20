@@ -24,4 +24,4 @@ English | [中文](2026-08-26-ensure-symlink-shared-from-app-boot.zh.md)
 
 - The upstream-sync ritual (ADR 0001) replays this touch every sync; losing it fails loudly — `@daypaw/cli` no longer typechecks against an export-less `dsh-app-boot` — so drift surfaces at build time, never silently.
 - The published CLI tarball bundles a fork-modified `@deepseek-ai/dsh-app-boot` under upstream's name; `bundleDependencies` keep it private to the tarball, so it cannot collide with an upstream npm copy a consumer installs separately. The template-seeding note's zero-core-touch statement now points here for the exception.
-- Every future consumer of the heal passes its own `binName` and `manages`; the message contract is pinned byte-exact on both existing sides, so a wording change fails the pinning suites.
+- Every future consumer of the heal passes its own `binName` and `manages`; both error messages are pinned byte-exact on their existing sides, so a wording change fails the pinning suites.

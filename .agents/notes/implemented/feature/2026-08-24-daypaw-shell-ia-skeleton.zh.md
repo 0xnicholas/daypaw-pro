@@ -12,7 +12,7 @@ spec 第 5 章 §3 裁决了产品壳的 IA：三栏收件箱工作台（导航 
 
 新的 client UI 插件包 `packages/daypaw/ui-inbox`（`@daypaw/ui-inbox`，private，0.0.0），包形对齐上游 `packages/client/ui-sidebar`，在一个 `apply` 里做三次注册：
 
-- **`InboxNav` 进入 `'sidebar'`**（root scope）——ui-sidebar 的 roster 行从 `@daypaw/web-app` 的 `cordis.patch.yml` 中*移除*（连同 `package.json` 依赖），而非遮蔽：ui-sidebar 属 spec §4 的 wholesale 重写簇，且向其声明席位（`sidebar.workspaces`、`sidebar.settings`）注册的依赖方走 `ctx.slots.inject`，声明消失后它们静默 pending，无加载错误。导航渲染 wordmark、全宽主色「+ 新任务」大按钮（打开最小可关闭的对话框桩——开关态为组件局部，agent 选择内容归 agent 目录票）、带占位零计数位的三个分组「等待你确认/进行中/已完成」、以及 Agents/设置 次要导航；折叠时渲染契约要求的 56px 控制轨（侧栏开关 + 新任务图标按钮）。
+- **`InboxNav` 进入 `'sidebar'`**（root scope）——ui-sidebar 的 roster 行从 `@daypaw/web-app` 的 `cordis.patch.yml` 中*移除*（连同 `package.json` 依赖），而非遮蔽：ui-sidebar 属 spec §4 的 wholesale 重写簇，且向其声明席位（`sidebar.workspaces`、`sidebar.settings`）注册的依赖方走 `ctx.slots.inject`，声明消失后它们静默 pending，无加载错误。导航渲染 wordmark、全宽主色「+ 新任务」大按钮（打开最小可关闭的对话框桩——开关态为组件局部，agent 选择内容归 agent 目录票）、带占位零计数位的三个分组「等待你确认/进行中/已完成」、以及 Agents/设置 次要导航；折叠时渲染 spec 05 §3 要求的 56px 控制轨（侧栏开关 + 新任务图标按钮）。
 - **`WorkspaceSwitch` 进入 `'conversation'`、`TaskDetail` 进入 `'details'`，优先级均为 -1**——ui-conversation 的 roster 行保留：其 11 个声明席位、`useInput` 标准件与 `conversation` 服务为休眠占位生态服务，因此 fork 占据者*遮蔽*上游优先级 0 的占据者（最低存活优先级渲染；同优先级二次注册抛错）。中栏按选中项在分组空态任务容器与 Agents/设置 占位页之间切换；右栏承载选中任务的详情容器（由[任务进度板块](2026-08-26-daypaw-task-progress.zh.md)填充）。
 - **选中态经 inject 的 `hooks` 舱位跨 scope**——一个 store 句柄不能挂在两个 scope 下（注册表抛错），因此一个 apply 闭包自有的 `InboxSelectionController` 持有裸 `SnapshotStore<InboxSelection>`（`{ kind: 'group', group } | { kind: 'agents' } | { kind: 'settings' }`，默认「进行中」分组），在每个 register 调用的 `hooks: { selection }` 中相同地露出；渲染器把它绑成各组件的 `useSelection` hook，依 [slot 系统标准](../architecture/2026-07-22-slot-type-chain-implementation.zh.md)。注册顺序无需 `ctx.slots.inject` 即安全：cordis fiber inject 等待 `layout` 服务，而 ui-layout 在声明四个 slot 的同一 effect 里提供它（ui-sidebar 先例；[slot 声明注入笔记](../../archived/architecture/2026-08-05-slot-declaration-injection.md)的机制留给像 pending 的 ui-workspace 那样顺序独立的贡献方）。
 - **locale 与样式遵循 roster 惯例**——插件经 `LocaleNamespaceMap` 合并拥有 `inbox` 命名空间，注册 zh 与 en（类型化 register 要求每个已发布 locale；查找链回落到 zh，即产品文案）。样式只用 CSS Modules 消费 `--dsw-alias-*` 语义 token 与 `--dp-space-*` 密度尺度（两者现由[品牌主题层](2026-08-27-daypaw-shell-brand-theme.zh.md)供给；骨架期以手设中偏低间距落地，后由同一票 token 化）。
@@ -22,7 +22,7 @@ spec 第 5 章 §3 裁决了产品壳的 IA：三栏收件箱工作台（导航 
 ## 否决的备选
 
 - **连 ui-conversation 的 roster 行一起移除**——否决：其声明席位与服务是休眠生态的组合面（ui-tool、ui-deliverables 等都注册进去），移除的爆炸半径大而骨架零收益；优先级 -1 遮蔽恰好只替换两个可见单元格，该行的 slot 声明保持存活。
-- **以优先级 -1 遮蔽 ui-sidebar 而非移除其 roster 行**——否决：保留上游壳挂载能让其声明席位继续供 ui-workspace/ui-settings-general 使用，但那些注册本身是排定 wholesale 重写的占位，且不可见的上游壳仍握着导航的呈现契约；移除是重写簇的终局，而 pending 的依赖方按设计静默失败。
+- **以优先级 -1 遮蔽 ui-sidebar 而非移除其 roster 行**——否决：保留上游壳挂载能让其声明席位继续供 ui-workspace/ui-settings-general 使用，但那些注册本身是排定 wholesale 重写的占位，且不可见的上游壳仍握着 `sidebar` 槽声明与其 `sidebar.*` 席位；移除是重写簇的终局，而 pending 的依赖方按设计静默失败。
 - **一个共享 store 句柄注册到全部三个 slot**——不只是否决而是不可能：slot 注册表对一个句柄挂在两个 scope 下会抛错，而三个 per-scope 句柄会把工作台赖以存在的选中态分叉；inject 的 `hooks` 舱位是标准认可的 registrant 私有响应式事实通道。
 - **用 `ctx.slots.inject` 等待 slot 声明**——对本包否决：对 `layout` 服务的 fiber inject 已把本插件排在 ui-layout 的声明 effect 之后（ui-sidebar 同样如此），而 `slots.inject` 面向激活顺序独立于声明方的贡献者，同组合的栏目占据者不是。
 

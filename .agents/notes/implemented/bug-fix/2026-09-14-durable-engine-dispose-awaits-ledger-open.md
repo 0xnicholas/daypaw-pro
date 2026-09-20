@@ -15,8 +15,8 @@ The advisory coverage lane's first nondeterministic red ([#115](https://github.c
 
 ## Testing
 
-- `behavior.spec.ts` gains a regression case that boots the engine, touches nothing on `ctx.durable` (the empty-roster shape), disposes, and asserts the ledger directory is byte-stable across a bounded window and holds no `-wal`/`-shm` companions. Red before the fix (directory read empty, files appeared after), green after; the window only bounds the negative observation, it never gates the assertion.
-- The surfaced `agent.spec.ts` unhandled errors disappeared with the synchronous-prefix shape; `pnpm exec vitest run packages/daypaw/engine packages/daypaw/sdk` is 211/211 across three consecutive runs, and the originally failing spec stayed green through 10 runs under 8-way CPU load.
+- `behavior.spec.ts` gains a regression case that boots the engine, touches nothing on `ctx.durable` (the engine booted with no roster entries), disposes, and asserts the ledger directory is byte-stable across a bounded window and holds no `-wal`/`-shm` companions. Red before the fix (directory read empty, files appeared after), green after; the window only bounds the negative observation, it never gates the assertion.
+- The surfaced `agent.spec.ts` unhandled errors disappeared with the synchronous-prefix ordering; `pnpm exec vitest run packages/daypaw/engine packages/daypaw/sdk` is 211/211 across three consecutive runs, and the originally failing spec stayed green through 10 runs under 8-way CPU load.
 
 ## Alternatives considered
 

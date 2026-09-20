@@ -26,4 +26,4 @@ Status: implemented
 
 ## 后果
 
-json 类定义在边界拒绝自由文本追问；席位显示内联失败，而不是 run 在消费侧校验时失败。每个 `api-session/removed` 帧现在多付一次单飞列表重拉，移除与复活之间有一个短暂的行闪断。终态后已完成行无需重连即可从持久化孪生重开对话。真网关 harness（cookie 鉴权的 `/api` HTTP 加 `ws` 包承载的 `/api/remote.mux` WebSocket，经 `__DSH_TRANSPORT__` 注入组装态 jsdom 启动）仍是唯一用真实客户端打真网关加真实模型轮的车道；它是临时工作流而非入库车道，因为它需要运行中的服务器与 API key。
+json 类定义在 `durable/steerText` 记录段之前施加的 starter-text 校验处拒绝自由文本追问；席位显示内联失败，而不是 run 在消费侧校验时失败。每个 `api-session/removed` 帧现在多付一次单飞列表重拉，移除与复活之间有一个短暂的行闪断。终态后已完成行无需重连即可从持久化孪生重开对话。真网关 harness（cookie 鉴权的 `/api` HTTP 加 `ws` 包承载的 `/api/remote.mux` WebSocket，经 `__DSH_TRANSPORT__` 注入组装态 jsdom 启动）仍是唯一用真实客户端打真网关加真实模型轮的车道；它是临时工作流而非入库车道，因为它需要运行中的服务器与 API key。

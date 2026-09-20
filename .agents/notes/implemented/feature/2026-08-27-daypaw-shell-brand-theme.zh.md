@@ -22,7 +22,7 @@ spec 05 §7（裁决 [#48](https://github.com/0xnicholas/daypaw-pro/issues/48)�
 - **以品牌 bundle 内的 CSS 文件承载密度尺度**——否决：品牌值将住在两个家（样式表 + 主题层）；覆盖层保住唯一来源、在组件绘制前生效、在 jsdom 车道可断言、并随插件 fiber 拆除。
 - **铸造 `--dsw-alias-space-*` 名**——否决：`--dsw-*` 命名空间归上游；上游日后铸造同名不同值会在下一次 sync 相撞。
 - **首跑把持久偏好种成 light**——否决：写下用户从未做过的用户层覆盖，写进与 dsh CLI 共享的 settings 文档，并与浏览器首次读取竞态。
-- **经 `settings.general.item` 槽复用上游 AppearanceRow**——否决：该槽承载休眠的上游 General 生态；渲染它会把 dev 壳的行拽进 fork 页面。fork 行改为镜像语言行的下拉形状。
+- **经 `settings.general.item` 槽复用上游 AppearanceRow**——否决：该槽承载休眠的上游 General 生态；渲染它会把 dev 壳的行拽进 fork 页面。fork 行改为在 fork 页面的 hooks 通道上承载上游 `AppearanceRow` 的形态——`light`/`dark`/`system` 偏好 store 加注入的 `setTheme`。
 
 ## Consequences
 

@@ -21,7 +21,7 @@ Issue #58 (spec 05 §2/§3/§6, shell increment ③) turns the approval board fr
 - **Board triage off the run's `waiting` status** — rejected: 等待你确认 is a 派生态 join (spec 05 §2), not an engine state; the run stays `running` while the approval pends, and a run-less session carries no run status at all. The badge is the only cross-session aggregation the wire offers.
 - **Routing question/plan-review badges into the group too** — rejected: the group's copy and counts promise approval work; a question row there would strand the user on a card that cannot answer it (the ask-user surface is the composer's, upstream).
 - **A bespoke approval RPC for the answer** — rejected: `PendingWait.respond` is the runtime's answer carrier and already encodes the client-response envelope; a second path would fork the settlement race (respond is first-wins with a not-pending receipt).
-- **Sending the reject note as steering mode** — rejected: steer mode fails on an idle session (the fixture degrades it to a queued turn, but the wire contract does not promise that); queue mode is defined for both states.
+- **Sending the reject note as steering mode** — rejected: steer mode fails on an idle session (the fixture degrades it to a queued turn, but the steer-mode prompt path defines no idle-session behavior); queue mode is defined for both states.
 
 ## Consequences
 

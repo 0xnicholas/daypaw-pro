@@ -16,9 +16,9 @@ Status: implemented
 
 **npm 闭包漂移在 fork patch 之前。** release 从 registry 补齐缺失闭包,即使 fork 树钉着旧语义,上游最新发布的运行时也会搭上 tarball。获得新服务依赖的上游新行(本次:`ui-deliverables` 等待 `workspaceFiles`)必须在同一次同步里于 `packages/daypaw/web-app/cordis.patch.yml` 补上供主行;上游自己的 web bundle 是「一个服务需要哪些行」的参照。
 
-**金样命名跟随 corpus 契约。** `SESSION_FORMAT_VERSION` 前进时,滚版后的属主本地金样随写入面更名(`session.v2.jsonl` → `session.v3.jsonl`);corpus spec 对文件名/头部代数不匹配的失败先于任何回放发生。
+**金样命名跟随 corpus spec 的文件名/头部配对。** `SESSION_FORMAT_VERSION` 前进时,滚版后的属主本地金样随写入面更名(`session.v2.jsonl` → `session.v3.jsonl`);corpus spec 对文件名/头部代数不匹配的失败先于任何回放发生。
 
-槽位迁移骑在声明包的契约上:global-main-panels 重构下 `conversation` → `main.conversation`(ui-conversation)、`details` → `rightbar.session`(ui-sidebar-right),影子注册者对外来契约取 project reference 并以 `import type {} from '<pkg>/client'` 合并。
+槽位迁移跟随属主包导出的槽名:global-main-panels 重构下 `conversation` → `main.conversation`(ui-conversation)、`details` → `rightbar.session`(ui-sidebar-right),影子注册者对外来契约取 project reference 并以 `import type {} from '<pkg>/client'` 合并。
 
 ## 备选方案
 

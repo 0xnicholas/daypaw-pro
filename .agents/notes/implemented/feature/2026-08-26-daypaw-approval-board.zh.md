@@ -21,7 +21,7 @@ Issue #58（spec 05 §2/§3/§6，壳板块增量 ③）把审批待办从 [IA �
 - **以 run 的 `waiting` 状态做板块分诊** —— 否决：等待你确认是派生态 join（spec 05 §2），不是引擎状态；审批挂着时 run 仍是 `running`，无 run 会话根本没有 run 状态。徽章是 wire 提供的唯一跨会话聚合。
 - **把 question/plan-review 徽章也路由进分组** —— 否决：分组的文案与计数承诺的是审批工作；question 行会困住用户在一张答不了的卡上（ask-user 面属于上游的 composer）。
 - **为作答另造审批 RPC** —— 否决：`PendingWait.respond` 是 runtime 的应答载体且已编码 client-response 信封；第二条路径会分裂清算竞态（respond 先到先得，落败得 not-pending 回执）。
-- **拒绝附言用 steering 模式发送** —— 否决：steer 模式对空闲会话失败（fixture 会降级为排队回合，但 wire 契约不承诺）；queue 模式对两种状态都有定义。
+- **拒绝附言用 steering 模式发送** —— 否决：steer 模式对空闲会话失败（fixture 会降级为排队回合，但 steer 模式的 prompt 路径没有定义空闲会话行为）；queue 模式对两种状态都有定义。
 
 ## Consequences
 

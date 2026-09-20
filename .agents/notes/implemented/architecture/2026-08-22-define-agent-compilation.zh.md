@@ -15,7 +15,7 @@ ADR 0010 §4 已裁 defineAgent 面——声明式 spec 编译为不透明引擎
 - **create vs resume 看持久化 session** —— persistence 列表里存在 `sessionId ≡ runId` 的 session 即走 resume，覆盖 run 行插入后的崩溃窗口；run 行本身无法区分两者。
 - **`maxTurns` 为唤醒前预算检查** —— 一次唤醒恰好跑一个 turn 到 quiescence，故唤醒（或 steer 复活 session）前数 `turn/start` 事件，预算已尽即失败。不用 live listener：`session/event` 派发于 session store 的载体作用域，挂在 agent Context 上的监听器永远收不到。
 - **一个 dsh step = 一条 journal step** —— quiescence 后 body 遍历 session log，配对 `step/start`..`step/end`，每段记于 `dsh-step:<turn>:<step>`；重驱动的 body 以同序重走 resume 的 log，引擎去重返回已记录切片。journal 的 `session_id` / `session_seq` 列 v1 不用——step 键加 `sessionId ≡ runId` 已指名来源；有消费者需要时再启用。
-- **SDK 注入 `submit` 工具** —— args schema = 输出契约（非 object 根包 `{value}` 单参数）；二次调用抛错；捕获值经输出 schema 校验后 run 才 resolve。复活以固定的英文续跑消息 steer 复活后的 agent（点名重启；dsh 无无内容唤醒）。`ctx.agent(def, input)` 自身即父步 `agent:<name>`，在派生子 runId 上等待子 run；同一定义对象重复绑定返回首个 face（WeakMap），其闭包锁定首个宿主 Context。
+- **SDK 注入 `submit` 工具** —— args schema = 输出 schema（非 object 根包 `{value}` 单参数）；二次调用抛错；捕获值经输出 schema 校验后 run 才 resolve。复活以固定的英文续跑消息 steer 复活后的 agent（点名重启；dsh 无无内容唤醒）。`ctx.agent(def, input)` 自身即父步 `agent:<name>`，在派生子 runId 上等待子 run；同一定义对象重复绑定返回首个 face（WeakMap），其闭包锁定首个宿主 Context。
 
 ## Alternatives considered
 

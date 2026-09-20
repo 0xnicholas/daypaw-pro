@@ -16,7 +16,7 @@ daypaw web 应用打印的 `daypaw web: http://127.0.0.1:<端口>` 不带凭据,
 
 ## Alternatives considered
 
-**为 daypaw profile 关闭浏览器认证。** 否决:栅栏是产品本地 Web 的安全姿态;fork 组合应当承载它而非剥掉它。
+**为 daypaw profile 关闭浏览器认证。** 否决:浏览器认证是产品本地 Web 的安全姿态;fork 组合必须执行它而非关闭它。
 
 **冒烟探测免认证的健康路径。** 否决:客户路径就是握手;免探测会在真实路径死链时继续通过。
 

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-10-sdk-attachment-consumer-peer.md
-2026-09-10-sdk-attachment-consumer-peer.md: a850226a849226fdb3fbc484bc3e083e706dcd9a
-2026-09-10-sdk-attachment-consumer-peer.zh.md: dbacc8285fa1757509711f9e594d6a7126350a73
+2026-09-10-sdk-attachment-consumer-peer.md: 482895cecb6d5486db6ddb8490d5e1b09ca6afa4
+2026-09-10-sdk-attachment-consumer-peer.zh.md: 8ec7c57ee90ecfec36d84daa08342d62a3a02391

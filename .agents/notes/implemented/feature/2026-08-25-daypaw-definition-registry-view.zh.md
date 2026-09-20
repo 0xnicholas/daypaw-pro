@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目录提供 core 查询：枚举全部已注册定义及其展示元数据。注册表是 `DurableEngineCore` 内部的私有 `Map`——host 够不到——#44 缺口 6 的裁决把落地侧判给引擎：暴露只读视图，core 保持无 Cordis 依赖形态。本票与 #52（`defineAgent` 展示字段）配套：#52 负责声明本视图承载的元数据，因此引擎侧现在要同时落下载体字段与读面。
+Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目录提供 core 查询：枚举全部已注册定义及其展示元数据。注册表是 `DurableEngineCore` 内部的私有 `Map`——host 够不到——#44 缺口 6 的裁决把落地侧判给引擎：暴露只读视图，core 保持无 Cordis 依赖的 imports。本票与 #52（`defineAgent` 展示字段）配套：#52 负责声明本视图承载的元数据，因此引擎侧现在要同时落下载体字段与读面。
 
 ## Decision
 
@@ -24,7 +24,7 @@ Issue #51（spec 05 §5，后端面增量第二项）给产品壳的 agent 目�
 
 ## Consequences
 
-目录票经 `ctx.durable` 枚举定义及其业务名与描述，不碰 core 内部。代价：`ctx.durable` 多两个类型与一个方法；登记顺序（`Map` 插入序）成为文档化契约。
+目录票经 `ctx.durable` 枚举定义及其业务名与描述，不碰 core 内部。代价：`ctx.durable` 多两个类型与一个方法；登记顺序（`Map` 插入序）成为文档化的顺序保证。
 
 ## Testing
 

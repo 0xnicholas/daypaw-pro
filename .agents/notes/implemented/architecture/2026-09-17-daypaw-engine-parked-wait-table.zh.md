@@ -14,7 +14,7 @@ Status: implemented
 
 `WaitTable<T, E>` 是引擎核心唯一的停放等待实现。悬挂路径登记一份 `WaitSpec`——表键、驱动器 signal、重复停放的报错文案、外部写者投递所经的 entry、返回 `WaitVerdict`（`wait` / `deliver` / `fail`）的 `poll()`、abort 的含义，以及可选截止时刻——其余归表所有：promise、被遗弃标记、`ended` 闩后面的唯一一次投递或失败收尾、跨进程间隔、截止定时器、abort 监听器，以及随首次收尾对上述全部的拆卸。`gateWaiters` 与 `steerWaiters` 是它的两个实例。
 
-悬挂路径仍要供给的，是让它成其为自己的部分。gate 的 entry 携带 `resolveGate` 用来校验同进程结算的活值契约，并在投递时把它的 run 释放出 `waiting`。steer 的 entry 携带 body 已消费的段计数，不带载荷地唤醒 body，abort 时以拒绝收场。gate 的超时保持自己的形态：到期时 first-wins 写 `timedout`，再经推送路径同一条严格读取器投递，于是刚结算完却报行仍 pending 的账本会让等待响亮失败，而不是让它永久停放。
+悬挂路径仍要供给的，是让它成其为自己的部分。gate 的 entry 携带 `resolveGate` 用来校验同进程结算的活值契约，并在投递时把它的 run 释放出 `waiting`。steer 的 entry 携带 body 已消费的段计数，不带载荷地唤醒 body，abort 时以拒绝收场。gate 的超时保持自己的 first-wins 规则：到期时写 `timedout`，再经推送路径同一条严格读取器投递，于是刚结算完却报行仍 pending 的账本会让等待响亮失败，而不是让它永久停放。
 
 `settledOutcome(row)` 是把 run 行译成 `SettledOutcome` 的唯一一处——`done` 带记录的输出，`failed` 与 `cancelled` 带拒绝所报的载荷——而行尚在飞行中时返回 `undefined`。每个读者都走它：`statusFromRow` 把结果投影到公共状态 union（丢掉 `done` 的输出），`run()` 的 attach 分支改问「有没有结果」而不是先测 `isTerminal` 再译一次，`settledResult` 与 attach 轮询把它变成 resolve 或 reject，`terminalRejection` 从它取 cancelled 那一支。`rejectionOf` 一处构造已结算行所报的每个 `EngineRunError`，于是没有读者能与它读到的行不一致。
 

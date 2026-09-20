@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-09-19-daypaw-assembled-boot-shared-scaffold.md
-2026-09-19-daypaw-assembled-boot-shared-scaffold.md: a5b15b1e3ffbfbd5f1d34ee3181d4ba4ca1929cd
-2026-09-19-daypaw-assembled-boot-shared-scaffold.zh.md: ba6bcf211a28688138dfd25f674c9e9addf2ac3f
+2026-09-19-daypaw-assembled-boot-shared-scaffold.md: 0d327ccbc4d93ad373beade993e201d478dfa800
+2026-09-19-daypaw-assembled-boot-shared-scaffold.zh.md: b7026c9e209b639d3f1818e4ca4d840119cf984e

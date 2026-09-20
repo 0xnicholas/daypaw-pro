@@ -20,7 +20,7 @@ ADR 0013 §3 裁定能力底座全开、审批护栏不动，[工单 #103](https
 
 ## 后果
 
-引擎 run agent 的审批闭环全程活了：沙箱升级（`sandbox_permissions` + justification，敏感操作的形态）触发 scoped `approval/request` waterfall——`api-remotes` 桥到网关、浏览器审批板应答的那条缝——并写入回合封闭的 `approval/asked` + `approval/decided` 审计对，供收件箱分组、对话内即时卡与 fork 的审批历史投影读取。`tests/agent-plane.spec.ts` 免 key 地钉住全部环节：boot 真实 bundle 组合（隔离 profile home、web 传输行关闭），断言裸 agent 目录（27 个工具）、工作区内写入不询问、批准路径的 asked/decided 对、悬置等待态、以及拒绝路径的封闭失败与零执行。`tests/roster-coexistence.spec.ts` 钉住组合行态。五个饿着的面与工具域斜杠命令从此在每个 agent（含引擎 run）上都有生产者。针对真实壳与真实模型的一次实走（2026-09-07，工单 #103）在 wire 上走完同一环：模型首次工作区外写入被沙箱拒绝，按规程带升级请求重试，网关的 Remote Event mux 向一个新流代际投递了挂起的 `approval/request` 帧（浏览器重连消费的冷启动重放），经 `$events/result`——「同意」按钮的同一调用——应答后裁定 `allowed-once`，升级写入落地。
+引擎 run agent 的审批闭环全程活了：沙箱升级（`sandbox_permissions` + justification，敏感操作请求）触发 scoped `approval/request` waterfall——`api-remotes` 桥到网关、浏览器审批板应答的那条缝——并写入回合封闭的 `approval/asked` + `approval/decided` 审计对，供收件箱分组、对话内即时卡与 fork 的审批历史投影读取。`tests/agent-plane.spec.ts` 免 key 地钉住全部环节：boot 真实 bundle 组合（隔离 profile home、web 传输行关闭），断言裸 agent 目录（27 个工具）、工作区内写入不询问、批准路径的 asked/decided 对、悬置等待态、以及拒绝路径的封闭失败与零执行。`tests/roster-coexistence.spec.ts` 钉住组合行态。五个饿着的面与工具域斜杠命令从此在每个 agent（含引擎 run）上都有生产者。针对真实壳与真实模型的一次实走（2026-09-07，工单 #103）在 wire 上走完同一环：模型首次工作区外写入被沙箱拒绝，按规程带升级请求重试，网关的 Remote Event mux 向一个新流代际投递了挂起的 `approval/request` 帧（浏览器重连消费的冷启动重放），经 `$events/result`——「同意」按钮的同一调用——应答后裁定 `allowed-once`，升级写入落地。
 
 此变更前以 `standard` preset 组合的存量会话在宿主组合上恢复（preset 服务缺席，session-controller 走裸 setup 回退）；其日志里的 preset 身份陈旧但无害，工具面等价、只差 preset 的 `subagent` 模型路由配置（fork 表面本就无处可设）。与上游 overlay 的差异进一步扩大——fork 在 ADR 0012/0013 裁决之处有意分叉，yml 注释承载一面一行理据，其归宿在 `.agents/notes/implemented/architecture/2026-08-10-host-plane-ownership-after-presets.md`。
 

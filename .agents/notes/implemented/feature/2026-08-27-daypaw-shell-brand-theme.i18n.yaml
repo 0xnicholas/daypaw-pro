@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-27-daypaw-shell-brand-theme.md
-2026-08-27-daypaw-shell-brand-theme.md: 7c89754909b57b07957932fefeec2956603afafb
-2026-08-27-daypaw-shell-brand-theme.zh.md: a9655d795780a62b2fc15e3a4e65fa629d088a04
+2026-08-27-daypaw-shell-brand-theme.md: ff62ac30da1664f1e7b1a895dfae9b362c435d37
+2026-08-27-daypaw-shell-brand-theme.zh.md: 9cead1c5946e8d953651aa15dc4280d636a408e6

@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-每个 fork 自营包都发布过一个 `src/invariant.ts` companion——installer 为空、靠注释说明理由：`packages/daypaw/` 下十一个，外加 `daypaw-skeleton-example`。上游提交 `15f2997bcb` 已把该形态判为反模式并删除 207 个「带解释的空壳」：companion 只有在能对照「可能独立分歧的观测」时才配发布（跨事件协议、事件对权威可变状态、多生产者拼装、他处消费的 durable 数据），而服务存在性、插件效果或纯包理由永远不够格。wayfinder #80 裁决 2 采纳该口径，并要求下次 sync 前完成 fork 侧审计。
+每个 fork 自营包都发布过一个 `src/invariant.ts` companion——installer 为空、靠注释说明理由：`packages/daypaw/` 下十一个，外加 `daypaw-skeleton-example`。上游提交 `15f2997bcb` 已把这种空 installer 文件判为反模式并删除 207 个「带解释的空壳」：companion 只有在能对照「可能独立分歧的观测」时才配发布（跨事件协议、事件对权威可变状态、多生产者拼装、他处消费的 durable 数据），而服务存在性、插件效果或纯包理由永远不够格。wayfinder #80 裁决 2 采纳该口径，并要求下次 sync 前完成 fork 侧审计。
 
 ## 决策
 

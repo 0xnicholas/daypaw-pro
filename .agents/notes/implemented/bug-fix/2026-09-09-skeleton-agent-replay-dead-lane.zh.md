@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-回放以 `packages/examples/daypaw-skeleton/tests/agent.spec.ts` 之名在默认道执行，即金样文件的 `git mv`。它与同目录 `sigkill.spec.ts` 共享执行形态——tsx 源启动子进程、真实 `SIGKILL`、持久化 session log 与台账断言——不需要浏览器引导、不依赖构建产物，且 `docs/testing.md` 本就把包属预期输出指派给 `test`。web-daypaw 车道从此独占 `.golden.ts` 后缀，只载装配浏览器回放。
+回放以 `packages/examples/daypaw-skeleton/tests/agent.spec.ts` 之名在默认道执行，即金样文件的 `git mv`。它与同目录 `sigkill.spec.ts` 一样启动并断言——tsx 源启动、真实 `SIGKILL`、对持久化 session log 与台账断言——不需要浏览器引导、不依赖构建产物，且 `docs/testing.md` 本就把包属预期输出指派给 `test`。web-daypaw 车道从此独占 `.golden.ts` 后缀，只载装配浏览器回放。
 
 三份提交的金样已刷新（`DSH_SNAPSHOT=refresh`），以仓规 canonical packed 夹具布局（`scripts/session-fixture-layout.ts`）落为 `session.v2.jsonl`：按文件名/头版本规则带版本命名、持久化 `seq`/`time` 封套投影去除、chunk 折叠进落定 `assistant/message` 事件的 `stream` 数组、`isSeeded` 头字段。三个场景的事件类型次序此外不变。因 spec 内联钉住 request/header 负载（persona 段、`submit` schema），其比较以新导出的 `projectSessionSnapshot` 组合裸 `normalizeSessionLog`（同出 `dsh-session-snapshot`）——完整的 `normalizeSessionSnapshot` 管线会把负载换成 `{{system}}`/`{{tools}}` 令牌（已登记 `docs/fork/CORE_TOUCHES.md`）。
 

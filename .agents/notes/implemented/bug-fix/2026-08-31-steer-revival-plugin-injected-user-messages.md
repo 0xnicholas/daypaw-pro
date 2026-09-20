@@ -10,7 +10,7 @@ A steerable agent run parked with a recorded-but-undelivered segment never deliv
 
 ## Decision
 
-`userMessageText` accepts only user-sourced messages (`source.kind === 'user'`), so the delivered ordinal counts exactly the messages the body delivered: initial input, RESUME wakes, and steer segments. Producer-injected context (runtime-context snapshots, relays, recalls, tool results) never counts. The message-source discriminated union is the structural marker; counting and delivery read the same field, so no text heuristic or marker message is involved.
+`userMessageText` accepts only user-sourced messages (`source.kind === 'user'`), so the delivered ordinal counts exactly the messages the body delivered: initial input, RESUME wakes, and steer segments. Producer-injected context (runtime-context snapshots, relays, recalls, tool results) never counts. `MessageSourceMap['source'].kind` is the discriminator: counting and delivery both read `source.kind`, so no text heuristic or marker message is involved.
 
 ## Alternatives considered
 

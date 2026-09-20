@@ -10,7 +10,7 @@ fork 的 `durable/*` 私有 Remote 端点一直以裸 `Error` 消息失败：网
 
 ## Decision
 
-唯一闭集 `durable/*` 码表 + 类型化 details，正典声明在 [`@daypaw/engine` `src/failures.ts`](../../../../packages/daypaw/engine/src/failures.ts)。拥有者在失败点经本树的 wire 失败载体 `TypertRemoteFailure` 抛出（网关 `rpcFailure` 原样放行 `.failure`），消费端按 `error.code` 判别、绝不解析消息文本。SDK wire face 把 zod 拒绝收拢为携带 zod issues 的 `durable/input-invalid`；引擎 `startRun`/`steerText` 边界把其余一切 wire-face 拒绝收拢进同一码并保留原消息，手写 face 的诊断因此活在稳定码之下。fixture 失败应答携带相同码、details 与引擎消息原文。sync 载入 `RemoteError` 后，`src/failures.ts` 成为该 map 的 `durable/*` 声明，仅载体类更换——码表与 details 不变。
+唯一闭集 `durable/*` 码表 + 类型化 details，正典声明在 [`@daypaw/engine` `src/failures.ts`](../../../../packages/daypaw/engine/src/failures.ts)。拥有者在失败点经本树的 wire 失败载体 `TypertRemoteFailure` 抛出（网关 `rpcFailure` 原样放行 `.failure`），消费端按 `error.code` 判别、绝不解析消息文本。SDK wire 层把 zod 拒绝收拢为携带 zod issues 的 `durable/input-invalid`；`startRun` 与 `steerText` 方法把 SDK wire 层其余一切拒绝收拢进同一码并保留原消息，手写 face 的诊断因此活在稳定码之下。fixture 失败应答携带相同码、details 与引擎消息原文。sync 载入 `RemoteError` 后，`src/failures.ts` 成为该 map 的 `durable/*` 声明，仅载体类更换——码表与 details 不变。
 
 ## Consequences
 

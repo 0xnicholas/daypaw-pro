@@ -22,7 +22,7 @@ Spec 05 §7 (ruling [#48](https://github.com/0xnicholas/daypaw-pro/issues/48)) r
 - **Ship the density scale as a CSS file in the brand bundle** — rejected: brand values would live in two homes (stylesheet plus theme layer); the override layer keeps one source, applies before the components paint, asserts cleanly in jsdom lanes, and disposes with the plugin fiber.
 - **Mint `--dsw-alias-space-*` names** — rejected: the `--dsw-*` namespace is upstream-owned; upstream minting the same names with different values would collide at the next sync.
 - **Seed the durable preference to light at first boot** — rejected: writes a user-layer override the user never chose, into the settings document shared with the dsh CLI, and races the browser's first read.
-- **Reuse the upstream AppearanceRow through the `settings.general.item` seat** — rejected: that seat carries the dormant upstream General ecosystem; rendering it would pull dev-shell rows into the fork page. The fork row mirrors the language row's select shape instead.
+- **Reuse the upstream AppearanceRow through the `settings.general.item` seat** — rejected: that seat carries the dormant upstream General ecosystem; rendering it would pull dev-shell rows into the fork page. The fork row carries the upstream `AppearanceRow` pattern — a `light`/`dark`/`system` preference store plus an injected `setTheme` — on the fork page's hooks channel instead.
 
 ## Consequences
 

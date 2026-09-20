@@ -15,8 +15,8 @@ advisory coverage 道首次非确定性现红（[#115](https://github.com/0xnich
 
 ## Testing
 
-- `behavior.spec.ts` 新增回归用例：启动引擎、不触碰 `ctx.durable`（空名册形态）、销毁，再断言 ledger 目录在有界窗口内字节稳定且不含 `-wal`/`-shm` 边车。修复前红（目录读空、文件随后出现），修复后绿；窗口只为负观察封界，绝不以时序为断言条件。
-- 浮出的 `agent.spec.ts` 未捕获异常随同步前缀形态消失；`pnpm exec vitest run packages/daypaw/engine packages/daypaw/sdk` 连续三 run 211/211，原失败 spec 在 8 路 CPU 负载下 10 run 全绿。
+- `behavior.spec.ts` 新增回归用例：启动引擎、不触碰 `ctx.durable`（引擎以空名册启动）、销毁，再断言 ledger 目录在有界窗口内字节稳定且不含 `-wal`/`-shm` 边车。修复前红（目录读空、文件随后出现），修复后绿；窗口只为负观察封界，绝不以时序为断言条件。
+- 浮出的 `agent.spec.ts` 未捕获异常随同步前缀次序消失；`pnpm exec vitest run packages/daypaw/engine packages/daypaw/sdk` 连续三 run 211/211，原失败 spec 在 8 路 CPU 负载下 10 run 全绿。
 
 ## Alternatives considered
 

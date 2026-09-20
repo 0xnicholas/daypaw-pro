@@ -24,4 +24,4 @@ Status: implemented
 
 - 上游同步仪式（ADR 0001）每次 sync 重放该改动；丢失会大声失败——`@daypaw/cli` 对没有该导出的 `dsh-app-boot` 无法通过类型检查——漂移在构建期暴露，绝不静默。
 - 发布的 CLI tarball 以上游名义打包 fork 改过的 `@deepseek-ai/dsh-app-boot`；`bundleDependencies` 使其只存在于 tarball 内部，不会与消费者另行安装的上游 npm 副本冲突。模板播种 note 的零 core touch 表述改为指向本 note 记录的例外。
-- 治愈逻辑的后续消费方各自传 `binName` 与 `manages`；消息契约在既有两侧被逐字节钉住，改文案会当场红两个测试。
+- 治愈逻辑的后续消费方各自传 `binName` 与 `manages`；两条错误文案在各自既有侧被逐字节钉住，改文案会当场红两个测试。
