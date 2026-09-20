@@ -129,6 +129,7 @@ describe('registry rows', () => {
     '| `packages/util/package-manifest/src/types.ts` + `packages/client/modules/src/client/manifest.ts`（连带 `tests/{loader,node-half}.client.spec.ts`、`README(.zh)`、`docs/subsystems/client-modules.md(.zh)`） | boot wire 增行 config 通道 | why | 可提 | #105 |',
     '| ~~`packages/boot/app-boot/src/profile.ts`（#64）~~ | 已消解 | — | ~~#64~~ | 2026-08-28 sync |',
     '| `packages/client/ui-theme/src/theme-settings.ts`（连带 tests/{theme,boot-theme}.client.spec.ts） | `DEFAULT_PREFERENCE` light | why | 否 | #61 |',
+    '| `tsdown.config.ts` | entry 白名单增 agents-dir | why | 否 | #66 |',
   ].join('\n')
   const present = new Set([
     'packages/util/package-manifest/src/types.ts',
@@ -139,6 +140,7 @@ describe('registry rows', () => {
     'docs/subsystems/client-modules.md',
     'packages/client/ui-theme/src/theme-settings.ts',
     'packages/client/ui-theme/tests/boot-theme.client.spec.ts',
+    'tsdown.config.ts',
   ])
   const entries = parseCoreTouches(registry, path => present.has(path))
 
@@ -171,6 +173,10 @@ describe('registry rows', () => {
       .toEqual(['#105'])
     expect(registryEntriesFor('packages/client/modules/README.i18n.yaml', entries)).toHaveLength(1)
     expect(registryEntriesFor('packages/client/other.ts', entries)).toEqual([])
+  })
+
+  it('names a root file the row registers', () => {
+    expect(registryEntriesFor('tsdown.config.ts', entries).map(entry => entry.batch)).toEqual(['#66'])
   })
 
   it('classifies a registered file as a registry replay and an unknown one as a gap', () => {

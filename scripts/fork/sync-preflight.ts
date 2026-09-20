@@ -262,6 +262,7 @@ interface GitResult {
 
 const isPathToken = (token: string): boolean => REPO_TOP_LEVELS.some(level => token.startsWith(level))
   || ROOT_FILES.includes(token as typeof ROOT_FILES[number])
+  || /^[\w.-]+\.(?:ts|tsx|js|mjs|cjs|json|ya?ml|md|sh)$/.test(token)
 
 /** Path-like mentions in a registry cell: an extension-bearing token, or a bare document name. */
 const PATH_LIKE = /[A-Za-z0-9_][A-Za-z0-9_./{},()-]*\.(?:ts|tsx|json|ya?ml|md|sh|mjs|cjs)|(?:README|AGENTS|CLAUDE)(?:\([^()]*\))?/g
