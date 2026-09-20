@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-`packages/daypaw/web-app/cordis.patch.yml` 两行均收且启用：`ui-attachment` 置于 `ui-chat` 旁，紧邻其槽主 `ui-conversation`、`ui-chat`、`ui-tool` 与 `ui-trajectory`；`ui-reference` 置于 `ui-subagent` 后，镜像上游位次。两包入 bundle manifest 闭包使 `verify-cordis-config` 可解析，input-trigger 的 roster 注释随之改列全部三个引用源（`ui-skill`、`ui-subagent`、`ui-reference`）。收行决策由组合 roster spec 钉住（`packages/daypaw/web-app/tests/roster-coexistence.spec.ts`，行映射助手与 turn-outline 的 describe 共用）；激活由 assembled 车道钉住（`pnpm run test:web:daypaw`）：真实 bundle 的两个 client 半边在 fork 图中引导，且已提交的 goldens 不变——因为今天没有 fork 表面渲染这两个插件占据的槽：fork 的 ConversationView 与输入座遮蔽上游 composer 与聊天视图。这与 [turn-outline 收行决策](2026-09-06-daypaw-turn-outline-roster.zh.md)同构：能力先行上网，第一个渲染它的表面（排队中的候选是 #102 轻对话入口）无需改 roster 即可绑定。
+`packages/daypaw/web-app/cordis.patch.yml` 两行均收且启用：`ui-attachment` 置于 `ui-chat` 旁，紧邻其槽主 `ui-conversation`、`ui-chat`、`ui-tool` 与 `ui-trajectory`；`ui-reference` 置于 `ui-subagent` 后，镜像上游位次。两包入 bundle manifest 闭包使 `verify-cordis-config` 可解析，input-trigger 的 roster 注释列全部三个引用源（`ui-skill`、`ui-subagent`、`ui-reference`）。收行决策由组合 roster spec 钉住（`packages/daypaw/web-app/tests/roster-coexistence.spec.ts`，行映射助手与 turn-outline 的 describe 共用）；激活由 assembled 车道覆盖（`pnpm run test:web:daypaw`）；没有 fork 表面渲染这两个插件占据的槽，已提交的 goldens 因此不变——fork 的 ConversationView 与输入座遮蔽上游 composer 与聊天视图。这与 [turn-outline 收行决策](2026-09-06-daypaw-turn-outline-roster.zh.md)同构：能力先行上网，第一个渲染它的表面（排队中的候选是 #102 轻对话入口）无需改 roster 即可绑定。
 
 ## Alternatives considered
 
@@ -22,4 +22,4 @@ Status: implemented
 
 ## Consequences
 
-代价：boot 图多两个 client bundle；两行 roster 的可见收益要等一个 fork 尚未渲染的 composer 表面。换来：任何渲染上游会话槽（composer 图列、消息图、trajectory/工具图廊）或 `@` 触发机制的表面，无需再动组合即得完整附件表现与文件/会话候选；两包的上游修复（alpha.5 附件卡窗口显示它们仍在活跃维护）随 sync 白拿。spec 05 §4 的簇计数不动：它钉住的是已关闭的 #36/#37 复用边界裁决，本决策出自其后的 ADR 0013；`ui-attachment` 本就在整包复用簇，`ui-reference` 作为 #37 之后的行入册，其记录即本 note。
+代价：boot 图多两个 client bundle；两行 roster 的可见收益要等一个 fork 尚未渲染的 composer 表面。换来：任何渲染上游会话槽（composer 图列、消息图、trajectory/工具图廊）或 `@` 触发机制的表面，无需再动组合即得完整附件表现与文件/会话候选；两包的上游修复（alpha.5 附件卡窗口显示它们仍在活跃维护）随 sync 白拿。spec 05 §4 的簇计数不动：ADR 0013 把这两行置于 #36/#37 复用边界裁决之外——`ui-attachment` 在整包复用簇内，`ui-reference` 入册而不改变那些计数。

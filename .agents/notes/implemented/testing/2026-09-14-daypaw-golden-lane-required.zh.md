@@ -11,7 +11,7 @@ Status: implemented
 ## Decision
 
 - 车道以 `daypaw-web-goldens` gate 挂进必需的 `ci-daypaw-hosted` 聚合：`pnpm run test:web:daypaw:built`、`needs: ['build']`——golden 读的是聚合 build gate 产出的 `lib/client.js` 构建束。工作流无需加步：聚合自带该 gate；其头注的 gate 枚举记录了此次增补。上游 `ci-primary` 聚合不动。
-- 按车道拆分规则做时序归属：组装 golden 是真实构建 roster 在 jsdom 里对免 key fixture transport 的 boot——免 key、对已提交金样的确定性比对——不是测宿主的时敏测量，故设门而非 advisory。默认运行（不设 `DSH_SNAPSHOT`）即比对判定；record/refresh 仍是显式本地工作流。判定面已验证：撤掉 `resources` roster 行，8 个 golden 文件全红；恢复后车道全绿（8 文件 / 9 用例，串行，8 核开发机约 40–50 秒）。
+- 车道是确定性的：不设 `DSH_SNAPSHOT` 即对已提交金样比对，且 `resources` roster 行承重——撤掉它 8 个 golden 文件全红。车道串行运行，8 文件 / 9 用例，开发机约 40–50 秒。
 
 ## Alternatives considered
 

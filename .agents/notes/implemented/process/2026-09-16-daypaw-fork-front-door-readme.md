@@ -6,14 +6,14 @@ English | [中文](2026-09-16-daypaw-fork-front-door-readme.zh.md)
 
 ## Problem
 
-The repository front door on GitHub is `README.md`, an upstream-owned bilingual pair that introduces DeepSeek Harness only. A visitor to the fork learns nothing about daypaw from it, and the fork corpus that does describe daypaw (`CONTEXT.md`, `docs/adr/`, `docs/spec/`, `docs/fork/`) is Chinese-first with no entry point visible from the front door. The `AGENTS.md` fork-layer note carries pointers, but it addresses coding agents, not human visitors.
+The repository front door on GitHub is `README.md`, an upstream-owned bilingual pair that introduces DeepSeek Harness only. A visitor to the fork learns nothing about daypaw from it, and The fork corpus describing daypaw (`CONTEXT.md`, `docs/adr/`, `docs/spec/`, `docs/fork/`) is Chinese-first and has no entry point visible from the repository landing page, and the `AGENTS.md` fork-layer note's pointers address coding agents, not human visitors.
 
 ## Decision
 
 - The fork front door is `README-daypaw.md`, a new fork-only, Chinese-only root file: a positioning statement, a package-family table, the fork/upstream relationship, verified quick-start commands, and navigation links. It restates no glossary, ADR, or spec content — every fact keeps its existing home and the page links to it.
 - The file stays outside every documentation gate by construction. The pairing gate's discovery matches README artifacts whose entire stem is `readme` (`README_ARTIFACT` in [scripts/translation-pairing.ts](../../../../scripts/translation-pairing.ts); scope rules owned by the [bilingual pairing gate](2026-07-02-bilingual-docs-and-pairing-gate.md)), so `README-daypaw.md` is out of pairing scope without a manifest exclusion, adds no core touch, and carries no word-count ceiling.
 - Discoverability rides the already-registered `AGENTS.md` fork-layer core touch: the fork-layer note gains a `README-daypaw.md` pointer, and the `AGENTS.md` row in `docs/fork/CORE_TOUCHES.md` states the extension.
-- Every command and default the page states was checked against the checkout (`scripts/dev-daypaw.sh`, root `package.json`); the page claims nothing that was not read from those sources.
+- The page's commands and defaults come from `scripts/dev-daypaw.sh` and the root `package.json`, which are their sources of record.
 
 ## Alternatives considered
 

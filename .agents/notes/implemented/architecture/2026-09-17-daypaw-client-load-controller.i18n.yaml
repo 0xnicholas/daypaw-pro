@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-17-daypaw-client-load-controller.md
-2026-09-17-daypaw-client-load-controller.md: 36ba61d5a4e09ab3f9bc7d53a3d7f2ea4e4568c2
-2026-09-17-daypaw-client-load-controller.zh.md: 3f764791a633b8885a9a4e6bc507227a41bb1f80
+2026-09-17-daypaw-client-load-controller.md: 7555c9ac19bb57edbaea108f90462b13e1008559
+2026-09-17-daypaw-client-load-controller.zh.md: e6e7598a1c09ffbf2efbd07240f925de46029b10

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-19-daypaw-workflow-rows-in-launcher.md
-2026-09-19-daypaw-workflow-rows-in-launcher.md: e764fa71ba7605d6ddb1d314aa71943c89b8d2a1
-2026-09-19-daypaw-workflow-rows-in-launcher.zh.md: de1fc1f3881c5f481575f13d606dfc205bc3c7f8
+2026-09-19-daypaw-workflow-rows-in-launcher.md: 5968ea64d87fc7096599dd26cce39ce8cfae4115
+2026-09-19-daypaw-workflow-rows-in-launcher.zh.md: 71c4b7c4e055f59c65cb228823ee54c65b80d7c5

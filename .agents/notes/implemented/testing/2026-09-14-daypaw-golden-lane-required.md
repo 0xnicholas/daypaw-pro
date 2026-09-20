@@ -11,7 +11,7 @@ No CI lane ran the daypaw assembled golden lane (`vitest.web.daypaw.config.ts`, 
 ## Decision
 
 - The lane joins the required `ci-daypaw-hosted` aggregate as the `daypaw-web-goldens` gate: `pnpm run test:web:daypaw:built` with `needs: ['build']`, because the goldens read the built `lib/client.js` bundles the aggregate's build gate produces. The workflow needs no new step — the aggregate carries the gate; its header comment's gate enumeration records the addition. Upstream's `ci-primary` aggregate stays untouched.
-- Timing classification per the lane split's rule: the assembled goldens are jsdom boots of the real built roster against the keyless fixture transport — keyless, deterministic compare against committed goldens — not timing-sensitive host measurements, so they gate rather than advise. The default run (no `DSH_SNAPSHOT`) is the compare judgment; record/refresh stay explicit local workflows. Verified at the judgment face: with the `resources` roster row removed, all 8 golden files fail; restored, the lane is green (8 files / 9 tests, serial, ~40–50 s on an 8-core dev host).
+- The lane is deterministic: it compares against committed goldens with no `DSH_SNAPSHOT`, and the `resources` roster row is load-bearing — dropping it fails all 8 golden files. The lane runs serially, 8 files / 9 tests, ~40–50 s on a dev host.
 
 ## Alternatives considered
 

@@ -20,5 +20,5 @@ steerable agent run 停车时已记录未投递的 segment,进程死亡→复活
 
 ## Consequences
 
-- 回归测试:停车 → 向活会话注入一条 plugin 源快照 → 杀进程 → 死亡期间记录 segment → 断言复活投递(无修复时红:停车的复活永不唤醒)。
+- 回归测试：停车 → 向活会话注入一条 plugin 源快照 → 杀进程 → 死亡期间记录 segment；复活随即投递该 segment（无修复时，停车的复活永不唤醒）。
 - 旧计数下已搁浅的 run 不会自愈(其日志中的序号已经错了);steer 一次推到终态,或 rerun。

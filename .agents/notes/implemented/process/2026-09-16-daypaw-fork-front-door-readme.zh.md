@@ -6,14 +6,14 @@ Status: implemented
 
 ## 问题
 
-仓库在 GitHub 上的前门是 `README.md`——一份上游所有的双语配对文件，只介绍 DeepSeek Harness。fork 的访客从中读不到任何 daypaw 信息；真正描述 daypaw 的 fork 语料（`CONTEXT.md`、`docs/adr/`、`docs/spec/`、`docs/fork/`）中文优先，且没有任何从前门可见的入口。`AGENTS.md` fork 层注记带有指针，但面向编码 agent，不面向人类访客。
+仓库在 GitHub 上的前门是 `README.md`——一份上游所有的双语配对文件，只介绍 DeepSeek Harness。fork 的访客从中读不到任何 daypaw 信息；真正描述 daypaw 的 fork 语料（`CONTEXT.md`、`docs/adr/`、`docs/spec/`、`docs/fork/`）中文优先，且从仓库落地页看不到任何入口；`AGENTS.md` fork 层注记的指针面向编码 agent，不面向人类访客。
 
 ## 决策
 
 - fork 前门是 `README-daypaw.md`——新的 fork 自有、中文单语根文件：定位陈述、包族速览表、fork 与上游的关系、经核验的快速上手命令与导览链接。它不复述词汇表、ADR 或 spec 的内容——每个事实留在原家，本页只做链接。
 - 该文件按构造就处于所有文档门之外。配对门的发现只匹配整个词干为 `readme` 的 README 工件（[scripts/translation-pairing.ts](../../../../scripts/translation-pairing.ts) 的 `README_ARTIFACT`；范围规则归[双语文档配对门](2026-07-02-bilingual-docs-and-pairing-gate.zh.md)所有），因此 `README-daypaw.md` 无需 manifest 排除即落在配对范围外，不新增 core-touch，也没有词数上限。
 - 可发现性搭载已登记的 `AGENTS.md` fork 层 core-touch：fork 层注记增加 `README-daypaw.md` 指针，`docs/fork/CORE_TOUCHES.md` 的 `AGENTS.md` 行如实登记该扩展。
-- 页面陈述的每条命令与默认值都对照检出内容核验过（`scripts/dev-daypaw.sh`、根 `package.json`）；页面不声称任何未从这些来源读到的东西。
+- 页面的命令与默认值来自 `scripts/dev-daypaw.sh` 与根 `package.json`，它们即这些内容的权威来源。
 
 ## 备选方案
 

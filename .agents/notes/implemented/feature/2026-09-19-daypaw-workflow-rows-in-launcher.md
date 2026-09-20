@@ -8,7 +8,7 @@ English | [中文](2026-09-19-daypaw-workflow-rows-in-launcher.zh.md)
 
 The engine registers two definition families, and both are first-class everywhere except the launcher: `durable/listDefinitions` returns agents and workflows alike, `durable/startRun` takes either, and the board and detail column already render workflow runs. A roster narrowed to `kind === 'agent'` leaves a workspace's `daypaw/agents/*.mjs` workflow definitions without a product entry, so a workflow load cannot start at all ([ticket #127](https://github.com/0xnicholas/daypaw-pro/issues/127)).
 
-Ruling #65 item 6 fixes the roster as the registry itself. The submit sequence, not the roster, is what blocks a workflow row: it mints a run id, calls `durable/startRun`, and then waits for the run's session twin to reach the sessions list, because an agent run's session identity is its runId and `sessions.open` refuses an unlisted id. A workflow run has no session (ADR 0016), so that wait ends at its bound and reports a generic failure for a run the engine started correctly.
+Ruling #65 item 6 fixes the roster as the registry itself. The submit sequence treats a listed session twin as its success condition: an agent run's session identity is its runId and `sessions.open` refuses an unlisted id, while a workflow run has no session (ADR 0016), so that wait exhausts its bound and reports a generic failure for a run the engine started correctly.
 
 Every workflow definition carries `inputKind: null`: only the agent compile path attaches a wire face. The renderer and `composeInput` read that `null` differently — a `?? 'text'` fallback renders the free-text box while the sender treats the draft as JSON — so a workflow row's two sides disagree about the surface.
 
@@ -19,7 +19,7 @@ Every workflow definition carries `inputKind: null`: only the agent compile path
 - **The submit answers with what to open, decided by the definition kind.** `NewTaskOutcome` is either the created agent run's session (after the twin wait) or the created workflow run's id (no twin exists to await). The dialog routes an agent outcome to `openTask` and a workflow outcome to `openRun`.
 - **The inbox owns both openings.** `InboxNewTaskDialogOwnerProps` carries `openRun` beside `openTask` with the same three effects: kick the board refetch, dismiss the dialog, and select what was created — `{ kind: 'run' }` for a session-less run, which the selection model and the detail column render.
 - **The picker copy names task types, not agents.** The selector, its empty state, the JSON placeholder, and the load-failure line read neutral task-type wording in both dictionaries, under the typed keys `dialog.type.*`.
-- **The Agents catalog lists agents only.** The catalog page shows the agent directory; the launcher starts work of either family. Both read the same `listDefinitions` view, and the split is stated in spec 05 §5 rather than implied by a shared projection.
+- **The Agents catalog lists agents only.** The catalog page shows the agent directory; the launcher starts work of either family. Both read the same `listDefinitions` view: the launcher lists every definition, and the Agents catalog lists only the `kind === 'agent'` rows.
 
 ## Alternatives considered
 
@@ -35,5 +35,5 @@ Every workflow definition carries `inputKind: null`: only the agent compile path
 
 - A workflow definition in the workspace roster starts like an agent definition — minted run id, inline failures, board refetch — and the created run opens as the run itself.
 - The engine's HITL gate still has no product resolver. `resolveGate` is a host method, not a `@Remote` endpoint, so a real workflow's `ctx.waitFor` reaches its timeout branch unless host code settles it. The first real load records that as a finding rather than a defect of this change.
-- Copy changed on the new-task dialog; the component snapshot carries the new wording, and the locale key set moved with it.
+- The new-task dialog's copy uses the `dialog.type.*` keys; the component snapshot and the locale key set cover that copy.
 - Coverage: the store spec asserts that the roster carries every definition and that a workflow submit resolves without waiting for a session twin; the dialog spec asserts the workflow row's JSON surface and the `openRun` hand-off; the nav spec's owner-contract case asserts both openings.

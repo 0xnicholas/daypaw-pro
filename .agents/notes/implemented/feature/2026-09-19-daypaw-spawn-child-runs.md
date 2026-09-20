@@ -6,13 +6,13 @@ English | [中文](2026-09-19-daypaw-spawn-child-runs.zh.md)
 
 ## Problem
 
-`ctx.spawn` was the one primitive ADR 0003's five-member family left undesigned — ADR 0010's child-run composition covers the awaited form, and the primitive's compiled face belongs to the SDK ([ticket #125](https://github.com/0xnicholas/daypaw-pro/issues/125)).
+`ctx.spawn` is the fifth member of ADR 0003's primitive family; ADR 0010's child-run composition covers the awaited form, and the primitive's compiled face belongs to the SDK ([ticket #125](https://github.com/0xnicholas/daypaw-pro/issues/125)).
 
 The gap was narrower than it looked. Child runs already existed in two awaited forms (`ctx.agent`, and the bare `run()` inside `ctx.step`), the ledger already recorded `parent_run_id` / `parent_step_key`, `runLineage` already read both, and the boot scan already revived every unfinished run without asking who its parent was. Fire-and-forget even ran: start a child inside a `ctx.step` and drop the handle — both layers mark the result promise handled, so nothing crashes.
 
 The primitive carries three requirements: an API that says "detach this work" rather than "forget to await"; a recorded dispatch fact presentation can read, since spec 05 §2 promises spawned children their own section in the parent's detail; and lifecycle decisions the awaited forms never forced — what a parent's end does to a child still running, what a child's failure does to its parent, and how many children an author may start at once.
 
-Two adjacent defects belong to the same change. The reserved step-family keys counted flat calls per body execution, but a re-drive skips the `fn` of every completed step — so a primitive called after a skipped step re-derived an *earlier* occurrence: a spawn attached to the wrong child, and a sleep read an already-fired timer row and returned through a wake it never took. And cancelling a parent never touched its children: a run the operator cancelled could leave a child agent burning tokens, revived forever by the boot scan and unreachable from the UI, because the board hides child runs and `cancel` on a terminal parent returned early.
+Two adjacent defects belong to the same change. The reserved step-family keys count flat calls per body execution, while a re-drive skips the `fn` of every completed step: a primitive called after a skipped step derives an *earlier* occurrence's key — a spawn attached to the wrong child, and a sleep reading an already-fired timer row and returning through a wake it never took. And cancelling a parent leaves its children running: a cancelled run's child agent keeps burning tokens, is revived forever by the boot scan, and is unreachable from the UI, because the board hides child runs and `cancel` on a terminal parent returns early.
 
 ## Decision
 

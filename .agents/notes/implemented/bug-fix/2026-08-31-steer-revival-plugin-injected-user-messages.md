@@ -20,5 +20,5 @@ A steerable agent run parked with a recorded-but-undelivered segment never deliv
 
 ## Consequences
 
-- The regression test parks a run, injects a plugin-sourced snapshot into the live session, kills the process, records a segment while dead, and asserts the revival delivers it (red without the fix: the parked revival never wakes).
+- The regression test parks a run, injects a plugin-sourced snapshot into the live session, kills the process, and records a segment while dead; revival then delivers that segment (without the fix, the parked revival never wakes).
 - Runs stranded under the old counting stay stranded (their ordinals are already wrong in the log); steer them once to a terminal state or rerun.

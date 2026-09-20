@@ -6,13 +6,13 @@ Status: implemented
 
 ## Problem
 
-`ctx.spawn` 是 ADR 0003 五原语家族里唯一未定语义的一个——ADR 0010 的子 run 组合缝只覆盖等待式形态，原语的编译面归 SDK（[ticket #125](https://github.com/0xnicholas/daypaw-pro/issues/125)）。
+`ctx.spawn` 是 ADR 0003 五原语家族的第五个成员；ADR 0010 的子 run 组合缝覆盖等待式形态，原语的编译面归 SDK（[ticket #125](https://github.com/0xnicholas/daypaw-pro/issues/125)）。
 
 缺口比看上去窄。子 run 早已有两种等待式形态（`ctx.agent` 与 `ctx.step` 内裸 `run()`），ledger 早已记 `parent_run_id` / `parent_step_key`，`runLineage` 早已读这两者，boot 扫描早已复活每个未完 run 且不问其父是谁。火后不管甚至已经能跑：在 `ctx.step` 里启动子 run 并丢弃 handle——两层都已标记 result 承诺为已处理，不会崩。
 
 原语背负三件要求：一个说「把这活分离出去」而不是「忘了 await」的 API；一份呈现层能读的派发事实（spec 05 §2 承诺 spawn 子在父详情里单列一节）；以及等待式形态从未逼出的生命周期决定——父的终局对仍在跑的子意味着什么、子的失败对父意味着什么、作者一次能起多少个。
 
-另有两处相邻缺陷同属这一改动。保留的 step 族键按每次 body 执行的平面调用计数，而重驱动会跳过每个已完成步的 `fn`——于是被跳过的步之后调用的原语会重新派生**更早**的序号：spawn 会 attach 到错误的子，sleep 会读到已 fired 的 timer 行、穿过一次它从未经历过的唤醒而返回。而取消父从不触碰子：操作者取消的 run 可能留下一个仍在烧 token 的子 agent，被 boot 扫描永远复活，且从 UI 不可达——看板隐藏子 run，落在已终态父上的 `cancel` 提前返回。
+另有两处相邻缺陷同属这一改动。保留的 step 族键按每次 body 执行的平面调用计数，而重驱动会跳过每个已完成步的 `fn`：被跳过的步之后调用的原语会派生**更早**一次调用的键——spawn attach 到错误的子，sleep 读到已 fired 的 timer 行、穿过一次它从未经历过的唤醒而返回。而取消父会留下运行中的子：已取消 run 的子 agent 继续烧 token，被 boot 扫描永远复活、且从 UI 不可达，因为看板隐藏子 run、落在已终态父上的 `cancel` 提前返回。
 
 ## Decision
 

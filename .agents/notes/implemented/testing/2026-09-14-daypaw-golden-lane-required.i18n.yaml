@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-09-14-daypaw-golden-lane-required.md
-2026-09-14-daypaw-golden-lane-required.md: c051654060dcc54801ee1c50529ae1616aa78b63
-2026-09-14-daypaw-golden-lane-required.zh.md: 24659bb3f8d3c983f3c13b1d29e405f20f1c4fda
+2026-09-14-daypaw-golden-lane-required.md: 8bc8921b9bb8d36ba869ee0338a79a08b554a147
+2026-09-14-daypaw-golden-lane-required.zh.md: 9f6c40aee4a3818a1c8af3d4f8afbab57a59f97b
