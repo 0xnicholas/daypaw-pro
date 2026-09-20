@@ -12,7 +12,7 @@ Status: implemented
 
 `ModelRoute.reasoningEffort?: ReasoningEffortId` 走编译 body 已安装的模型选路面——该选路面持有请求档、不保留继承档（agent options 的档会被缺席的选路档剥除），是唯一持有者。`LlmRuntime` 按适配器声明集校验档位,不支持的档每请求 loud 失败。未声明保持 provider 配置/默认行为。
 
-引擎私有的 cancel-run 抽取转为公有 `cancel(runId, cause?)`:先落带 cause 的终态 `cancelled` 行,pending gate 结算 cancelled,然后 driver abort。对终态 run 幂等——请求的后置条件已成立——但 abort 永远执行,因为终态写入与 abort 之间的故障可能留下越过终态行的滞留 driver(故障注入套件钉住此点)。未知 run id loud 失败。服务以 `@Remote('cancel')` 暴露,wire-contract spec 经活网关取消一个 gate 等待中的 run。
+引擎暴露 `cancel(runId, cause?)`:先落带 cause 的终态 `cancelled` 行,pending gate 结算 cancelled,driver 随后 abort。对终态 run 幂等——请求的后置条件已成立——但 abort 永远执行:终态写入与 abort 之间的故障可能留下越过终态行的滞留 driver。未知 run id loud 失败。服务以 `@Remote('cancel')` 暴露,接受 gate 等待中 run 的 id。
 
 ## Alternatives considered
 

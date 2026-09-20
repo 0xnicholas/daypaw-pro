@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-14-durable-engine-dispose-awaits-ledger-open.md
-2026-09-14-durable-engine-dispose-awaits-ledger-open.md: eee263f2f72b913414f8683c35428c6727d69b3a
-2026-09-14-durable-engine-dispose-awaits-ledger-open.zh.md: a1e266eba4fb466c52a38803c244e65914e92fff
+2026-09-14-durable-engine-dispose-awaits-ledger-open.md: af05bcd91778bc09d5912cc378e2a6e3df2525ac
+2026-09-14-durable-engine-dispose-awaits-ledger-open.zh.md: 698be5c9a92a4e7a2e1ec9b213bd23b9f5aa06b0
