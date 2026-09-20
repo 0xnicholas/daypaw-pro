@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-19-daypaw-spawn-child-runs.md
-2026-09-19-daypaw-spawn-child-runs.md: ff7d7f5144f1c8c9e35a776d7ce4da76998eba21
-2026-09-19-daypaw-spawn-child-runs.zh.md: afd804fc1ec226bcbb2982964bef4c41f0e4892c
+2026-09-19-daypaw-spawn-child-runs.md: 7755f80e2892eb4017aac641ade50c57a9f637ed
+2026-09-19-daypaw-spawn-child-runs.zh.md: f8c5581c5355dcb1feca21a1248245217ce9d51b
