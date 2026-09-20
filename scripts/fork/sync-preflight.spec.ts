@@ -10,13 +10,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  classifyConflict,
   computeRosterDelta,
   entryPaths,
+  expandBraces,
   isForkOwnedPath,
+  packageRootOf,
   parseBundleRows,
   parseCheckpointUpstreamSha,
+  parseCoreTouches,
   parseNameStatus,
+  registryEntriesFor,
   renderSyncPreflight,
+  stripQualifier,
   type PreflightReport,
 } from './sync-preflight.ts'
 
@@ -116,6 +122,67 @@ describe('computeRosterDelta', () => {
   })
 })
 
+describe('registry rows', () => {
+  const registry = [
+    '| 文件 | 改动 | 原因 | 上游 PR 候选？ | 登记批次 |',
+    '|---|---|---|---|---|',
+    '| `packages/util/package-manifest/src/types.ts` + `packages/client/modules/src/client/manifest.ts`（连带 `tests/{loader,node-half}.client.spec.ts`、`README(.zh)`、`docs/subsystems/client-modules.md(.zh)`） | boot wire 增行 config 通道 | why | 可提 | #105 |',
+    '| ~~`packages/boot/app-boot/src/profile.ts`（#64）~~ | 已消解 | — | ~~#64~~ | 2026-08-28 sync |',
+    '| `packages/client/ui-theme/src/theme-settings.ts`（连带 tests/{theme,boot-theme}.client.spec.ts） | `DEFAULT_PREFERENCE` light | why | 否 | #61 |',
+  ].join('\n')
+  const present = new Set([
+    'packages/util/package-manifest/src/types.ts',
+    'packages/client/modules/src/client/manifest.ts',
+    'packages/client/modules/tests/loader.client.spec.ts',
+    'packages/client/modules/tests/node-half.client.spec.ts',
+    'packages/client/modules/README.md',
+    'docs/subsystems/client-modules.md',
+    'packages/client/ui-theme/src/theme-settings.ts',
+    'packages/client/ui-theme/tests/boot-theme.client.spec.ts',
+  ])
+  const entries = parseCoreTouches(registry, path => present.has(path))
+
+  it('expands brace globs into the files they name', () => {
+    expect(expandBraces('tests/{loader,node-half}.client.spec.ts')).toEqual([
+      'tests/loader.client.spec.ts',
+      'tests/node-half.client.spec.ts',
+    ])
+  })
+
+  it('drops the translated-twin qualifier and resolves the path it qualifies', () => {
+    expect(stripQualifier('README(.zh)')).toBe('README')
+    expect(packageRootOf('packages/client/modules/src/client/manifest.ts')).toBe('packages/client/modules')
+    expect(entries[0]?.paths).toEqual([
+      'packages/util/package-manifest/src/types.ts',
+      'packages/client/modules/src/client/manifest.ts',
+      'docs/subsystems/client-modules.md',
+      'packages/client/modules/tests/loader.client.spec.ts',
+      'packages/client/modules/tests/node-half.client.spec.ts',
+      'packages/client/modules/README.md',
+    ])
+  })
+
+  it('answers a resolved row with no replay', () => {
+    expect(registryEntriesFor('packages/boot/app-boot/src/profile.ts', entries)).toEqual([])
+  })
+
+  it('answers a translated twin with its English row', () => {
+    expect(registryEntriesFor('packages/client/modules/README.zh.md', entries).map(entry => entry.batch))
+      .toEqual(['#105'])
+    expect(registryEntriesFor('packages/client/modules/README.i18n.yaml', entries)).toHaveLength(1)
+    expect(registryEntriesFor('packages/client/other.ts', entries)).toEqual([])
+  })
+
+  it('classifies a registered file as a registry replay and an unknown one as a gap', () => {
+    expect(classifyConflict('packages/client/modules/src/index.ts', entries).kind).toBe('unregistered')
+    expect(classifyConflict('packages/client/ui-theme/src/theme-settings.ts', entries).kind).toBe('registry')
+    expect(classifyConflict('packages/client/modules/README.i18n.yaml', entries).kind).toBe('pairing')
+    expect(classifyConflict('pnpm-lock.yaml', entries).kind).toBe('lockfile')
+    expect(classifyConflict('docs/config-catalog.md', entries).kind).toBe('generated')
+    expect(classifyConflict('packages/client/connection/src/client/fixture.ts', entries).kind).toBe('decision')
+  })
+})
+
 describe('renderSyncPreflight', () => {
   let root: string
 
@@ -143,6 +210,11 @@ describe('renderSyncPreflight', () => {
     git('init', '-b', 'main')
     git('config', 'user.email', 'preflight@example.test')
     git('config', 'user.name', 'preflight')
+    write('docs/fork/CORE_TOUCHES.md', [
+      '| 文件 | 改动 | 原因 | 上游 PR 候选？ | 登记批次 |',
+      '|---|---|---|---|---|',
+      '| `packages/client/web/src/shared.ts`（连带 `tests/shared.spec.ts`） | fork 行 | why | 否 | #1 |',
+    ].join('\n'))
   })
 
   afterEach(() => {
@@ -225,6 +297,12 @@ describe('renderSyncPreflight', () => {
     expect(report.roster.disabledIdsRemoved).toEqual(['old-disabled'])
     expect(report.hazards.sessionFormatVersion).toEqual({ base: '3', head: '4' })
     expect(report.hazards.fixtureFileDeleted).toBe(true)
+    expect(report.replayPlan).toContainEqual({
+      path: 'packages/client/web/src/shared.ts',
+      kind: 'registry',
+      instruction: '重放登记行（#1）：fork 行',
+    })
+    expect(report.replayPlan.find(step => step.path === 'packages/gone/package.json')?.kind).toBe('unregistered')
   })
 
   it('renders the text report when --json is absent', () => {
@@ -234,6 +312,7 @@ describe('renderSyncPreflight', () => {
     const text = renderSyncPreflight(['--head', 'HEAD'], root)
     expect(text).toContain('sync preflight — daypaw-sync/2026-01-01')
     expect(text).toContain('## conflicting files')
+    expect(text).toContain('## replay plan')
     expect(text.endsWith('\n')).toBe(true)
   })
 

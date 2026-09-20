@@ -8,14 +8,51 @@
 
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { resolve } from 'node:path'
+import { resolve, join } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 
-const FORMAT_VERSION = 1
+const FORMAT_VERSION = 2
 const MAX_GIT_OUTPUT = 256 * 1024 * 1024
 const UPSTREAM_WEB_PATCH = 'packages/bundle/web-app/cordis.patch.yml'
 const FORK_WEB_PATCH = 'packages/daypaw/web-app/cordis.patch.yml'
+const CORE_TOUCHES = 'docs/fork/CORE_TOUCHES.md'
 const NOTHING = ''
+
+/** Repository-relative path prefixes that make a backticked token a path. */
+const REPO_TOP_LEVELS = [
+  'packages/', 'apps/', 'scripts/', 'docs/', 'snapshots/', '.agents/', 'python/', 'website/', 'vendor/', 'benchmarks/',
+] as const
+
+/** Root files whose backticked mention names a path without a directory. */
+const ROOT_FILES = [
+  'package.json', 'AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'THIRD_PARTY_NOTICES.md', 'pnpm-lock.yaml',
+  'tsconfig.base.json', 'tsconfig.host.json', 'tsconfig.client.json', 'tsconfig.json', 'vitest.config.ts',
+  'vitest.web.daypaw.config.ts', 'lefthook.yml', '.gitignore',
+] as const
+
+/**
+ * Documents a repository generator rewrites, mapped to the script that owns
+ * them: a sync replays these by regenerating, never by hand-merging.
+ */
+const GENERATED_OUTPUTS: readonly { readonly prefix: string; readonly generator: string }[] = [
+  { prefix: 'docs/config-catalog.', generator: 'gen-config-catalog' },
+  { prefix: 'docs/capability-seams.', generator: 'gen-doc-graphs' },
+  { prefix: 'docs/module-graph.', generator: 'gen-doc-graphs' },
+  { prefix: 'docs/agent-lifecycle.', generator: 'gen-doc-graphs' },
+  { prefix: 'docs/event-producer-consumer.', generator: 'gen-doc-graphs' },
+  { prefix: 'docs/graph-atlas.', generator: 'gen-doc-graphs' },
+  { prefix: 'docs/tool-execution-pipeline.', generator: 'gen-doc-graphs' },
+  { prefix: 'docs/tool-catalog.', generator: 'gen-tool-catalog' },
+  { prefix: 'docs/persistence-catalog.', generator: 'gen-persistence-catalog' },
+  { prefix: 'docs/cordis-api/', generator: 'gen-cordis-catalog' },
+  { prefix: 'docs/dependency-catalog.json', generator: 'dependency-catalog' },
+  { prefix: 'packages/extensions/tool-cordis/src/api-catalog.ts', generator: 'gen-cordis-api' },
+  { prefix: 'packages/extensions/cordis-client-runner/src/client/api-catalog.ts', generator: 'gen-cordis-inspect-catalog' },
+  { prefix: 'packages/extensions/cordis-client-runner/src/client/slot-catalog.ts', generator: 'gen-client-catalog' },
+  { prefix: 'THIRD_PARTY_NOTICES.md', generator: 'gen-third-party-notices' },
+  { prefix: 'website/', generator: 'website build' },
+] as const
 
 /** Path prefixes owned by the fork; a fork-owned path never conflicts with upstream. */
 const FORK_OWNED_PREFIXES = [
@@ -45,6 +82,24 @@ export interface ConflictingFile {
   readonly insertions: number
   readonly deletions: number
   readonly upstreamDeleted: boolean
+}
+
+/** One registry row of `docs/fork/CORE_TOUCHES.md`. */
+export interface CoreTouchEntry {
+  readonly paths: readonly string[]
+  readonly change: string
+  readonly batch: string
+  readonly resolved: boolean
+}
+
+/** How a sync replays one conflicting file. */
+export type ReplayKind = 'decision' | 'registry' | 'generated' | 'pairing' | 'lockfile' | 'unregistered'
+
+/** One step of the sync replay plan. */
+export interface ReplayStep {
+  readonly path: string
+  readonly kind: ReplayKind
+  readonly instruction: string
 }
 
 /** Bundle-roster rows added or removed upstream, with the fork's side of each. */
@@ -83,6 +138,7 @@ export interface PreflightReport {
   readonly deletedPackages: readonly string[]
   readonly renamedPackages: readonly { readonly from: string; readonly to: string }[]
   readonly roster: RosterDelta
+  readonly replayPlan: readonly ReplayStep[]
   readonly hazards: Readonly<Record<string, unknown>>
 }
 
@@ -204,6 +260,122 @@ interface GitResult {
   readonly stderr: string
 }
 
+const isPathToken = (token: string): boolean => REPO_TOP_LEVELS.some(level => token.startsWith(level))
+  || ROOT_FILES.includes(token as typeof ROOT_FILES[number])
+
+/** Path-like mentions in a registry cell: an extension-bearing token, or a bare document name. */
+const PATH_LIKE = /[A-Za-z0-9_][A-Za-z0-9_./{},()-]*\.(?:ts|tsx|json|ya?ml|md|sh|mjs|cjs)|(?:README|AGENTS|CLAUDE)(?:\([^()]*\))?/g
+
+/** Expand one `{a,b}` group, recursively, so a registry row's brace glob names real files. */
+export function expandBraces(token: string): string[] {
+  const match = /\{([^{}]*)\}/.exec(token)
+  if (match?.[1] === undefined) return [token]
+  const head = token.slice(0, match.index)
+  const tail = token.slice(match.index + match[0].length)
+  return match[1].split(',').flatMap(part => expandBraces(`${head}${part}${tail}`))
+}
+
+/** Drop a trailing `(.zh)`-style qualifier so the token names the English file. */
+export function stripQualifier(token: string): string {
+  return token.replace(/\([^()]*\)$/, NOTHING)
+}
+
+/** The package directory a registry path belongs to, for resolving relative tokens. */
+export function packageRootOf(path: string): string {
+  const segments = path.split('/')
+  if (segments[0] === 'packages') return segments.slice(0, 3).join('/')
+  if (segments[0] === 'apps') return segments.slice(0, 2).join('/')
+  return segments.slice(0, -1).join('/')
+}
+
+/**
+ * Read the sync registry rows of `docs/fork/CORE_TOUCHES.md`.
+ *
+ * Leading backticked tokens name the registered files; a parenthesised note may
+ * name further files relative to the registered package root (resolved through
+ * `exists`), and a row whose first cell is struck through is already resolved.
+ * @param text - The registry document.
+ * @param exists - Predicate deciding which relative-path candidate exists in the tree.
+ * @returns One entry per registry row, in file order.
+ */
+export function parseCoreTouches(text: string, exists: (path: string) => boolean): CoreTouchEntry[] {
+  const entries: CoreTouchEntry[] = []
+  for (const line of text.split('\n')) {
+    if (!line.startsWith('|')) continue
+    const cells = line.split('|').slice(1, -1).map(cell => cell.trim())
+    const first = cells[0]
+    if (first === undefined || first === '文件' || /^-+$/.test(first)) continue
+    const resolved = first.startsWith('~~')
+    const quoted = [...first.matchAll(/`([^`]+)`/g)].flatMap(match => (match[1] === undefined ? [] : [match[1]]))
+    const bare = [...first.matchAll(PATH_LIKE)].map(match => match[0])
+    const tokens = [...new Set([...quoted, ...bare].flatMap(expandBraces).map(stripQualifier))]
+    const primary = tokens.filter(isPathToken)
+    const paths = [...primary]
+    const resolve = (candidate: string): void => {
+      if (exists(candidate) && !paths.includes(candidate)) paths.push(candidate)
+    }
+    for (const token of tokens) {
+      for (const anchor of primary) {
+        if (anchor === token || !token.includes('/')) {
+          const root = packageRootOf(anchor)
+          if (token !== anchor) {
+            resolve(`${root}/${token}`)
+            resolve(`${root}/${token}.md`)
+          }
+          continue
+        }
+        resolve(`${packageRootOf(anchor)}/${token}`)
+        resolve(`${anchor.slice(0, anchor.lastIndexOf('/'))}/${token}`)
+      }
+    }
+    entries.push({ paths, change: cells[1] ?? NOTHING, batch: cells.at(-1) ?? NOTHING, resolved })
+  }
+  return entries
+}
+
+/**
+ * The live registry rows that name a path, or its English twin when the path is
+ * a translated counterpart (`.zh.md`, `.i18n.yaml`).
+ * @param path - Repository-relative path.
+ * @param entries - Registry rows.
+ * @returns Rows naming the path and not already resolved.
+ */
+export function registryEntriesFor(path: string, entries: readonly CoreTouchEntry[]): CoreTouchEntry[] {
+  const twins = [
+    path,
+    ...(path.endsWith('.zh.md') ? [path.slice(0, -'.zh.md'.length) + '.md'] : []),
+    ...(path.endsWith('.i18n.yaml') ? [path.slice(0, -'.i18n.yaml'.length) + '.md'] : []),
+  ]
+  return entries.filter(entry => !entry.resolved && twins.some(twin => entry.paths.includes(twin)))
+}
+
+/**
+ * Name the replay a conflicting file needs.
+ * @param path - Repository-relative path both sides changed.
+ * @param entries - Registry rows.
+ * @returns The replay step for this path.
+ */
+export function classifyConflict(path: string, entries: readonly CoreTouchEntry[]): ReplayStep {
+  if (path === 'packages/client/connection/src/client/fixture.ts' || path.endsWith('/fixture.client.spec.ts')) {
+    return { path, kind: 'decision', instruction: '上游删除了浏览器 fixture；先裁新家（见地图上的迁移方案草稿），不要边合边试' }
+  }
+  if (path === 'pnpm-lock.yaml') {
+    return { path, kind: 'lockfile', instruction: '跑 pnpm install 重出锁文件' }
+  }
+  const generated = GENERATED_OUTPUTS.find(entry => path.startsWith(entry.prefix))
+  if (generated !== undefined) {
+    return { path, kind: 'generated', instruction: `生成物：跑 ${generated.generator} 重出（verify-* 门校验新鲜度）` }
+  }
+  if (path.endsWith('.i18n.yaml')) {
+    return { path, kind: 'pairing', instruction: '双语配对记录：解决内容冲突后 pnpm run verify-translation-pairing --write <英文侧路径>' }
+  }
+  const registered = registryEntriesFor(path, entries)
+  if (registered.length > 0) {
+    return { path, kind: 'registry', instruction: `重放登记行（${registered.map(entry => entry.batch).join(' / ')}）：${registered[0]?.change.slice(0, 160) ?? NOTHING}` }
+  }
+  return { path, kind: 'unregistered', instruction: '登记缺口：fork 改过该上游文件而 CORE_TOUCHES 无行——确认改动意图后补登记，或取上游版本' }
+}
+
 function git(cwd: string, args: readonly string[]): GitResult {
   const result = spawnSync('git', [...args], { cwd, encoding: 'utf8', maxBuffer: MAX_GIT_OUTPUT })
   if (result.error !== undefined) throw result.error
@@ -268,6 +440,16 @@ function bundleRowsAt(cwd: string, revision: string, path: string): BundleRow[] 
   return text === undefined ? [] : parseBundleRows(text)
 }
 
+/** Replay kinds in the order a sync works through them. */
+const ORDER_OF_KINDS: readonly ReplayKind[] = ['decision', 'lockfile', 'generated', 'pairing', 'registry', 'unregistered']
+
+/** Count replay steps per kind. */
+function groupCounts(steps: readonly ReplayStep[]): Partial<Record<ReplayKind, number>> {
+  const counts: Partial<Record<ReplayKind, number>> = {}
+  for (const step of steps) counts[step.kind] = (counts[step.kind] ?? 0) + 1
+  return counts
+}
+
 function renderReport(report: PreflightReport): string {
   const lines: string[] = []
   lines.push(`# sync preflight — ${report.window.baseTag} (${report.window.baseSha.slice(0, 10)}) → ${report.window.headRef} (${report.window.headSha.slice(0, 10)})`)
@@ -297,6 +479,16 @@ function renderReport(report: PreflightReport): string {
     lines.push(`  - ${entry.row.id} ${entry.row.name}${entry.inForkRoster ? ' — fork still holds it' : ''}`)
   }
   lines.push(`  disabled ids: +[${report.roster.disabledIdsAdded.join(', ')}] -[${report.roster.disabledIdsRemoved.join(', ')}]`)
+  lines.push('## replay plan')
+  const counts = groupCounts(report.replayPlan)
+  const summary = ORDER_OF_KINDS.map(kind => `${kind} ${String(counts[kind] ?? 0)}`).join(' / ')
+  lines.push(`  ${String(report.replayPlan.length)} files: ${summary}`)
+  for (const kind of ORDER_OF_KINDS) {
+    const steps = report.replayPlan.filter(step => step.kind === kind)
+    if (steps.length === 0) continue
+    lines.push(`### ${kind} (${steps.length})`)
+    for (const step of steps) lines.push(`  ${step.path} — ${step.instruction}`)
+  }
   lines.push('## hazard probes')
   for (const [key, value] of Object.entries(report.hazards)) {
     lines.push(`  ${key}: ${JSON.stringify(value)}`)
@@ -372,6 +564,12 @@ export function renderSyncPreflight(args: string[], cwd: string): string {
     const text = gitOk(cwd, ['diff', '--numstat', range, '--', path]).trim()
     return text === NOTHING ? 'unchanged' : text
   }
+  const registry = parseCoreTouches(
+    readFileSync(join(cwd, CORE_TOUCHES), 'utf8'),
+    path => existsSync(join(cwd, path)),
+  )
+  const replayPlan = [...new Set([...conflictingFiles.map(file => file.path), ...addedBothSides])]
+    .map(path => classifyConflict(path, registry))
   const formatVersion = (revision: string): string => {
     const text = gitOrUndefined(cwd, ['show', `${revision}:packages/core/session/src/types.ts`])
     return text?.match(/SESSION_FORMAT_VERSION\s*=\s*(\d+)/)?.[1] ?? 'unknown'
@@ -404,6 +602,7 @@ export function renderSyncPreflight(args: string[], cwd: string): string {
       .map(entry => entry.paths[0] ?? NOTHING),
     renamedPackages: windowRenamed.filter(entry => entry.to.endsWith('package.json')),
     roster,
+    replayPlan,
     hazards: {
       sessionFormatVersion: { base: formatVersion(baseSha), head: formatVersion(headSha) },
       runCliExportedAtHead: (gitOrUndefined(cwd, ['grep', '-l', 'export async function runCli', headSha, '--', 'apps/cli/src']) ?? NOTHING) !== NOTHING,
