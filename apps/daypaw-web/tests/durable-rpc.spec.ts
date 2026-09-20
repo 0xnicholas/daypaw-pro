@@ -60,12 +60,19 @@ describe('fixture durable endpoints', () => {
       'fx-alpha',
       'fx-run-invoice-audit:sub:1',
       'fx-run-invoice-audit',
+      'fx-run-invoice-approval',
       'fx-run-release-digest',
     ])
     expect(all[0]).toMatchObject({ def_kind: 'agent', def_name: 'weekly-report', status: 'running' })
-    expect(all[3]).toMatchObject({ def_kind: 'workflow', status: 'done' })
-    expect(all[3]!.finished_at).not.toBeNull()
-    expect(JSON.parse(all[3]!.output_json!)).toEqual({ summary: 'Shipped the durable tasks board and two follow-up fixes.', count: 3 })
+    // The parked run waits on its gate and has no finish timestamp.
+    expect(all[3]).toMatchObject({ def_kind: 'workflow', def_name: 'invoice-approval', status: 'waiting', waiting_gate: 'owner-approval' })
+    expect(all[3]!.finished_at).toBeNull()
+    expect(all[4]).toMatchObject({ def_kind: 'workflow', status: 'done' })
+    expect(all[4]!.finished_at).not.toBeNull()
+    expect(JSON.parse(all[4]!.output_json!)).toEqual({ summary: 'Shipped the durable tasks board and two follow-up fixes.', count: 3 })
+
+    const waiting = await callRemote<RunRow[]>(rpc, 'durable/listRuns', { status: 'waiting' })
+    expect(waiting.map(row => row.run_id)).toEqual(['fx-run-invoice-approval'])
 
     const failed = await callRemote<RunRow[]>(rpc, 'durable/listRuns', { status: 'failed' })
     expect(failed.map(row => row.run_id)).toEqual(['fx-run-invoice-audit:sub:1', 'fx-run-invoice-audit'])
