@@ -15,6 +15,7 @@ const WIRE_RUN = {
   def_kind: 'agent',
   def_name: 'fix-tests',
   status: 'running',
+  waiting_gate: null,
   parent_run_id: null,
   output_json: null,
   updated_at: 100,

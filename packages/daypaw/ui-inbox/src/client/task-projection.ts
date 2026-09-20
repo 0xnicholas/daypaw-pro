@@ -63,7 +63,12 @@ export function projectInboxBoard(list: SessionListState, runs: readonly WireRun
     // Child runs live under their parent's lineage, never on the board.
     if (run.parentRunId !== null) continue
     const summary = list.byId[run.runId as SessionId]
-    const awaiting = awaitsApproval(run.runId as SessionId, pending)
+    // Two waits join the 等待你确认 triage: a session's pending approval, and
+    // the run's own gate (the engine suspends a parked body on ctx.waitFor —
+    // `waitingGate` names it, the shell's answer card keys off the same fact).
+    const awaiting: TaskRow['awaiting'] = awaitsApproval(run.runId as SessionId, pending)
+      ? 'approval'
+      : run.waitingGate === null ? undefined : 'gate'
     const row: TaskRow = {
       // The row carries a session identity only when the twin is actually
       // listed: sessions.open fails loud on unlisted ids, so an untwinned
@@ -73,11 +78,11 @@ export function projectInboxBoard(list: SessionListState, runs: readonly WireRun
       ...run.defKind === 'agent' && summary !== undefined ? { sessionId: run.runId as SessionId } : {},
       title: run.defKind === 'agent' && summary !== undefined && !summary.blank ? summary.displayTitle : run.defName,
       updatedAt: run.updatedAt,
-      run: { runId: run.runId, status: run.status, defKind: run.defKind },
-      ...awaiting ? { awaitingApproval: true as const } : {},
+      run: { runId: run.runId, status: run.status, defKind: run.defKind, waitingGate: run.waitingGate },
+      ...awaiting === undefined ? {} : { awaiting },
     }
     if (run.defKind === 'agent') claimed.add(run.runId)
-    runRows[awaiting ? 'pending' : runGroup(run)].push(row)
+    runRows[awaiting === undefined ? runGroup(run) : 'pending'].push(row)
   }
   const sessionRows: Record<InboxGroup, TaskRow[]> = { pending: [], running: [], done: [] }
   for (const id of list.ids) {
@@ -90,7 +95,7 @@ export function projectInboxBoard(list: SessionListState, runs: readonly WireRun
       sessionId: id,
       title: summary.displayTitle,
       updatedAt: summary.updatedAt,
-      ...awaiting ? { awaitingApproval: true as const } : {},
+      ...awaiting ? { awaiting: 'approval' as const } : {},
     }
     const group: InboxGroup = awaiting ? 'pending' : summary.running ? 'running' : 'done'
     sessionRows[group].push(row)

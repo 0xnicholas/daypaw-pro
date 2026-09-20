@@ -47,7 +47,7 @@ const runRow = (
   ...(sessionless ? {} : { sessionId: `run-${title}` as SessionId }),
   title,
   updatedAt: NOW,
-  run: { runId: `run-${title}`, status, defKind: sessionless ? 'workflow' : 'agent' },
+  run: { runId: `run-${title}`, status, defKind: sessionless ? 'workflow' : 'agent', waitingGate: null },
 })
 
 describe('TaskList', () => {
@@ -107,8 +107,8 @@ describe('TaskList', () => {
 
   it('renders 等待确认 on awaiting-approval rows, run-backed or run-less, over the run status', () => {
     mountList([
-      { ...runRow('agent-task', 'running'), awaitingApproval: true },
-      { ...row('session-task', NOW), awaitingApproval: true },
+      { ...runRow('agent-task', 'running'), awaiting: 'approval' },
+      { ...row('session-task', NOW), awaiting: 'approval' },
     ])
     const waiting = screen.getAllByText('等待确认')
     expect(waiting).toHaveLength(2)

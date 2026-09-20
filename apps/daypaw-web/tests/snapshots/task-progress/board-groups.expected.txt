@@ -1,4 +1,4 @@
-group=Awaiting your confirmation count=1
+group=Awaiting your confirmation count=2
 group=In progress count=0
 group=Completed count=4
 title=In progress

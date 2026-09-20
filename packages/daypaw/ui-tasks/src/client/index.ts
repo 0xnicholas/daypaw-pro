@@ -26,6 +26,7 @@ import { TaskList, type TaskListInjected } from './task-list.tsx'
 import { ConversationView, type ConversationViewInjected } from './conversation-view.tsx'
 import { DetailBody, type DetailBodyInjected } from './detail-body.tsx'
 import { NewTaskStore } from './new-task-store.ts'
+import { GateAnswerStore } from './gate-answer-store.ts'
 import { createDurableClient } from '@daypaw/durable-client/client'
 import { en, zh, type DaypawTasksKey } from './locales.ts'
 
@@ -69,6 +70,7 @@ export function apply(ctx: ClientContext): void {
   const durable = createDurableClient(connection.rpc)
   const tStatus = ctx.locale.bind('durable')
   const newTask = new NewTaskStore(durable, { list: ctx.sessions.list })
+  const answerGate = new GateAnswerStore(durable)
 
   // One queued-prompt sender serves both riders: the approval reject note
   // (拒绝可附言回对话) and the light-chat seat's input (issue #102) — queue mode
@@ -114,6 +116,10 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('inbox.detail.body', () => ctx.slots.register({
     name: 'inbox.detail.body',
     locale: NS,
-    inject: (): DetailBodyInjected => ({ tStatus }),
+    inject: (): DetailBodyInjected => ({
+      tStatus,
+      hooks: { gateAnswer: answerGate.store },
+      answerGate,
+    }),
   }, DetailBody))
 }

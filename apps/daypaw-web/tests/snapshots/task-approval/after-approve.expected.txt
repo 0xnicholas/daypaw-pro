@@ -1,4 +1,4 @@
-group=Awaiting your confirmation count=0
+group=Awaiting your confirmation count=1
 group=In progress count=1
 group=Completed count=4
 card=absent

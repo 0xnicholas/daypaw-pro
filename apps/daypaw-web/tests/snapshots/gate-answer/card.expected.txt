@@ -1,0 +1,12 @@
+pendingRows=Fixture 历史会话=Awaiting confirmation|invoice-approval=Awaiting confirmation
+card=Waiting for your confirmation
+gate=owner-approval
+header=invoice-approval
+section=Progress
+  empty=none
+section=Subtasks
+  empty=No subtasks
+section=Deliverables
+  empty=No deliverables
+section=Approval history
+  empty=No approval history

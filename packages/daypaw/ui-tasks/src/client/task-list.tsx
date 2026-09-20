@@ -101,7 +101,7 @@ export function TaskList({ rows, now, openTask, openRun, tStatus, t }: TaskListP
             }}
           >
             <span className={css.title}>{row.title}</span>
-            {row.awaitingApproval === true
+            {row.awaiting !== undefined
               // The pending-group status reads 等待确认 whatever the run says;
               // run-less session rows (no run status to show) carry it too.
               ? <span className={css.status}>{tStatus(runStatusKey('waiting'))}</span>

@@ -8,6 +8,7 @@ const RUN: WireRun = {
   defKind: 'workflow',
   defName: 'close-the-books',
   status: 'running',
+  waitingGate: null,
   parentRunId: null,
   outputJson: null,
   updatedAt: 100,
@@ -31,6 +32,7 @@ function apiOf(runs: readonly WireRun[] = []): DurableClient {
     listDefinitions: () => { throw new Error('board does not list definitions') },
     startRun: () => { throw new Error('board does not start runs') },
     steerText: () => { throw new Error('board does not steer') },
+    resolveGate: () => { throw new Error('board does not answer gates') },
   }
 }
 

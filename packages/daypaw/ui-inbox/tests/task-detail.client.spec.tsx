@@ -25,6 +25,7 @@ function run(overrides: Partial<WireRun> = {}): WireRun {
     defKind: 'workflow',
     defName: 'close-the-books',
     status: 'running',
+    waitingGate: null,
     parentRunId: null,
     outputJson: null,
     updatedAt: 100,

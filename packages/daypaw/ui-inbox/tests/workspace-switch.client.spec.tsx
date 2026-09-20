@@ -226,8 +226,8 @@ describe('WorkspaceSwitch', () => {
 
   it('hands the conversation occupant the ledger run status keyed by the session identity', () => {
     const runs: WireRun[] = [
-      { runId: 'a', defKind: 'agent', defName: 'fix-tests', status: 'waiting', parentRunId: null, outputJson: null, updatedAt: 400 },
-      { runId: 'w1', defKind: 'workflow', defName: 'close-the-books', status: 'running', parentRunId: null, outputJson: null, updatedAt: 500 },
+      { runId: 'a', defKind: 'agent', defName: 'fix-tests', status: 'waiting', waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 400 },
+      { runId: 'w1', defKind: 'workflow', defName: 'close-the-books', status: 'running', waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 500 },
     ]
     const { controller, calls } = mountWorkspace(call =>
       call.key === 'inbox.workspace.conversation' ? <div>conversation-seat</div> : null, runs, 'a' as SessionId)
@@ -244,8 +244,8 @@ describe('WorkspaceSwitch', () => {
 
   it('lists run rows in the group containers: a workflow run rows without a session, an agent run dedupes its twin', () => {
     const runs: WireRun[] = [
-      { runId: 'w1', defKind: 'workflow', defName: 'close-the-books', status: 'running', parentRunId: null, outputJson: null, updatedAt: 500 },
-      { runId: 'a', defKind: 'agent', defName: 'fix-tests', status: 'waiting', parentRunId: null, outputJson: null, updatedAt: 400 },
+      { runId: 'w1', defKind: 'workflow', defName: 'close-the-books', status: 'running', waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 500 },
+      { runId: 'a', defKind: 'agent', defName: 'fix-tests', status: 'waiting', waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 400 },
     ]
     const { calls } = mountWorkspace(undefined, runs)
     const tasks = calls.find(call => call.key === 'inbox.workspace.tasks')!

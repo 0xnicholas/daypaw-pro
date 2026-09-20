@@ -100,16 +100,19 @@ async function snap(name: string, shape: string): Promise<void> {
 /** Boot, then settle on the 等待你确认 group with the replayed fx-alpha row. */
 async function openPendingGroup(): Promise<void> {
   await screen.findByRole('button', { name: 'New Task' }, { timeout: 10_000 })
-  // Cold start: the mux-open replay carries the pending approval, so the group
-  // count reaches 1 before any session is opened.
+  // Cold start: the mux-open replay carries the pending approval and the
+  // fixture's parked run waits on its own gate, so the group count reaches 2
+  // before any session is opened.
   await waitFor(() => {
     const pending = within(column('sidebarCol')).getByRole('button', { name: /^Awaiting your confirmation/ })
-    expect(pending.textContent).toMatch(/1/)
+    expect(pending.textContent).toMatch(/2/)
   }, { timeout: 10_000 })
   fireEvent.click(within(column('sidebarCol')).getByRole('button', { name: /^Awaiting your confirmation/ }))
   await waitFor(() => {
+    // The session approval's row first (newer activity), the parked run's
+    // gate row second.
     const buttons = [...pick(column('centerCol'), 'list')[0]?.querySelectorAll('button') ?? []]
-    expect(buttons).toHaveLength(1)
+    expect(buttons).toHaveLength(2)
   }, { timeout: 10_000 })
 }
 

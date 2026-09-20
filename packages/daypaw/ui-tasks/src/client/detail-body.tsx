@@ -1,15 +1,16 @@
 /**
- * Task detail body (the 'inbox.detail.body' occupant): four sections under
- * the owner's header — 进度 (a workflow run's step timeline from the journal;
- * otherwise the session's business-language tail with the 进行中 line), 子任务
- * (the run's lineage children), 产出物 (the settled output), and 审批历史 (the
- * session's approvalHistory projection). Owner props key off the workbench
+ * Task detail body (the 'inbox.detail.body' occupant): the pending gate's
+ * answer card (issue #128) above four sections — 进度 (a workflow run's step
+ * timeline from the journal; otherwise the session's business-language tail
+ * with the 进行中 line), 子任务 (the run's lineage children), 产出物 (the
+ * settled output), and 审批历史 (the session's approvalHistory projection). Owner props key off the workbench
  * selection, never the session seat: the seat is strict session scope and may
  * carry a STALE session while a workflow run is selected, so session-bound
  * sections (progress tail, approvals) read it only when its sessionId matches
  * the selection's session identity (an agent run's identity IS its runId).
  */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { InjectFace, PropsLocale, PropsRuntime, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: ui-inbox's SlotMap merge (the detail seat) plus the detail view
@@ -20,6 +21,8 @@ import type { WireJournalEntry } from '@daypaw/durable-client/client'
 // pure outlet — the value itself arrives through the session seat).
 import type { ApprovalHistoryEntry } from '@daypaw/approval-history/types'
 import { projectBusinessRows, type BusinessRow } from './chat-projection.ts'
+import { GateCard } from './gate-card.tsx'
+import type { GateAnswerState, GateAnswerStore } from './gate-answer-store.ts'
 import { runStatusKey } from '@daypaw/durable-client/client'
 import type { DaypawTasksKey } from './locales.ts'
 import css from './detail-body.module.css'
@@ -28,6 +31,12 @@ import css from './detail-body.module.css'
 export interface DetailBodyInjected {
   /** The durable status vocabulary's translate (the subtask row status copy). */
   tStatus: TranslateNS<'durable'>
+  hooks: {
+    /** The gate answer controller's snapshot, bound by the renderer as useGateAnswer. */
+    gateAnswer: SnapshotStore<GateAnswerState>
+  }
+  /** The gate answer controller (the pending gate's card). */
+  answerGate: GateAnswerStore
 }
 
 /** Full component props: owner share (the selection-keyed detail view) + injected face + session standard kit + locale seat. */
@@ -183,7 +192,9 @@ function Approvals({ ownSeat, entries, t }: SectionProps & {
  * @param props - composed slot props (owner share + session standard kit + locale seat).
  * @returns the four-section body tree, or null.
  */
-export function DetailBody({ detail, tStatus, useSession, useChat, sessionId, useProjection, t }: DetailBodyProps) {
+export function DetailBody({
+  detail, tStatus, answerGate, useGateAnswer, useSession, useChat, sessionId, useProjection, t,
+}: DetailBodyProps) {
   // The seats are read unconditionally (hook order); seatMatches below decides
   // whether their values apply to this selection.
   const chat = useChat(s => s)
@@ -193,6 +204,15 @@ export function DetailBody({ detail, tStatus, useSession, useChat, sessionId, us
   const ownSeat = seatMatches(detail, sessionId)
   return (
     <div className={css.root}>
+      {detail.kind === 'run' && detail.run.waitingGate !== null && (
+        <GateCard
+          runId={detail.run.runId}
+          gate={detail.run.waitingGate}
+          answer={answerGate}
+          useAnswer={useGateAnswer}
+          t={t}
+        />
+      )}
       <section className={css.section}>
         <h3 className={css.heading}>{t('detail.progress.heading')}</h3>
         <Progress detail={detail} ownSeat={ownSeat} chat={chat} running={running} t={t} />

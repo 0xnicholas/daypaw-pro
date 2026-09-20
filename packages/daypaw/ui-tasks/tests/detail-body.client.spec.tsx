@@ -14,6 +14,8 @@ import type { TaskDetailView } from '@daypaw/ui-inbox/client'
 import type { WireJournalEntry, WireRun, WireRunLineage } from '@daypaw/durable-client/client'
 import type { ApprovalHistoryEntry } from '@daypaw/approval-history/types'
 import { DetailBody, type DetailBodyProps } from '../src/client/detail-body.tsx'
+import { GateAnswerStore } from '../src/client/gate-answer-store.ts'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh } from '../src/client/locales.ts'
 import { zh as durableZh } from '@daypaw/durable-client/src/client/locales.ts'
 
@@ -70,7 +72,7 @@ function sessionWith(sessionId: string, running: boolean) {
 function run(over: Partial<WireRun> = {}): WireRun {
   return {
     runId: 'r1', defKind: 'workflow', defName: '周报流程', status: 'running',
-    parentRunId: null, outputJson: null, updatedAt: 1, ...over,
+    waitingGate: null, parentRunId: null, outputJson: null, updatedAt: 1, ...over,
   }
 }
 
@@ -103,6 +105,7 @@ interface MountOptions {
 }
 
 function mountBody(detail: TaskDetailView, opts: MountOptions = {}) {
+  const answerGate = new GateAnswerStore({ resolveGate: () => Promise.resolve(true) })
   const session = opts.session ?? sessionWith('s1', false)
   const useSession: DetailBodyProps['useSession'] = sel => sel(session)
   const useChat: DetailBodyProps['useChat'] = sel => sel(opts.chat ?? EMPTY_CHAT)
@@ -110,7 +113,9 @@ function mountBody(detail: TaskDetailView, opts: MountOptions = {}) {
   return render(
     <DetailBody
       usePanelInfo={neverHook} useResource={neverHook}
-      detail={detail} tStatus={tStatus} useSession={useSession} useChat={useChat} useProjection={useProjection}
+      detail={detail} tStatus={tStatus} answerGate={answerGate}
+      useGateAnswer={bindSnapshotSelector(answerGate.store)}
+      useSession={useSession} useChat={useChat} useProjection={useProjection}
       sessionId={(opts.seatSessionId ?? 's1') as SessionId}
       useConversation={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}

@@ -81,6 +81,7 @@ const DURABLE_ENDPOINTS = new Set([
   'durable/runLineage',
   'durable/journalTimeline',
   'durable/rerun',
+  'durable/resolveGate',
 ])
 
 /**
@@ -154,6 +155,27 @@ function seedRuns(): DurableRunRow[] {
       finished_at: FX_RUN_EPOCH + 2 * FX_HOUR + 420_000,
     },
     {
+      run_id: 'fx-run-invoice-approval',
+      def_kind: 'workflow',
+      def_name: 'invoice-approval',
+      def_version: '0.2.0',
+      input_json: '{"invoice":"INV-2045"}',
+      status: 'waiting',
+      waiting_gate: 'owner-approval',
+      parent_run_id: null,
+      parent_step_key: null,
+      attempt: 1,
+      retried_from_run_id: null,
+      output_json: null,
+      error_json: null,
+      cancel_cause: null,
+      claimed_by: null,
+      claimed_at: null,
+      created_at: FX_RUN_EPOCH + 90 * 60_000,
+      updated_at: FX_RUN_EPOCH + 90 * 60_000 + 120_000,
+      finished_at: null,
+    },
+    {
       run_id: 'fx-run-release-digest',
       def_kind: 'workflow',
       def_name: 'release-digest',
@@ -180,6 +202,21 @@ function seedRuns(): DurableRunRow[] {
 /** Journal steps of the done workflow run, in start order (the UI step timeline reads `name`). */
 function seedJournal(): DurableJournalRow[] {
   return [
+    {
+      run_id: 'fx-run-invoice-approval',
+      step_key: 'collect-invoice',
+      name: 'Collect the invoice',
+      occurrence: 0,
+      kind: 'step',
+      status: 'completed',
+      value_json: '{"lines":3}',
+      error_json: null,
+      attempt: 1,
+      session_id: null,
+      session_seq: null,
+      started_at: FX_RUN_EPOCH + 90 * 60_000,
+      finished_at: FX_RUN_EPOCH + 90 * 60_000 + 60_000,
+    },
     {
       run_id: 'fx-run-release-digest',
       step_key: 'collect-updates',
@@ -425,6 +462,26 @@ export function decorateDurableRpc(base: ClientConnectionRpc): ClientConnectionR
       case 'durable/journalTimeline': {
         const runId = args?.['runId'] as string
         return ok(journal.filter(row => row.run_id === runId))
+      }
+      case 'durable/resolveGate': {
+        const runId = args?.['runId'] as string
+        const gate = args?.['gate'] as string
+        const settlement = args?.['settlement'] as { state: 'resolved' | 'rejected' }
+        const row = runs.find(candidate => candidate.run_id === runId)
+        if (row === undefined) {
+          return failure(
+            'durable/run-not-found',
+            `durable engine: resolveGate targets unknown run ${runId}`,
+            { runId },
+          )
+        }
+        // First-wins, like the engine's conditional write: a gate the row no
+        // longer waits on answers false (a duplicate answer, or a timeout).
+        if (row.waiting_gate !== gate) return ok(false)
+        row.waiting_gate = null
+        row.status = settlement.state === 'rejected' ? 'cancelled' : 'running'
+        row.updated_at += 30_000
+        return ok(true)
       }
       case 'durable/rerun': {
         const runId = args?.['runId'] as string

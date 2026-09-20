@@ -14,7 +14,7 @@ section=Deliverables
 section=Approval history
   empty=No approval history
 after-retry
-group=Awaiting your confirmation count=1
+group=Awaiting your confirmation count=2
 group=In progress count=1
 group=Completed count=4
 title=In progress

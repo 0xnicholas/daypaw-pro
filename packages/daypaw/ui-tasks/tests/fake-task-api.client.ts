@@ -1,5 +1,5 @@
 /** Test-local programmable wire face: the durable endpoints the task surfaces consume. */
-import type { DurableClient, WireDefinition, WireJournalEntry, WireRun, WireStartRunRequest } from '@daypaw/durable-client/client'
+import type { DurableClient, WireDefinition, WireGateSettlement, WireJournalEntry, WireRun, WireStartRunRequest } from '@daypaw/durable-client/client'
 
 /** Local structural Remote result envelope. */
 type Result<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string; details: unknown } }
@@ -51,6 +51,9 @@ export class FakeTaskApi implements DurableClient {
   onSteerText: (runId: string, text: string) => Promise<Result<number>> =
     () => Promise.resolve(ok(1))
 
+  onResolveGate: (runId: string, gate: string, settlement: WireGateSettlement) => Promise<Result<boolean>> =
+    () => Promise.resolve(ok(true))
+
   async listDefinitions(): Promise<readonly WireDefinition[]> {
     this.calls.push({ method: 'durable/listDefinitions', payload: undefined })
     const result = await this.onListDefinitions()
@@ -68,6 +71,13 @@ export class FakeTaskApi implements DurableClient {
   async steerText(runId: string, text: string): Promise<number> {
     this.calls.push({ method: 'durable/steerText', payload: { runId, text } })
     const result = await this.onSteerText(runId, text)
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value
+  }
+
+  async resolveGate(runId: string, gate: string, settlement: WireGateSettlement): Promise<boolean> {
+    this.calls.push({ method: 'durable/resolveGate', payload: { runId, gate, settlement } })
+    const result = await this.onResolveGate(runId, gate, settlement)
     if (!result.ok) throw new Error(result.error.message)
     return result.value
   }

@@ -156,16 +156,18 @@ describe('assembled task progress', () => {
     await screen.findByRole('button', { name: 'New Task' }, { timeout: 10_000 })
     await waitFor(() => {
       const pending = within(column('sidebarCol')).getByRole('button', { name: /^Awaiting your confirmation/ })
-      expect(pending.textContent).toMatch(/1/)
+      expect(pending.textContent).toMatch(/2/)
     }, { timeout: 10_000 })
     const board = column('centerCol')
     expect(board.textContent ?? '').not.toMatch(FORBIDDEN)
     await snap('board-groups', boardShape())
 
     // ---- open-agent-task: the fx-alpha run row joins to its session twin,
-    // reached through the 等待你确认 group that carries it.
+    // reached through the 等待你确认 group that carries it (the fixture's
+    // parked run waits on its own gate in the same group, so the session row
+    // is the first of two).
     fireEvent.click(within(column('sidebarCol')).getByRole('button', { name: /^Awaiting your confirmation/ }))
-    await waitFor(() => { expect(listButtons()).toHaveLength(1) }, { timeout: 10_000 })
+    await waitFor(() => { expect(listButtons()).toHaveLength(2) }, { timeout: 10_000 })
     fireEvent.click(listButtons()[0]!)
     await waitFor(() => {
       expect(pick(column('centerCol'), 'flow')[0]?.children.length).toBeGreaterThan(0)

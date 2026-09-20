@@ -12,6 +12,7 @@ function run(overrides: Partial<WireRun> = {}): WireRun {
     defKind: 'workflow',
     defName: 'close-the-books',
     status: 'running',
+    waitingGate: null,
     parentRunId: null,
     outputJson: null,
     updatedAt: 100,
@@ -85,7 +86,7 @@ describe('projectInboxBoard', () => {
       sessionId: 'r1',
       title: 'Fix the flaky test',
       updatedAt: 300,
-      run: { runId: 'r1', status: 'running', defKind: 'agent' },
+      run: { runId: 'r1', status: 'running', defKind: 'agent', waitingGate: null },
     }])
   })
 
@@ -94,7 +95,7 @@ describe('projectInboxBoard', () => {
     expect(board.rows.running).toEqual([{
       title: 'fix-tests',
       updatedAt: 100,
-      run: { runId: 'r1', status: 'running', defKind: 'agent' },
+      run: { runId: 'r1', status: 'running', defKind: 'agent', waitingGate: null },
     }])
   })
 
@@ -113,7 +114,7 @@ describe('projectInboxBoard', () => {
     expect(board.rows.running).toEqual([{
       title: 'close-the-books',
       updatedAt: 100,
-      run: { runId: 'r1', status: 'running', defKind: 'workflow' },
+      run: { runId: 'r1', status: 'running', defKind: 'workflow', waitingGate: null },
     }])
   })
 
@@ -164,15 +165,27 @@ describe('projectInboxBoard', () => {
       sessionId: 'r1',
       title: 'Fix the flaky test',
       updatedAt: 300,
-      run: { runId: 'r1', status: 'running', defKind: 'agent' },
-      awaitingApproval: true,
+      run: { runId: 'r1', status: 'running', defKind: 'agent', waitingGate: null },
+      awaiting: 'approval',
     }])
   })
 
   it('routes an approval-badged run-less session to 等待你确认', () => {
     const board = projectInboxBoard(listState([{ id: 'a', running: true }]), [], roster([['a', 'approval']]))
     expect(board.counts).toEqual({ pending: 1, running: 0, done: 0 })
-    expect(board.rows.pending.map(row => [row.sessionId, row.awaitingApproval])).toEqual([['a', true]])
+    expect(board.rows.pending.map(row => [row.sessionId, row.awaiting])).toEqual([['a', 'approval']])
+  })
+
+  it('routes a run suspended on its own gate to 等待你确认, badged as a gate', () => {
+    const board = projectInboxBoard(listState([]), [
+      run({ status: 'waiting', waitingGate: 'owner-approval' }),
+      run({ runId: 'r2', defName: 'weekly-review' }),
+    ], new Map())
+    expect(board.counts).toEqual({ pending: 1, running: 1, done: 0 })
+    const pending = board.rows.pending[0]!
+    expect([pending.title, pending.awaiting, pending.run?.waitingGate])
+      .toEqual(['close-the-books', 'gate', 'owner-approval'])
+    expect(board.rows.running[0]!.awaiting).toBeUndefined()
   })
 
   it('keeps question and other interaction kinds in their status groups (the board is the 审批 surface)', () => {
@@ -182,7 +195,7 @@ describe('projectInboxBoard', () => {
     ])
     const board = projectInboxBoard(list, [], roster([['q', 'question'], ['o', 'other']]))
     expect(board.counts).toEqual({ pending: 0, running: 1, done: 1 })
-    expect(board.rows.running.every(row => row.awaitingApproval === undefined)).toBe(true)
-    expect(board.rows.done.every(row => row.awaitingApproval === undefined)).toBe(true)
+    expect(board.rows.running.every(row => row.awaiting === undefined)).toBe(true)
+    expect(board.rows.done.every(row => row.awaiting === undefined)).toBe(true)
   })
 })
