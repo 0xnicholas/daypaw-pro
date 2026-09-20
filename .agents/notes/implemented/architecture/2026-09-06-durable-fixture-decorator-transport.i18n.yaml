@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-06-durable-fixture-decorator-transport.md
-2026-09-06-durable-fixture-decorator-transport.md: 11fc9c934f977f5f4cc8ea4ec65548b0551d47d7
-2026-09-06-durable-fixture-decorator-transport.zh.md: f1f0f54591fca99d716e9a0bc8d3b39e38901621
+2026-09-06-durable-fixture-decorator-transport.md: 1256d7f5530b08fa9e6ac302753909ee670f2ec8
+2026-09-06-durable-fixture-decorator-transport.zh.md: fa584f53f412e87117b48100ba537e2116a816d0

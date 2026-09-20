@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-03-daypaw-midrun-conversation-reachability.md
-2026-09-03-daypaw-midrun-conversation-reachability.md: 44cc8cab2a55eae618dd14f6327d3126405070f0
-2026-09-03-daypaw-midrun-conversation-reachability.zh.md: 76c632d043458555e347c029845e919f10bb15d0
+2026-09-03-daypaw-midrun-conversation-reachability.md: 89023c4c4c80f0da74da2ea5e523a079361a80a1
+2026-09-03-daypaw-midrun-conversation-reachability.zh.md: a2db99844019a8b6387688a37df3495035d648bc

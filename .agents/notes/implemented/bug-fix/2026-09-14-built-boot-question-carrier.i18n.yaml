@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-14-built-boot-question-carrier.md
-2026-09-14-built-boot-question-carrier.md: f583bcabddb6a5093f83decf48525ff9bacaba06
-2026-09-14-built-boot-question-carrier.zh.md: 481c6f0a4bce04528ad26580799fabd13bcb8ac7
+2026-09-14-built-boot-question-carrier.md: 9fbc108bd80c95918243b017055460507816e177
+2026-09-14-built-boot-question-carrier.zh.md: 6efc70c23426a9076e7f5fbac7d740c96a2160c3
