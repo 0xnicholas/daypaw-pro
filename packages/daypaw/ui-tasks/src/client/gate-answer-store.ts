@@ -71,9 +71,10 @@ export class GateAnswerStore {
    * The parsed value draft. Inline validation for the JSON box: the card
    * checks syntax locally; the gate's own contract validates host-side when the
    * settlement reaches the engine.
-   * @returns the parsed value, or the SyntaxError the draft produced.
+   * @returns the parsed value (any JSON value the gate's contract takes), or
+   *   the SyntaxError the draft produced — callers narrow with `instanceof`.
    */
-  parseValue(): unknown | SyntaxError {
+  parseValue(): unknown {
     try {
       return JSON.parse(this.store.getSnapshot().value)
     } catch (error) {

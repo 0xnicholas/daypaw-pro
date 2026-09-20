@@ -7,7 +7,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import type { DurableClient } from '@daypaw/durable-client/client'
 import { GateAnswerStore } from '../src/client/gate-answer-store.ts'
 import { GateCard, type GateCardProps } from '../src/client/gate-card.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -22,7 +21,7 @@ function mountCard(
   runId = 'r1',
 ) {
   const resolveGate = vi.fn(answer)
-  const store = new GateAnswerStore({ resolveGate } as unknown as Pick<DurableClient, 'resolveGate'>)
+  const store = new GateAnswerStore({ resolveGate })
   const view = render(
     <GateCard runId={runId} gate="owner-approval" answer={store} useAnswer={bindSnapshotSelector(store.store)} t={t} />,
   )
@@ -83,7 +82,7 @@ describe('GateCard', () => {
 
   it('resets the drafts when the selection moves to another run', async () => {
     const resolveGate = vi.fn(() => Promise.resolve(true))
-    const store = new GateAnswerStore({ resolveGate } as unknown as Pick<DurableClient, 'resolveGate'>)
+    const store = new GateAnswerStore({ resolveGate })
     const view = render(
       <GateCard runId="r1" gate="owner-approval" answer={store} useAnswer={bindSnapshotSelector(store.store)} t={t} />,
     )
