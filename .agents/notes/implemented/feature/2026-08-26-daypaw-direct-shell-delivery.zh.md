@@ -10,11 +10,11 @@ issue #62 把 `daypaw` 命令变成产品壳的正门（spec 05 §4）：裸 `da
 
 ## 决策
 
-- **fork 自有的 argv 适配器，而非上游 launcher 缝。** `@daypaw/cli` 的 `withDefaultProfile(argv)` 把裸调用（及裸 `plugin` 子命令）映射为 `--profile daypaw` 前置于应用参数；显式带 `--profile`、或用 vendored `web` 别名（上游 web profile、自有语法）的调用原样透传，dsh launcher 完整语法仍可达。`bin.mjs` 在导入 dsh bin 前改写 `process.argv`。在 `apps/cli/src/args.ts` 加默认 profile 的 env 缝会为纯 fork UX 新增一处上游 core touch；适配器不复刻任何语法，其映射由 spec 钉死。
-- **播种元组换成壳组合，附精确匹配迁移。** `DAYPAW_PROFILE_BUNDLES` 改为 `['@deepseek-ai/dsh-base', '@daypaw/web-app']`；bundles 仍与上一版出厂 headless 元组完全一致的 profile 迁移到新元组并保留其余 manifest 字段——镜像 launcher 自身 `normalizeShippedProfile` 先例但归 fork CLI 所有；任何偏差都是用户所有、原样不动。
-- **一个 heal 机制：CLI 以自身 manifest 为锚调用 launcher 的 fallback heal。** 播种调用已导出的 `healProfilesModuleFallback`，以本包 manifest 为安装锚，把交付闭包——engine、壳 bundle、roster 包、前端——平铺链接到 `$DSH_HOME/profiles/node_modules`。旧机制（profile-local 的 `@daypaw/engine` 链接）退役：fallback 在每个 profile 的 pnpm 管辖区之外，`daypaw plugin` 操作再也剪不掉链接，且行的解析只剩一条路径。旧安装遗留的 profile-local 链接成为悬空条目，Node 的 parent-walk 跳过它（升级 spec 用例覆盖）。这间接消费了[共享 note](../architecture/2026-08-26-ensure-symlink-shared-from-app-boot.zh.md) 的 `ensureSymlink` 缝——heal 本身上游早已导出。
+- **fork 自有的 argv 适配器，而非上游 launcher 缝。** `@daypaw/cli` 的 `withDefaultProfile(argv)` 把裸调用（及裸 `plugin` 子命令）映射为 `--profile daypaw` 前置于应用参数；显式带 `--profile`、或用 vendored `web` 别名（上游 web profile、自有语法）的调用原样透传，dsh launcher 完整语法仍可达。`bin.mjs` 在入口处施加适配器，裸调用因此从不进入 launcher 语法。在 `apps/cli/src/args.ts` 加默认 profile 的 env 缝会为纯 fork UX 新增一处上游 core touch；适配器不复刻任何语法，其映射由 spec 钉死。
+- **播种元组换成壳组合，附精确匹配迁移。** `DAYPAW_PROFILE_BUNDLES` 为 `['@deepseek-ai/dsh-base', '@daypaw/web-app']`；bundles 仍与上一版出厂 headless 元组完全一致的 profile 迁移到新元组并保留其余 manifest 字段——镜像 launcher 自身 `normalizeShippedProfile` 先例但归 fork CLI 所有；任何偏差都是用户所有、原样不动。
+- **一个 heal 机制：CLI 以自身 manifest 为锚调用 launcher 的 fallback heal。** 播种调用已导出的 `healProfilesModuleFallback`，以本包 manifest 为安装锚，把交付闭包——engine、壳 bundle、roster 包、前端——平铺链接到 `$DSH_HOME/profiles/node_modules`。行的解析只剩一条路径：fallback 在每个 profile 的 pnpm 管辖区之外，`daypaw plugin` 操作剪不掉它，也不存在 profile-local 的 `@daypaw/engine` 链接。旧安装遗留的 profile-local 链接成为悬空条目，Node 的 parent-walk 跳过它（升级 spec 用例覆盖）。这间接消费了[共享 note](../architecture/2026-08-26-ensure-symlink-shared-from-app-boot.zh.md) 的 `ensureSymlink` 缝——heal 本身上游早已导出。
 - **dist 以构建期产物随包。** release 管线新增第三个构建面（`@daypaw/web-frontend` vite 构建），先于把它拷进闭包的 deploy；`bundleDependencies` 钉死；安装期零构建（spec 05 §4 打包裁决、ADR 0011 单 artifact 版本线）。
-- **冒烟证明正门。** `smokeCli` 在干净 prefix、全新 `DSH_HOME` 下裸启 `daypaw --port 0`，等 `daypaw web:` URL 行，趁服务存活抓取被服务的 dist 页面，随后终止并断言播种工件（engine 行、fallback 链接、dist、ledger）。旧冒烟的缺凭据断言属于 headless 面；壳不需要 key 即可服务。
+- **冒烟证明正门。** `smokeCli` 在干净 prefix、全新 `DSH_HOME` 下裸启 `daypaw --port 0` 并断言播种工件（engine 行、fallback 链接、dist、ledger），被服务的 dist 页面从打印出的 `daypaw web:` URL 抓取。壳不需要 key 即可服务，故冒烟断言被服务的 dist，而非缺凭据错误。
 
 ## 否决的备选
 
@@ -25,8 +25,8 @@ issue #62 把 `daypaw` 命令变成产品壳的正门（spec 05 §4）：裸 `da
 
 ## 后果
 
-- 裸 `daypaw -h`/`--help` 现在打印壳应用的 help（注入的 profile 把旗标交给应用），与 `dsh --profile web -h` 语义一致；launcher 自身 help 不再是裸命令的面。
+- 裸 `daypaw -h`/`--help` 打印壳应用的 help（注入的 profile 把旗标交给应用），与 `dsh --profile web -h` 语义一致。
 - 单发 headless 离开 CLI（spec 05 §4）：程序化 durable 工作走 `@daypaw/sdk`，单发 CLI 运行显式 `--profile` 上游 profile。CLI README 的限制节记录此事。
 - tarball 增大 web-app 闭包与构建出的 dist；闭包完备性仍归 release 管线的 restore 轮次所有，冒烟的 dist 探活在未来的打包改动丢掉 dist 或任一 roster client bundle 时大声失败（modules 激活不变量拒绝广播无法解析 client bundle 的行）。
 - vendored `web` 别名在 `daypaw web` 上仍可达并启动上游 web profile——专家逃生门而非产品面；README 记录。
-- 出厂模板的元组变更从此只在已发布元组需要迁移时更新 `PREVIOUS_DAYPAW_PROFILE_BUNDLES` 机制；spec 同时钉住新播种与迁移两条路径。
+- 出厂模板的元组变更只在已发布元组需要迁移时更新 `PREVIOUS_DAYPAW_PROFILE_BUNDLES` 机制；spec 同时钉住新播种与迁移两条路径。

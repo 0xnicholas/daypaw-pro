@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-30-release-tarball-completeness.md
-2026-08-30-release-tarball-completeness.md: 6668fe4f7437d468907885eb91b34edfd2b79310
-2026-08-30-release-tarball-completeness.zh.md: ca74f83b388ca2f427fadba4915ca32cacda99d7
+2026-08-30-release-tarball-completeness.md: be4f402e61b956a2a288163705df71e80799f5d5
+2026-08-30-release-tarball-completeness.zh.md: a3adfd4e25a6709a95ac2da1fe9642bba5adb91d
