@@ -6,7 +6,7 @@ English | [中文](2026-09-17-daypaw-engine-parked-wait-table.zh.md)
 
 ## Problem
 
-`DurableEngineCore` told the same two stories twice each. Two suspensions — `suspendOnGate` and `suspendOnSteer` — hand-built the same parking sequence: a promise with captured resolve/reject, a handled marker for abandoned waits, a `setInterval` reading the ledger as the cross-process fallback, an abort listener meaning "cancellation or disposal", and teardown of entry, interval, and listener that had to be idempotent. `suspendOnSteer`'s own doc comment admitted it mirrored `suspendOnGate`, and both wait tables were hand-written maps keyed by hand-built strings.
+`DurableEngineCore` duplicates two mechanisms. Two suspensions — `suspendOnGate` and `suspendOnSteer` — hand-build the same parking sequence: a promise with captured resolve/reject, a handled marker for abandoned waits, a `setInterval` reading the ledger as the cross-process fallback, an abort listener meaning "cancellation or disposal", and teardown of entry, interval, and listener that had to be idempotent. `suspendOnSteer`'s own doc comment admitted it mirrored `suspendOnGate`, and both wait tables were hand-written maps keyed by hand-built strings.
 
 The decode from a run row to its terminal outcome was written four times: `statusFromRow`, `settledResult`, `terminalRejection`, and the attach poll's inline switch. Two of the four — `settledResult` and the poll's switch — were the same decision table under different plumbing; the other two restated pieces of it (the cancelled cause, the failed error). Each copy was correct, and each could drift alone. Single-writer and first-terminal-wins live exactly there: `done` means the parsed `output_json`, `failed` means `RUN_FAILED` carrying the parsed `error_json`, `cancelled` means `RUN_CANCELLED` carrying `cancel_cause` ([ticket #117](https://github.com/0xnicholas/daypaw-pro/issues/117)).
 
@@ -34,8 +34,8 @@ The public face is unchanged: no export, no `@Remote` endpoint, no ADR 0002/0006
 
 ## Consequences
 
-- `handle.status()` on a `done` run now parses `output_json`, because the status face is a projection of the one decode. A row whose output cannot be parsed fails loud at `status()` instead of reporting `done` — accepted: the ledger is the authority for how a run ended.
-- The completion race reads its cancelled arm through the decode, so a raced `failed` row with an unparseable `error_json` surfaces that parse error in place of the `reached terminal state … before completion` message.
+- `handle.status()` on a `done` run parses `output_json`; a row whose output cannot be parsed fails loud there, because the ledger is the authority for how a run ended.
+- The completion race reads its cancelled arm through the decode, so a raced `failed` row with an unparseable `error_json` surfaces that parse error rather than the `reached terminal state … before completion` message.
 - Mutation probes over the new seam — deleting the delivery's release, either driver-exit sweep, the poll's pending arm, the deadline write, the abort ending, and the decode's cancel cause — found three facts the suite executed but never asserted: the gate delivery's `waiting` → `running` release and the effect of both driver-exit sweeps. `tests/gate.spec.ts` gains the release assertion, `tests/fault-injection.spec.ts` gains the abandoned gate wait and strengthens the abandoned steer wait to assert the rejection its name already promised.
 - The `ended` latch is redundant-work protection, not an observable guarantee: the first ending unregisters the entry, so a second ending is unreachable in practice, and a probe that deletes the latch leaves the suite green.
 - `core.ts` holds its per-file 100% coverage bar, and `pnpm run duplication` still reports zero clones.

@@ -6,7 +6,7 @@ English | [中文](2026-09-19-daypaw-durable-timer.zh.md)
 
 ## Problem
 
-Spec 01 §6 fixed `ctx.sleep` semantics and §3.4 designed the `timers` table, but the walking skeleton deferred both ("land on demand: implement when the first real workflow needs a sleep"), and the [gate note](2026-08-23-durable-gate-waitfor.md) landed `ctx.waitFor` without them ([ticket #124](https://github.com/0xnicholas/daypaw-pro/issues/124)). A workflow that must wait for wall-clock time therefore had no durable primitive: a plain `setTimeout` re-executes on re-drive, and a process death loses the wait entirely.
+Spec 01 §6 fixed `ctx.sleep` semantics and §3.4 designed the `timers` table, but the walking skeleton deferred both ("land on demand: implement when the first real workflow needs a sleep"), and the [gate note](2026-08-23-durable-gate-waitfor.md) covers `ctx.waitFor` only ([ticket #124](https://github.com/0xnicholas/daypaw-pro/issues/124)). A workflow that must wait for wall-clock time therefore had no durable primitive: a plain `setTimeout` re-executes on re-drive, and a process death loses the wait entirely.
 
 Four things were still undecided. The primitive takes no name, so where its step-family idempotency key comes from. What a re-drive does with a deadline that was recorded but never reached — wait for it, or restart the count. Who writes the `fired` flag, and in what order relative to the body resuming. And where a deadline that passed while every process was down gets accounted for.
 
@@ -24,7 +24,7 @@ Four things were still undecided. The primitive takes no name, so where its step
 
 **A `TimerScheduler` provider seam.** Spec 01 §7 names timer scheduling as one of three replaceable interfaces for the daemon path. Rejected for now: one implementation exists and no second consumer is in sight, so the store methods plus the core's park are the seam — the same call the [gate note](2026-08-23-durable-gate-waitfor.md) made for `PromiseResolver`, and the extraction condition is unchanged (a second implementation).
 
-**Recording the sleep in `journal` with `kind = 'timer'`.** The journal's `kind` column carried a placeholder for a timer/sleep family. Rejected: §3.4 gives timers their own table with the `wake_at` and `fired` columns the two readers need (the body's dedup read, the boot sweep's overdue scan), a journal row would add a second dedup authority for one call, and `journal` readers (step timeline, steer segments) would have to filter a third kind. Spec 01 §3.2 now points at the table.
+**Recording the sleep in `journal` with `kind = 'timer'`.** The journal's `kind` column carries no timer/sleep value. Rejected: §3.4 gives timers their own table with the `wake_at` and `fired` columns the two readers need (the body's dedup read, the boot sweep's overdue scan), a journal row would add a second dedup authority for one call, and `journal` readers (step timeline, steer segments) would have to filter a third kind. Spec 01 §3.2 routes sleeps to the `timers` table.
 
 **`ctx.sleep(name, duration)`.** A name would give each sleep a hand-written key with no derivation assumption. Rejected: the spec and ADR 0003 fix the signature as `ctx.sleep(duration)`, the step precedent already derives keys from call order, and a reserved prefix keeps derived keys out of user keys — the `steer:` precedent.
 

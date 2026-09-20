@@ -6,7 +6,7 @@ English | [中文](2026-08-25-daypaw-engine-query-face.zh.md)
 
 ## Problem
 
-Issue #50 (spec 05 §5, backend increment 1) gives the product shell's task-progress board its data source: list runs with a status filter, read one run's parent/child lineage, and enumerate one run's journal step timeline. The ruling the ticket inherits is that query knowledge lives in the engine seam — one fact source that evolves with `SCHEMA_VERSION` — and host-side SQL scatter is rejected. The `JournalStore` seam carried only the write side plus point lookups, so the read face had to be designed: which methods, at which layer, with what ordering contract, and without letting presentation vocabulary ("task") leak below the seam (issue #40).
+Issue #50 (spec 05 §5) gives the product shell's task-progress board its data source: list runs with a status filter, read one run's parent/child lineage, and enumerate one run's journal step timeline. The ruling the ticket inherits is that query knowledge lives in the engine seam — one fact source that evolves with `SCHEMA_VERSION` — and host-side SQL scatter is rejected. `JournalStore` exposes the write side and point lookups; the read face adds status-filtered run listing, run lineage, and per-run journal steps, keeping presentation vocabulary ("task") above the seam (issue #40).
 
 ## Decision
 
@@ -30,7 +30,7 @@ The board tickets (inbox grouping, right-panel detail) read everything they need
 
 ## Testing
 
-`packages/daypaw/engine/tests/queries.spec.ts` drives all three queries through the `ctx.durable` service (service → core → SQLite in one path): the five-status list with filter cases, lineage for parent/child/unknown runs, and a completed-plus-failed step timeline. Engine and store src stay at per-file 100% coverage.
+`packages/daypaw/engine/tests/queries.spec.ts` covers `listRuns`, `runLineage`, and `journalTimeline`; engine and store src stay at per-file 100% coverage.
 
 ## Deferred
 

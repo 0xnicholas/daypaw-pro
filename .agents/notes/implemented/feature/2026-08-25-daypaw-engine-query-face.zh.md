@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-Issue #50（spec 05 §5 后端增量第一项）为产品壳的任务进度板块供数：run 列表带状态过滤、单个 run 的父子血缘、单个 run 的 journal step 时间线枚举。票继承的裁决是查询知识收进引擎缝——随 `SCHEMA_VERSION` 演进的单一事实源——host 侧 SQL 散点方案已否决。`JournalStore` 缝此前只载写侧加点查，读面需要设计：哪些方法、落在哪层、带什么排序契约，且呈现词汇（「任务」）不得泄进缝以下（issue #40）。
+Issue #50（spec 05 §5）为产品壳的任务进度板块供数：run 列表带状态过滤、单个 run 的父子血缘、单个 run 的 journal step 时间线枚举。票继承的裁决是查询知识收进引擎缝——随 `SCHEMA_VERSION` 演进的单一事实源——host 侧 SQL 散点方案已否决。`JournalStore` 暴露写侧与点查；读面新增按状态过滤的 run 列表、run 血缘与逐 run journal step，呈现词汇（「任务」）留在缝以上（issue #40）。
 
 ## Decision
 
@@ -30,7 +30,7 @@ Issue #50（spec 05 §5 后端增量第一项）为产品壳的任务进度板�
 
 ## Testing
 
-`packages/daypaw/engine/tests/queries.spec.ts` 经 `ctx.durable` service 驱动全部三类查询（service → core → SQLite 一条路径）：五状态列表与过滤用例、父/子/未知 run 的血缘、completed 加 failed 的 step 时间线。engine 与 store src 保持 per-file 100% 覆盖率。
+`packages/daypaw/engine/tests/queries.spec.ts` 覆盖 `listRuns`、`runLineage` 与 `journalTimeline`；engine 与 store src 保持 per-file 100% 覆盖率。
 
 ## Deferred
 

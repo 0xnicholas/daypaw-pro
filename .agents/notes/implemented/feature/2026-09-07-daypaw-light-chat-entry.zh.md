@@ -14,11 +14,11 @@ Status: implemented
 
 对话席位（`@daypaw/ui-tasks` ConversationView）对无 run 会话保持输入可用：任务的持久 run 未完时席位照旧 steer（#94），无 run 会话——轻对话场景——经审批拒绝附言所走的同一发送器发普通排队 session prompt（`binding.session.prompt(..., 'queue')`），永不走 steer。对话席文案在 `daypaw-tasks` 命名空间（`conversation.chat.*`）。
 
-无 run 会话行本就由 `projectInboxBoard` 的 session-rows 路径投影；新建的空 session 保持不可见草稿，首个被接受的 prompt 翻掉 blank 位后按状态分组列出，并在每次投影通过时从持久 sessions 列表重建——刷新重建的正是同一张脸。
+无 run 会话行本就由 `taskInboxBoard` 的 session-rows 路径投影：未被接受过 prompt 的空 session 保持隐藏；prompt 一经接受即按状态分组列出，每次投影通过都从持久 sessions 列表重建它——刷新重建的正是同一张脸。
 
 ## Consequences
 
-不经任务弹窗即可开聊；定稿的对话以无 run 行出现在「已完成」分组，经持久 sessions 列表跨刷新保真。席位活性规则从「仅未完 run」放宽为「未完 run 或无 run」：刚启动的引擎任务在其账面行尚未载入的瞬态窗口内会短暂渲染轻对话占位符，板块 tick 落位后切回追问席；该窗口内发出的 prompt 走排队通道，由引擎会话当 steering 消费——与拒绝附言依赖的语义相同。反复点入口会新建多个收件箱隐藏的空 session（空草稿永不上行）；host 将它们留作普通空会话。daypaw 产品词汇由此获得第一个非任务对话词（聊天），与任务词汇同驻 locale 词典。
+不经任务弹窗即可开聊；定稿的对话以无 run 行出现在「已完成」分组，经持久 sessions 列表跨刷新保真。会话席在会话的 durable run 未完或会话没有 run 时可用；刚启动的引擎任务在其账面行尚未载入的瞬态窗口内会短暂渲染轻对话占位符，板块 tick 落位后切回追问席；该窗口内发出的 prompt 走排队通道，由引擎会话当 steering 消费——与拒绝附言依赖的语义相同。反复点入口会新建多个收件箱隐藏的空 session（空草稿永不上行）；host 将它们留作普通空会话。daypaw 产品词汇由此获得第一个非任务对话词（聊天），与任务词汇同驻 locale 词典。
 
 ## Alternatives considered
 

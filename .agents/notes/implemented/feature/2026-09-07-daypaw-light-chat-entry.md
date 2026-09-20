@@ -6,7 +6,7 @@ English | [中文](2026-09-07-daypaw-light-chat-entry.zh.md)
 
 ## Problem
 
-The dsh web shell upstream always had a direct-conversation entry; the daypaw IA redo folded every conversation into the task surface (the 「一切皆任务」 stance from map #1). Usage evidence ([#102](https://github.com/0xnicholas/daypaw-pro/issues/102), the 2026-09-02 usage-evidence inventory) showed the owner's daily chats happening entirely outside daypaw and the task surface logging 3 runs in 10 days: the stance retained neither the conversations nor the task habit. Ruling [#98](https://github.com/0xnicholas/daypaw-pro/issues/98) (map #95, gap ② from map #77) decided to bring the light-chat entry back as the cheapest daily-residency experiment; the formal spec-05 §1 impact of loosening the stance is owned by the positioning ruling (#99) and the spec revision (#101), not by this change.
+The daypaw inbox exposes a direct-conversation entry beside the task surface. The 2026-09-02 usage-evidence inventory ([#102](https://github.com/0xnicholas/daypaw-pro/issues/102)) records the owner's daily chats happening entirely outside daypaw and the task surface logging 3 runs in 10 days: the 「一切皆任务」 stance retained neither the conversations nor the task habit. Ruling [#98](https://github.com/0xnicholas/daypaw-pro/issues/98) (map #95, gap ② from map #77) decided to bring the light-chat entry back as the cheapest daily-residency experiment; the formal spec-05 §1 impact of loosening the stance is owned by the positioning ruling (#99) and the spec revision (#101), not by this change.
 
 ## Decision
 
@@ -14,11 +14,11 @@ The inbox nav carries 「直接和助手聊」 beside 「+ 新任务」: a full-
 
 The conversation seat (`@daypaw/ui-tasks` ConversationView) now keeps its input live for run-less sessions: while a task's durable run is unfinished the seat steers as before (#94), and a run-less session — the light-chat case — sends ordinary queued session prompts through the same sender the approval reject note rides (`binding.session.prompt(..., 'queue')`), never a steer. Copy for the chat seat lives in the `daypaw-tasks` namespace (`conversation.chat.*`).
 
-Run-less session rows were already projected by `taskInboxBoard`'s session-rows path; a freshly created blank session stays an invisible draft until its first accepted prompt flips the blank bit, after which it lists by its status group and rebuilds from the durable sessions list on every projection pass — the same face a refresh rebuilds.
+Run-less session rows were already projected by `taskInboxBoard`'s session-rows path: a blank session without an accepted prompt stays hidden; once a prompt is accepted it lists by its status group, and every projection pass rebuilds it from the durable sessions list — the same face a refresh rebuilds.
 
 ## Consequences
 
-Chatting starts without the task dialog, and a settled chat appears as a run-less row in the 已完成 group that survives refresh through the durable sessions list. The seat-liveness rule widened from 「unfinished run only」 to 「unfinished run or run-less」, so the transient window where a just-started engine task's ledger row has not loaded yet renders the chat placeholder briefly before the board tick lands the steer seat; a prompt sent in that window rides the queue channel, which the engine session consumes as steering — the same semantics the reject note already relies on. Repeated entry clicks mint fresh blank sessions that the inbox hides (blank drafts never row); the host keeps them as ordinary empty sessions. The daypaw product vocabulary gains its first non-task conversation word (聊天), held in the locale dictionaries beside the task vocabulary.
+Chatting starts without the task dialog, and a settled chat appears as a run-less row in the 已完成 group that survives refresh through the durable sessions list. The conversation seat is live when the session's durable run is unfinished or the session has no run, so the transient window where a just-started engine task's ledger row has not loaded yet renders the chat placeholder briefly before the board tick lands the steer seat; a prompt sent in that window rides the queue channel, which the engine session consumes as steering — the same semantics the reject note already relies on. Repeated entry clicks mint fresh blank sessions that the inbox hides (blank drafts never row); the host keeps them as ordinary empty sessions. The daypaw product vocabulary gains its first non-task conversation word (聊天), held in the locale dictionaries beside the task vocabulary.
 
 ## Alternatives considered
 

@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-spec 01 §6 已定 `ctx.sleep` 语义、§3.4 已设计 `timers` 表，但走骨把两者都推迟（「按需落地：首个需要 sleep 的真实 workflow 出现时实现」），[gate note](2026-08-23-durable-gate-waitfor.zh.md) 落地 `ctx.waitFor` 时也未带上它们（[ticket #124](https://github.com/0xnicholas/daypaw-pro/issues/124)）。于是需要等待墙钟时间的 workflow 没有耐久原语：裸 `setTimeout` 在重驱动时重执行，进程一死等待即丢失。
+spec 01 §6 已定 `ctx.sleep` 语义、§3.4 已设计 `timers` 表，但走骨把两者都推迟（「按需落地：首个需要 sleep 的真实 workflow 出现时实现」），[gate note](2026-08-23-durable-gate-waitfor.zh.md) 只覆盖 `ctx.waitFor`（[ticket #124](https://github.com/0xnicholas/daypaw-pro/issues/124)）。于是需要等待墙钟时间的 workflow 没有耐久原语：裸 `setTimeout` 在重驱动时重执行，进程一死等待即丢失。
 
 四件事仍未定。原语无 name，其 step 族幂等键从何而来。已录但未到的截止在重驱动时怎么办——按录等，还是重算时长。`fired` 标志由谁写、相对 body 续跑先写还是后写。以及所有进程都不在期间错过的截止在哪里入账。
 
@@ -24,7 +24,7 @@ spec 01 §6 已定 `ctx.sleep` 语义、§3.4 已设计 `timers` 表，但走骨
 
 **抽 `TimerScheduler` provider 缝。** spec 01 §7 把 timer 调度列为 daemon 化的三个可替换接口之一。本次否决：只有一个实现、也看不到第二个消费者，故 store 方法加 core 里的挂起即缝——与 [gate note](2026-08-23-durable-gate-waitfor.zh.md) 对 `PromiseResolver` 的裁决同理，抽取条件不变（出现第二个实现）。
 
-**用 `journal` 的 `kind = 'timer'` 记 sleep。** journal 的 `kind` 列曾留 timer/sleep 族占位。否决：§3.4 为 timer 单立表，其 `wake_at` 与 `fired` 列正是两个读者所需（body 的去重读、boot 扫描的逾期扫描）；记进 journal 会让一次调用出现第二个去重权威，且 journal 的读者（step 时间线、steer 段）要多虑一个 kind。spec 01 §3.2 现指向该表。
+**用 `journal` 的 `kind = 'timer'` 记 sleep。** journal 的 `kind` 列不承载 timer/sleep 值。否决：§3.4 为 timer 单立表，其 `wake_at` 与 `fired` 列正是两个读者所需（body 的去重读、boot 扫描的逾期扫描）；记进 journal 会让一次调用出现第二个去重权威，且 journal 的读者（step 时间线、steer 段）要多虑一个 kind。spec 01 §3.2 把 sleep 路由到 `timers` 表。
 
 **`ctx.sleep(name, duration)`。** 有 name 即可手写每处 sleep 的键，省掉派生假设。否决：spec 与 ADR 0003 已把签名定为 `ctx.sleep(duration)`；step 先例本就按调用序派生键；保留前缀即可把派生键与用户键隔开——`steer:` 先例。
 

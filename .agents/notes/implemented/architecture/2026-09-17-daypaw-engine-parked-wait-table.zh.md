@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-`DurableEngineCore` 把同两件事各讲了两遍。两个悬挂路径——`suspendOnGate` 与 `suspendOnSteer`——手搭同一套停放序列：一个捕获 resolve/reject 的 promise、一个给被遗弃等待用的已处理标记、一个把账本当跨进程兜底的 `setInterval`、一个意为「取消或销毁」的 abort 监听器，以及必须在两种情况下都幂等的入口、间隔、监听器拆卸。`suspendOnSteer` 自己的文档注释就承认它镜像 `suspendOnGate`；两张等待表也都是手写 map，键是手搭的字符串。
+`DurableEngineCore` 重复了两套机制。两个悬挂路径——`suspendOnGate` 与 `suspendOnSteer`——手搭同一套停放序列：一个捕获 resolve/reject 的 promise、一个给被遗弃等待用的已处理标记、一个把账本当跨进程兜底的 `setInterval`、一个意为「取消或销毁」的 abort 监听器，以及必须在两种情况下都幂等的入口、间隔、监听器拆卸。`suspendOnSteer` 自己的文档注释就承认它镜像 `suspendOnGate`；两张等待表也都是手写 map，键是手搭的字符串。
 
 从 run 行到终态的译码写了四遍：`statusFromRow`、`settledResult`、`terminalRejection`，以及 attach 轮询里内联的 switch。四份里有两份——`settledResult` 与轮询 switch——是同一张判定表套了不同管道；另外两份则复述了它的片段（cancelled 的 cause、failed 的 error）。每一份都对，也都可能单独漂移。单写者与 first-terminal-wins 恰恰就押在这里：`done` 意味着解析后的 `output_json`，`failed` 意味着 `RUN_FAILED` 携解析后的 `error_json`，`cancelled` 意味着 `RUN_CANCELLED` 携 `cancel_cause`（[票 #117](https://github.com/0xnicholas/daypaw-pro/issues/117)）。
 
@@ -34,8 +34,8 @@ Status: implemented
 
 ## 后果
 
-- `done` 行上的 `handle.status()` 现在会解析 `output_json`，因为状态面是同一处译码的投影。输出解析不动的行在 `status()` 处响亮失败，而不是照报 `done`——接受：run 到头来是什么，以账本为准。
-- 完成竞速的 cancelled 那一支改经译码读取，因此 `failed` 行若 `error_json` 解析不动，暴露的是该解析错误，而不再是 `reached terminal state … before completion` 文案。
+- `done` 行上的 `handle.status()` 解析 `output_json`；输出解析不动的行在该处响亮失败，因为 run 到头来是什么以账本为准。
+- 完成竞速的 cancelled 那一支改经译码读取，因此 `failed` 行若 `error_json` 解析不动，暴露的是该解析错误，而非 `reached terminal state … before completion` 文案。
 - 针对新缝的变异探针——删掉投递的释放、两条驱动器退出清扫、轮询的 pending 支、截止写入、abort 收尾、译码的 cancel cause——查出三件测试只在执行、从未断言的事实：gate 投递的 `waiting` → `running` 释放，以及两条退出清扫的效果。`tests/gate.spec.ts` 补上释放断言，`tests/fault-injection.spec.ts` 补上被遗弃的 gate 等待，并把被遗弃的 steer 等待强化为断言它名字本已承诺的那次拒绝。
 - `ended` 闩是重复劳动的防护，不是可观察保证：首次收尾即注销条目，因此第二次收尾实际不可达，删掉闩的探针让套件保持全绿。
 - `core.ts` 守住逐文件 100% 覆盖门，`pnpm run duplication` 全树仍报零克隆。
