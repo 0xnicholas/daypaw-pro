@@ -922,10 +922,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the run id.',
       },
       {
-        signature: 'async resolveGate(runId: string, gate: string, settlement: GateSettlement, source: GateResolutionSource): Promise<boolean>',
-        description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate.',
-        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row.' }],
-        returns: 'whether this call won the settlement.',
+        signature: '@Remote(\'resolveGate\') async resolveGate( runId: string, gate: string, settlement: WireGateSettlement, source?: GateResolutionSource, ): Promise<boolean>',
+        description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate. Served to the browser as the Remote endpoint `durable/resolveGate` (ticket #128): the browser plane omits `source`, so the shell\'s answers record `\'manager\'` — ADR 0002 §3\'s Manager UI entry. The settlement value is Json (the WireGateSettlement shape) because it crosses the Remote boundary; the host seam keeps the wider `unknown`.',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row; the browser plane omits it and the host records `\'manager\'` (ADR 0002 §3\'s Manager UI entry).' }],
+        returns: 'whether this call won the settlement (false when the row is already settled).',
       },
       {
         signature: '@Remote(\'steer\') async steer(runId: string, input: Json): Promise<number>',
@@ -4415,10 +4415,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GateResolutionSource',
     declaration: 'export type GateResolutionSource = PromiseResolutionSource;',
-  },
-  {
-    name: 'GateSettlement',
-    declaration: 'export type GateSettlement = {\n    readonly state: \'resolved\';\n    readonly value: unknown;\n} | {\n    readonly state: \'rejected\';\n    readonly reason: string;\n};',
   },
   {
     name: 'GenerateOptions',

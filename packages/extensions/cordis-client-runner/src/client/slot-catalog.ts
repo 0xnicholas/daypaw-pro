@@ -1388,7 +1388,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.agents.page\', () => ctx.slots.register(\n      { name: \'inbox.agents.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:169',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:173',
   },
   {
     key: 'inbox.detail.body',
@@ -1428,7 +1428,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.detail.body\', () => ctx.slots.register(\n      { name: \'inbox.detail.body\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:178',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:182',
   },
   {
     key: 'inbox.new-task.dialog',
@@ -1460,7 +1460,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.new-task.dialog\', () => ctx.slots.register(\n      { name: \'inbox.new-task.dialog\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:149',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:153',
   },
   {
     key: 'inbox.settings.page',
@@ -1496,7 +1496,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.settings.page\', () => ctx.slots.register(\n      { name: \'inbox.settings.page\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:143',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:147',
   },
   {
     key: 'inbox.workspace.banner',
@@ -1551,7 +1551,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.banner\', () => ctx.slots.register(\n      { name: \'inbox.workspace.banner\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:137',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:141',
   },
   {
     key: 'inbox.workspace.conversation',
@@ -1591,7 +1591,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.conversation\', () => ctx.slots.register(\n      { name: \'inbox.workspace.conversation\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:163',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:167',
   },
   {
     key: 'inbox.workspace.conversation.inspector',
@@ -1681,7 +1681,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'inbox.workspace.tasks\', () => ctx.slots.register(\n      { name: \'inbox.workspace.tasks\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:155',
+    source: 'packages/daypaw/ui-inbox/src/client/contract.ts:159',
   },
   {
     key: 'main',

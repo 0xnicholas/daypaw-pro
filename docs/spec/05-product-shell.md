@@ -15,6 +15,7 @@
 | run | **任务** |
 | `running` / `waiting` / `done` / `failed` / `cancelled` | 进行中 / 等待确认 / 已完成 / **出错了**（配「重试」）/ 已取消 |
 | 挂 pending 审批的 run | 派生态**「等待你确认」**——审批面 join 呈现，不是引擎状态 |
+| 挂在 durable gate 上的 run | 同一分诊的另一源：`runs.waiting_gate` 非空即入「等待你确认」（`awaiting: 'gate'`）；作答入口 = 详情列的 gate 卡（`durable/resolveGate`，`resolution_source = 'manager'`，票 [#128](https://github.com/0xnicholas/daypaw-pro/issues/128)）——gate 名按定义声明原样显示，批准值以 JSON 框手写（schema 驱动表单属 Manager 后续面），拒绝可附理由；first-wins，落败读「已被作答或已超时」 |
 | 崩溃复活（boot 扫描续跑） | **不可见**——引擎韧性不产生业务文案 |
 | 父子 run 血缘 | 列表只显示顶层任务；子任务收父任务详情内嵌；`ctx.spawn` 火后不管子 run 在详情单列一节（分类事实 = 子 run 行的 `parent_step_key` 以 `spawn:` 开头；`WireRun` 暴露该字段随壳侧落地，ADR 0016 §7） |
 | run 进度 | agent run = 对话动态的业务语言投影；workflow run = step 名时间线 |
@@ -93,9 +94,11 @@ host 侧一项：**run 进度 live = host 轮询引擎查询面 + `sessionProjec
 
 失败词汇（票 [#86](https://github.com/0xnicholas/daypaw-pro/issues/86)）：`durable/*` 全部私有 Remote 采纳上游 `804b1ffbfc` 收敛后的失败词汇口径——闭集 `durable/` 前缀码 + 类型化 details（`@daypaw/engine` `src/failures.ts` 为唯一正典），消费端（ui-inbox/ui-agents/ui-tasks）按 `error.code` 判别、不解析消息文本；fixture 应答同步收敛。上游 sync 载入 `RemoteError` 后仅换载体类，码表与 details 不变。
 
+gate 作答（票 [#128](https://github.com/0xnicholas/daypaw-pro/issues/128)）：`runs.waiting_gate` 经 `WireRun` 上屏（零引擎改动——`durable/listRuns` 本就返回整行），壳以「等待你确认」分诊 + 详情列作答卡承接；写侧 = `durable/resolveGate(runId, gate, settlement)`（`@Remote`，浏览器省略 `source` → 记 `'manager'`），settlement 边界类型 = `WireGateSettlement`（值定 `Json`：Remote 参数不能是无约束 `unknown`；host 缝保留更宽的 `GateSettlement`）。first-wins 原样透出：落败返回 `false`，卡片读「已被作答或已超时」。**未上 wire**（记录为后续面）：gate 的 `schema_json` 与截止时间——schema 驱动表单渲染属 ADR 0002 §3 承诺的 Manager/UI 面，v1 以 JSON 框手写值。
+
 浏览器平面 wire 词汇（票 [#116](https://github.com/0xnicholas/daypaw-pro/issues/116)）：engine Remote 面的客户端 interface——端点字符串、`{ args }` 信封、snake_case 行、ok/error 解包、五值 run 状态词表（含 zh/en 文案）——收拢在 `@daypaw/durable-client` 一处；四个 ui-* 包经它读账本、不 import engine，wire 类型手声明而非 alias 引擎类型（序列化漂移由活网关 wire-contract spec 的执行证明兜底），解析策略统一 fail-loud、需要行级容错的消费方在自己的调用侧降级。
 
-声明地图（票 [#119](https://github.com/0xnicholas/daypaw-pro/issues/119)，架构评审候选⑤）：wire 事实的「唯一声明处」= 正典声明 + 认可镜像 + 执行证明（#116 镜像律的推广）。start-request 契约正典 = engine `StartRunRequest`，其可选性即 ADR 0012 的显式缺省步（缺 runId 引擎铸造、缺 defVersion 解析唯一注册版本、歧义拒绝）；镜像 = `WireStartRunRequest`，必填 = 浏览器更严切片（弹窗必铸 runId、名册必钉版本），漂移由活网关 spec 兑底。`inputKind` 词表正典 = engine `DefinitionView`、镜像 = `WireDefinition`，壳内 in-process 消费者一律结构索引 `WireDefinition['inputKind']`、不手写字面量；发送策略（空文本拒绝、JSON 本地语法检查）留各 store。starter-text 规则唯一语义声明 = `@daypaw/sdk/wire` wire face（分类、裸字符串、`{ task }` 包裹一处），engine 施加点唯一（`parseWireInput`，`startRun`/`steerText` 共用），其余席位指称不复述；发起追踪链收敛为三席：弹窗 store（发送策略）→ durable-client（wire 词汇）→ engine（施加）。
+声明地图（票 [#119](https://github.com/0xnicholas/daypaw-pro/issues/119)，架构评审候选⑤）：wire 事实的「唯一声明处」= 正典声明 + 认可镜像 + 执行证明（#116 镜像律的推广）。start-request 契约正典 = engine `StartRunRequest`，其可选性即 ADR 0012 的显式缺省步（缺 runId 引擎铸造、缺 defVersion 解析唯一注册版本、歧义拒绝）；镜像 = `WireStartRunRequest`，必填 = 浏览器更严切片（弹窗必铸 runId、名册必钉版本），漂移由活网关 spec 兑底。`inputKind` 词表正典 = engine `DefinitionView`、镜像 = `WireDefinition`，壳内 in-process 消费者一律结构索引 `WireDefinition['inputKind']`、不手写字面量；发送策略（空文本拒绝、JSON 本地语法检查）留各 store。starter-text 规则唯一语义声明 = `@daypaw/sdk/wire` wire face（分类、裸字符串、`{ task }` 包裹一处），engine 施加点唯一（`parseWireInput`，`startRun`/`steerText` 共用），其余席位指称不复述；发起追踪链收敛为三席：弹窗 store（发送策略）→ durable-client（wire 词汇）→ engine（施加）。gate settlement 同律：正典 = engine `types.ts` 的 `WireGateSettlement`（`Json` 值），镜像 = durable-client 手声明的同名类型，执行证明 = 组装金样 `gate-answer` 对真网关作答一轮。
 
 浏览器平面 store 载入结算（票 [#118](https://github.com/0xnicholas/daypaw-pro/issues/118)）：七处手写代际守卫收拢在 `@daypaw/client-load` 一处（`LatestLoad`——最新一次尝试落笔，被顶替的成功与失败都不写）；各 store 只留取数、投影与自己的状态策略（何时 loading、刷新期是否保 ready、失败写什么），不变量行为只在包内 spec 测一次、各 store 保留一条并发接线断言。家取 fork 局部包而非上游 `dsh-client-store`（ADR 0014：上游当前无接受通道）。
 
