@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-上游 2026-08-28 sync 载入了一次 client 栈重组：`packages/client/runtime` 拆为 `store`（store 契约）、`ui-conversation`（会话域层：registries/assembler/contract）、`ui-chat`（chat 模型层：partial 节点、steering history、tool-call tree）；`render-service` 更名 `ui-renderer`（并入 `runtime` 的 `slots.ts`）；`web-react` 并入 `ui-renderer`（`cf5e686408`）；`schema-form` 并入 `ui-settings`（`56dff07c4e`）；旧 `ui-conversation` 的聊天表现整体搬进新 `ui-chat`，其名让位域层。fork 的复用边界记录早于这次重组：spec 05 §4 的整包复用簇仍列 `runtime`/`web-react`/`schema-form`，重写簇以旧 `ui-conversation` 打头，而 `docs/fork/CORE_TOUCHES.md` 只提及 `connection` 与 `ui-theme`（均为现行名）。对照现行树阅读任一记录都会新旧纪混用——同一个 `ui-conversation` 在一份清单里是重写对象、在现行 roster 里是复用包，且 `apps/daypaw-web/vite.config.ts` 的 alias 块仍把 `@deepseek-ai/dsh-client-schema-form` 指向 sync 已删除的目录（另一行 `dsh-client-ui-attachment` 则比曾消费它的 platform-module 表条目活得更久）。
+上游 2026-08-28 sync 载入了一次 client 栈重组：`packages/client/runtime` 拆为 `store`（store 契约）、`ui-conversation`（会话域层：registries/assembler/contract）、`ui-chat`（chat 模型层：partial 节点、steering history、tool-call tree）；`render-service` 更名 `ui-renderer`（并入 `runtime` 的 `slots.ts`）；`web-react` 并入 `ui-renderer`（`cf5e686408`）；`schema-form` 并入 `ui-settings`（`56dff07c4e`）；旧 `ui-conversation` 的聊天表现整体搬进新 `ui-chat`，其名让位域层。fork 的复用边界记录早于这次重组：spec 05 §4 的整包复用簇仍列 `runtime`/`web-react`/`schema-form`，重写簇以旧 `ui-conversation` 打头，而 `docs/fork/CORE_TOUCHES.md` 只提及 `connection` 与 `ui-theme`（均为现行名）。在这些记录里，同一个 `ui-conversation` 既是重写对象、又是复用包，两份清单因此都对不上现行树；且 `apps/daypaw-web/vite.config.ts` 的 alias 块仍把 `@deepseek-ai/dsh-client-schema-form` 指向 sync 已删除的目录（另一行 `dsh-client-ui-attachment` 则比曾消费它的 platform-module 表条目活得更久）。
 
 ## Decision
 
@@ -14,14 +14,14 @@ Status: implemented
 
 - spec 05 §4 的整包复用簇为现行 14 包——connection、locale、modules、web、ui-slots、ui-settings、ui-theme、ui-primitives、ui-attachment、hmr + store、ui-conversation、ui-chat、ui-renderer——重组前的名字映射在簇头一句话说清；簇员合计 40（14 + 15 + 11）、现行包 39，ui-chat 跨整包复用与重写两簇。
 - 重写簇的聊天表现成员是 `ui-chat`，其重写范围只覆盖旧 `ui-conversation` 并入的聊天表现面；ui-chat 的模型与装配供数层仍整包复用（fork roster 整体装载 ui-chat，`@daypaw/ui-tasks` 在其上绘业务语言视图）。供数句改为 `ui-conversation` 的 ConversationNode 装配机——`runtime` 装配机的现居地（`ui-conversation/src/client/conversation/assembler.ts`，由 `@daypaw/ui-tasks` 消费）。
-- vite 的两条过期 alias 行删除；捆绑壳图（`apps/daypaw-web/src` + 别名指向的 `packages/client/web/src` 链）没有任何 import 使用这两个 specifier，两行本就惰性。
+- 捆绑壳图（`apps/daypaw-web/src` + 别名指向的 `packages/client/web/src` 链）不使用这两个 specifier，也没有 alias 行指向已删除的目录或无人 import 的 specifier。
 
 重组前的名字只保留在带日期的研究记录（`docs/research/2026-09-02-upstream-drift-client-stack.md` §0 持有带 SHA 的更名证据）与 spec 的一句桥接说明里——后者需要旧名才能让 [#36](https://github.com/0xnicholas/daypaw-pro/issues/36)/[#37](https://github.com/0xnicholas/daypaw-pro/issues/37) 的裁决来源保持可推导。
 
 ## Alternatives considered
 
-- **逐字保留裁决文本作为历史记录** —— 拒绝：spec 05 是现行状态散文；包名在树上不再解析的边界清单对未来任何读者与 grep 都是失败的。
-- **迁移时顺带再裁决边界** —— 拒绝：wayfinder #80 裁决 1 维持了全部簇裁决（「存量边界全簇维持」）；ui-chat 的双重列名（整包复用的层 + 重写的表现面）是该裁决忠实的现行名读法，不是新决定。
+- **逐字保留裁决文本作为历史记录** —— 拒绝：spec 05 是现行状态散文；包名在树上解析不了的边界清单对未来任何读者与 grep 都是失败的。
+- **迁移时顺带再裁决边界** —— 拒绝：wayfinder #80 裁决 1 维持了全部簇裁决（「存量边界全簇维持」）；ui-chat 的双重列名（整包复用的层 + 重写的表现面）以现行包名实现该裁决。
 - **保留惰性的 vite alias 行** —— 拒绝：`schema-form` 行的目标目录已不存在；点名已消失包的死配置正是本次迁移要消除的新旧混用。
 
 ## Consequences

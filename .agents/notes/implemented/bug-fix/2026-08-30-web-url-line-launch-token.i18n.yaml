@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-30-web-url-line-launch-token.md
-2026-08-30-web-url-line-launch-token.md: acd8aa782437a1dabb3f6c9f417bd8ec8f518ac4
-2026-08-30-web-url-line-launch-token.zh.md: da17119ec2be0b3f67a5a703a8c59bac66539da3
+2026-08-30-web-url-line-launch-token.md: 93ca8838d839957c571c02b7c05a56e9b750e970
+2026-08-30-web-url-line-launch-token.zh.md: 85d7be5a66c3a6439bab4df95a96f4d36c19940b

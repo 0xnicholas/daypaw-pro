@@ -10,9 +10,9 @@ Since the 2026-08-28 upstream sync, the `Release (daypaw)` pack job failed with 
 
 ## Decision
 
-- The restore loop runs until `missingClosurePackages` returns an empty set; there is no round budget. Every round stages at least one package, every staged package is credited by its staged directory on the next check, and the repository's finite on-disk sources bound the reachable name universe, so the loop terminates at the fixpoint.
-- The closure logic moved from `scripts/release/daypaw.ts` to `scripts/release/daypaw-closure.ts` (`missingClosurePackages`, `locatePackage`, `findWorkspacePackage`, staged-manifest IO) with the repository root as an explicit parameter, giving the restore behavior a unit seam. `daypaw-closure.spec.ts` pins: a chain deeper than any fixed budget completes; a package without a repository source fails the release by name; optional peers and consumer-supplied external peers may stay absent; a staged package is credited by its directory even when the residue manifest declares another name, matching Node directory resolution.
-- Failure modes are otherwise unchanged: a package no source can supply fails naming the package, and a malformed staged manifest fails during the completeness BFS.
+- The restore loop runs until `missingClosurePackages` returns an empty set; there is no round budget. The repository's finite on-disk sources bound the reachable name universe, so the loop reaches a fixpoint rather than exhausting a count.
+- The closure logic lives in `scripts/release/daypaw-closure.ts` (`missingClosurePackages`, `locatePackage`, `findWorkspacePackage`, staged-manifest IO) with the repository root as an explicit parameter, giving the restore behavior a unit seam. `daypaw-closure.spec.ts` pins: a chain deeper than any fixed budget completes; a package without a repository source fails the release by name; optional peers and consumer-supplied external peers may stay absent; a staged package is credited by its directory even when the residue manifest declares another name, matching Node directory resolution.
+- Failure modes: a package no source can supply fails naming the package, and a malformed staged manifest fails during the completeness BFS.
 
 ## Alternatives considered
 
@@ -24,4 +24,4 @@ Since the 2026-08-28 upstream sync, the `Release (daypaw)` pack job failed with 
 
 - The CLI closure completes after seven restore rounds (593 bundled closure manifests) and the SDK after two; the release lane needs no workflow change.
 - External restore sources resolve through the root resolution paths as seen under tsx, which include pnpm's hidden hoisted store `node_modules/.pnpm/node_modules`. Running the release script under plain Node cannot see that store and fails with `no repository source` per external package; the release lane always invokes it through tsx.
-- Local runs of `pnpm deploy --legacy` leave pnpm's pre-run dependency check demanding an interactive modules purge; a plain `pnpm install` restores the development tree (pre-existing, unchanged).
+- Local runs of `pnpm deploy --legacy` leave pnpm's pre-run dependency check demanding an interactive modules purge; a plain `pnpm install` restores the development tree.

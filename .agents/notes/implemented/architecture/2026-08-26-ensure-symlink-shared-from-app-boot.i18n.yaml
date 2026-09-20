@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-26-ensure-symlink-shared-from-app-boot.md
-2026-08-26-ensure-symlink-shared-from-app-boot.md: 3b2baa6d9264222e6f316ffe7ef3ffdf7948af65
-2026-08-26-ensure-symlink-shared-from-app-boot.zh.md: f56b4a956216f8b9c14b8e449dfc0e6c793c5c83
+2026-08-26-ensure-symlink-shared-from-app-boot.md: abeea87e0df9df7988cb6856db4c1ca836967046
+2026-08-26-ensure-symlink-shared-from-app-boot.zh.md: f4fe26357e5aac26006e46d269f0d8abd9a68888
