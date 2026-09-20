@@ -8,7 +8,7 @@
 
 ### 1. `ctx.spawn` 是一等原语；派发事实住子 run 行的父链
 
-`ctx.spawn(def, input): Promise<string>`——占一个保留的 step 族键位（`spawn:<n>`，与 `sleep:` / `steer:` 同类），按调用序派生确定性子 runId（与 step 内裸 `run()` 同一形状），带父链 start-or-attach，返回子 runId。**派发事实 = 子 run 行的 `parent_run_id` + `parent_step_key = 'spawn:<n>'`**：零新 journal kind、零新表、零迁移、浏览器面零波及；重驱动按同一调用序重派生同一 id 并 attach，绝不重复 spawn。
+`ctx.spawn(def, input): Promise<string>`——占一个保留的 step 族键位（`spawn:<n>`，与 `sleep:` / `steer:` 同类），按调用序派生确定性子 runId（与 step 内裸 `run()` 同一派生规则），带父链 start-or-attach，返回子 runId。**派发事实 = 子 run 行的 `parent_run_id` + `parent_step_key = 'spawn:<n>'`**：零新 journal kind、零新表、零迁移、浏览器面零波及；重驱动按同一调用序重派生同一 id 并 attach，绝不重复 spawn。
 
 否决「journal 落一行 `kind='spawn'`」（双账）：同一事实写两处（子 run 行已载父链），新 kind 会流进 `durable/journalTimeline` 而闭集解析器与壳渲染 switch 必须同票随动，双写之间还多一个崩溃窗口。
 
@@ -20,7 +20,7 @@
 
 `cancel(root)` 在写自身终态行、结算自身 pending gate 之后，递归对每个未完结子孙执行同一写；**已完结子孙一字不动**——取消从不改写已发生的事。**终态不级联**：`done` / `failed` 永不牵连子 run，子是独立义务，继续跑、继续被 boot 扫描独立复活。**对已终态 run 的 `cancel` 也级联**：操作者的「停掉这摊活」在任何时刻可达，处理的正是「父已完成、spawn 子仍在跑」的孤儿态。级联对已取消子树幂等（终态读取短路）。
 
-否决「只级联 spawn 子」：同一个 `cancel` 对两种子含义不同，而父取消时正在等的那个等待式子 run 恰恰也会被留下（本次补掉的正是这个既有孤儿空洞）；否决「一律不级联」：`cancel` 是操作者唯一的停止指令，点完「已取消」不等于活停下来。
+否决「只级联 spawn 子」：同一个 `cancel` 对两种子含义不同，而父取消时正在等的那个等待式子 run 恰恰也会被留下（等待式子 run 同样成孤儿）；否决「一律不级联」：`cancel` 是操作者唯一的停止指令，点完「已取消」不等于活停下来。
 
 ### 4. 子 run 的失败不进父的失败面
 
@@ -40,7 +40,7 @@ spawn 不新增资源类别（与 `Promise.all` 跑等待式子 run 同级）；
 
 ## 考虑过的替代方案
 
-**薄糖（`ctx.spawn` = 一个 step 里启动子 run 并丢弃 handle）或不设原语（把「step 内不 await」写死为惯用式）**：两者不增加任何能力（今天手写即同效），且区分不出「spawn 子任务」与「等待式子任务」——spec 05 §2 已承诺的呈现没有供数。**返回只读 handle（`{id, status(), cancel()}`）**：`cancel()` 在原语层默认了「父拥有子生命周期」，与本决策的分离立意相抵。**在引擎 `run()` 上把「父已终态/不存在」判为失败**（原语层守卫）：与既有契约冲突——引擎允许在已终态父下记录父子链（血缘读侧与查询面依赖该形状），且「父已完成、子仍在跑」是设计内的合法态；防「已取消的 body 继续派发」的守卫改由 SDK 的 `ctx.spawn` 承担（`ctx.signal.aborted` 即拒）。**每父级或每引擎并发闸**：阈值无消费者可校准，且全局并发闸是引擎级运维维度（worker 化/daemon 化的三缝旁），不该由 spawn 定义偷渡。**给子 run 行加「spawned」列**：与 `spawn:` 前缀重复，前缀已是唯一事实。
+**薄糖（`ctx.spawn` = 一个 step 里启动子 run 并丢弃 handle）或不设原语（把「step 内不 await」写死为惯用式）**：两者不增加任何能力（手写即同效），且区分不出「spawn 子任务」与「等待式子任务」——spec 05 §2 已承诺的呈现没有供数。**返回只读 handle（`{id, status(), cancel()}`）**：`cancel()` 在原语层默认了「父拥有子生命周期」，与本决策的分离立意相抵。**在引擎 `run()` 上把「父已终态/不存在」判为失败**（原语层守卫）：与既有契约冲突——引擎允许在已终态父下记录父子链（血缘读侧与查询面依赖这两列），且「父已完成、子仍在跑」是设计内的合法态；防「已取消的 body 继续派发」的守卫改由 SDK 的 `ctx.spawn` 承担（`ctx.signal.aborted` 即拒）。**每父级或每引擎并发闸**：阈值无消费者可校准，且全局并发闸是引擎级运维维度（worker 化/daemon 化的三缝旁），不该由 spawn 定义偷渡。**给子 run 行加「spawned」列**：与 `spawn:` 前缀重复，前缀已是唯一事实。
 
 ## 后果
 

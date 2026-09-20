@@ -47,7 +47,7 @@ packages/daypaw/<pkg>/
 
 **ui-\* 浏览器插件包另有两步登记**（各有其门）：`packages/daypaw/web-app/cordis.patch.yml` 加 roster 行（门：`verify-cordis-config` 的 roster 镜像检查——上游 `dsh.client` 行必须被镜像或入其 `ROSTER_TRIMS` 裁剪清单；fork 自有行自由添加，但缺行即整面缺席）与 `packages/daypaw/web-app/package.json` 加依赖行（门：同一脚本的 bundle 依赖闭包检查）。
 
-零改动（glob/发现机制自动覆盖，已核实）：`pnpm-workspace.yaml`（`packages/*/*`）、vitest projects 与覆盖率 globs、`scripts/publint-all.ts`、根 `tsdown.config.ts`（客户端包仍需自己的包级配置，见 §1）、`.oxlintrc.json`。`scripts/check-workspace-constraints.ts` 的 release-member 规则已登记 core touch（daypaw 组排除，保 private 姿态）——上游 npm-public 化后此顶不再是零改动。
+零改动（glob/发现机制自动覆盖，已核实）：`pnpm-workspace.yaml`（`packages/*/*`）、vitest projects 与覆盖率 globs、`scripts/publint-all.ts`、根 `tsdown.config.ts`（客户端包仍需自己的包级配置，见 §1）、`.oxlintrc.json`。`scripts/check-workspace-constraints.ts` 的 release-member 规则已登记 core touch（daypaw 组排除，保 private 姿态）。
 
 ## 3. 包拓扑与命名
 
@@ -61,7 +61,7 @@ packages/daypaw/<pkg>/
 
 - per-file 100% 覆盖率门零配置适用（ADR 0007）；豁免才付 core touch。
 - engine：双层崩溃测试（进程内故障注入主力 + 真 SIGKILL 补充）；store：golden 库迁移 fixture；均随包落地，不后补（ADR 0007）。
-- 落地后依次跑绿（#118 实测清单；`knip` 已随上游演进退场，本仓不再存在）：`pnpm run constraints`、`pnpm run verify-package-dependencies`、`pnpm run verify-runtime-closure`、`pnpm run verify-tsconfig-paths`、`pnpm run lint`、README 三件门（`verify-package-readme-limitations` / `-model-experience` / `-summaries`）、本包 `vitest` + per-file 覆盖率门、`pnpm run gen-config-catalog --check`、`pnpm run doc-typecheck`、`pnpm run verify-translation-pairing`。
+- 落地后依次跑绿（#118 实测清单；本仓无 `knip`）：`pnpm run constraints`、`pnpm run verify-package-dependencies`、`pnpm run verify-runtime-closure`、`pnpm run verify-tsconfig-paths`、`pnpm run lint`、README 三件门（`verify-package-readme-limitations` / `-model-experience` / `-summaries`）、本包 `vitest` + per-file 覆盖率门、`pnpm run gen-config-catalog --check`、`pnpm run doc-typecheck`、`pnpm run verify-translation-pairing`。
 - 新包要在**净树**上验证，别靠本地热 `lib/`：`rm -rf packages/daypaw/<pkg>/lib && pnpm run build:lib:host`（宿主面必须跳过客户端包），再 `pnpm run build`（客户端面出 `lib/index.js`，消费方 bundle 把它内联）。
 - 客户端包若进了浏览器 roster：`pnpm run test:web:daypaw:built`（组装金样车道，需先 `pnpm run build`）。
 
