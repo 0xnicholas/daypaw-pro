@@ -11,14 +11,14 @@ Loader 以并发方式应用同一棵树里的兄弟条目（`EntryGroup.update`
 - `dsh-agent-loop` 在构造器里创建配置 agent 并立即采样 `ctx.sessionPersistence`。当 `dsh-session-persistence-jsonl` 条目尚未注册时，`createStoredSession` 拿不到写句柄，配置 agent 以纯内存运行，`.sessions` 永不落盘；进程仍以完整事件流 exit 0（ticket #106，macOS src 模式 6 例 `test:expected` 恒红）。
 - `dsh-acp` 在 `apply` 里连接 stdio 传输，客户端因此能在 provider 条目仍在导入时创建会话。`llm/adapters-updated` 随后在首个会话记录存在之后触发，发出录制夹具（录制于 adapter 先于服务注册的组合）不携带的 `config_option_update` 通知。
 
-构建后的 `lib` 启动导入足够快，两个竞争都按录制方向落定，因此 CI（`DSH_EXAMPLE_MODE=lib`）保持绿，而 src 模式在较慢的转译下确定性变红。插桩排除了票面另一个假设——preset realm 里 `sessionPersistence` 实例分裂：后端实例只构造一个，同一上下文可解析到它——未命中是注册时序而非身份分裂。
+构建后的 `lib` 启动导入足够快，两个竞争都按录制方向落定；在 tsx 源码启动路径上，逐条转译更慢，重排成为确定性结果。未命中是注册时序而非实例身份：后端实例只构造一个，同一上下文可解析到它。
 
 ## Decision
 
-两个启动决策现在只在组合定局后读取它，均以结构化方式读取 Loader 服务的安定屏障（`ctx.get('loader')` 读作 `{ await(): Promise<void> }`，与 api-gateway 客户端和 web boot 已有的读取相同）：
+两个启动决策只在组合定局后读取它，均以结构化方式读取 Loader 服务的安定屏障（`ctx.get('loader')` 读作 `{ await(): Promise<void> }`，与 api-gateway 客户端和 web boot 已有的读取相同）：
 
-- `AgentLoop` 把配置（非恢复）agent 路由进 `startConfiguredAgent`：采样 `sessionPersistence`，若未命中且插件归 Loader 持有，则等待 `loader.await()` 后再采样一次。树安定之后缺席即为定局，agent 以纯内存启动——与不挂载后端的组合完全一致；Loader 之外的场景里构造器采样本就定局。安定屏障是尽力而为：`loader.await()` 拒绝（兄弟条目应用失败）时按当前可见性继续，进程结局交给 Loader 的树失败。恢复路径本就正确（`ctx.inject(['sessionPersistence'])` 等待注册），保持不变。
-- `dsh-acp` 照旧构建 app 并注册处理器，但只在 `loader.await()` 安定后连接传输；无 Loader（注入 `config.stream` 的单元测试）时立即连接。安定失败的树永不服务。依赖 wire 的绑定（`notify`、权限请求）经单个带守卫的访问器读取客户端——agent 只为 wire 创建的会话存在，因而只在服务开始之后存在。
+- `AgentLoop` 把配置（非恢复）agent 路由进 `startConfiguredAgent`：采样 `sessionPersistence`，若未命中且插件归 Loader 持有，则等待 `loader.await()` 后再采样一次。树安定之后缺席即为定局，agent 以纯内存启动——与不挂载后端的组合完全一致；Loader 之外的场景里构造器采样本就定局。安定屏障是尽力而为：`loader.await()` 拒绝（兄弟条目应用失败）时按当前可见性继续，进程结局交给 Loader 的树失败。恢复路径经 `ctx.inject(['sessionPersistence'])` 读取后端，该读取等待注册。
+- `dsh-acp` 构建 app、注册处理器，且只在 `loader.await()` 安定后连接传输；无 Loader（注入 `config.stream` 的单元测试）时立即连接。安定失败的树永不服务。依赖 wire 的绑定（`notify`、权限请求）经单个带守卫的访问器读取客户端——agent 只为 wire 创建的会话存在，因而只在服务开始之后存在。
 
 ## Alternatives considered
 
@@ -32,4 +32,4 @@ Loader 以并发方式应用同一棵树里的兄弟条目（`EntryGroup.update`
 
 只要组合挂载了后端，配置 agent 无论兄弟导入时序如何都确定性地持久化；不挂载时确定性地纯内存启动——src 模式 6 例 `test:expected` 转绿，lib 模式夹具原样回放。ACP 只在组合应用安定后应答首个请求，服务出的目录与能力因此是定局——Loader 持有启动的客户端在 `initialize` 应答前看到有界的启动延迟，而非竞态的拓扑通知。两个等待都是浮动启动（经 `FactoryOwnership` / 插件 effect 追踪），等待期间树拆除会放弃它们，不会死锁 Loader 自身的任务排空。
 
-`packages/core/agent-loop/tests/config-session-id.spec.ts` 钉住各安定臂（后端迟到时新 id 与精确 id 均持久化、安定而无后端则纯内存、安定失败继续、等待中拆除放弃）；`packages/acp/acp/tests/startup.spec.ts` 钉住服务延迟（屏障未决、屏障已决、安定失败、安定前拆除）。两个被改源文件在所属测试套件下保持 100% 覆盖。上游携带缺陷与修复已登记 `docs/fork/CORE_TOUCHES.md`，标记为下次 sync 的上游 PR 候选。
+`packages/core/agent-loop/tests/config-session-id.spec.ts` 钉住各安定臂；`packages/acp/acp/tests/startup.spec.ts` 钉住服务延迟。两个被改源文件在所属测试套件下保持 100% 覆盖。上游携带缺陷与修复已登记 `docs/fork/CORE_TOUCHES.md`，标记为下次 sync 的上游 PR 候选。
