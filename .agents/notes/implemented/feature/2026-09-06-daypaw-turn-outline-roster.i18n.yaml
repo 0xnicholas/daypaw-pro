@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-06-daypaw-turn-outline-roster.md
-2026-09-06-daypaw-turn-outline-roster.md: feb161c5d31e38c46096663e6671599a53cfd5c9
-2026-09-06-daypaw-turn-outline-roster.zh.md: b3316f6bae268a3ee552ff8fe219b2753d320810
+2026-09-06-daypaw-turn-outline-roster.md: 992dd88c00b2a0f6516b9690ac7e426868518770
+2026-09-06-daypaw-turn-outline-roster.zh.md: 6458e9abaab7027ba0daa9eaa1cb2bf7f8fa92d8

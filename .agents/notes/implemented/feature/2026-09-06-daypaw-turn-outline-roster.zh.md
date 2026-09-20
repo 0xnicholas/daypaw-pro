@@ -6,15 +6,15 @@ Status: implemented
 
 ## 问题
 
-上游 `7e2eacb1fe`（随 2026-09-06 sync 至 `d347e70390` 载入）新增 `packages/session/session-turn-outline`：全日志 `turnOutline` 投影单元，为每个已开始的 turn 提供其 `turn/start` seq 与有界的 prompt/response 预览，上游 web bundle 默认启用。fork 的 `@daypaw/web-app` roster 镜像层须裁接不接（wayfinder #85 裁决②），而 fork 已从另一条缝供长会话导航事实——durable 引擎的 `durable/journalTimeline` Remote 供任务详情页右栏——因此两个读模型须以执行证据证明共存，而非默认无冲突。
+上游 `7e2eacb1fe`（随 2026-09-06 sync 至 `d347e70390` 载入）新增 `packages/session/session-turn-outline`：全日志 `turnOutline` 投影单元，为每个已开始的 turn 提供其 `turn/start` seq 与有界的 prompt/response 预览，上游 web bundle 默认启用。fork 的 `@daypaw/web-app` roster 镜像层收该行（wayfinder #85 裁决②），而 fork 已从另一条缝供长会话导航事实——durable 引擎的 `durable/journalTimeline` Remote 供任务详情页右栏——两个读模型因此共存。
 
 ## 裁决
 
-roster 收 `session-turn-outline` 启用行，镜像上游紧邻 `session-stats` 的位置；并镜像上游 `ui-schedule` 行的出厂 `disabled: true` 态（wayfinder #85 裁决④，裁决①挂账的机械后果）。两行同步进 `packages/daypaw/web-app/package.json` 闭包 manifest，`verify-cordis-config` 可解析。共存由执行 spec 证明（`packages/daypaw/web-app/tests/roster-coexistence.spec.ts`）：roster 事实经真实 `dsh-app-boot` patch 分层组合；一棵宿主树——fork 的 `DurableEngine` 加 session store、投影注册表与 turn-outline 插件——同时从引擎缝应答 `durable/journalTimeline`、从 session 投影缝应答 `turnOutline`，键不同、无共享面。投影沿用上游措辞：今日无 fork 可见面渲染 turn-outline 节点——fork 的 ConversationView 遮蔽了持有 turn rail 的上游 ChatView——故 ticket #92 任务③不成立，#40 词汇映射约束未来第一个渲染条目的 fork 表面（fork 的 CONTEXT.md 已含 "turn/轮次" 引擎词）。
+roster 收 `session-turn-outline` 启用行，镜像上游紧邻 `session-stats` 的位置；并镜像上游 `ui-schedule` 行的出厂 `disabled: true` 态（wayfinder #85 裁决④，裁决①挂账的机械后果）。两行同步进 `packages/daypaw/web-app/package.json` 闭包 manifest，`verify-cordis-config` 可解析。`packages/daypaw/web-app/tests/roster-coexistence.spec.ts` 钉住共存：roster 事实经 `dsh-app-boot` patch 分层组合，fork 的 `DurableEngine` 加 session store、投影注册表与 turn-outline 插件在同一棵树上分别从引擎缝答 `durable/journalTimeline`、从 session 投影缝答 `turnOutline`，键不同、无共享面。投影沿用上游措辞：今日无 fork 可见面渲染 turn-outline 节点——fork 的 ConversationView 遮蔽了持有 turn rail 的上游 ChatView——故 ticket #92 任务③不成立，#40 词汇映射约束未来第一个渲染条目的 fork 表面（fork 的 CONTEXT.md 已含 "turn/轮次" 引擎词）。
 
 ## 后果
 
-daypaw 表面以零呈现成本向未来消费方供 outline 投影；漂移窗两行上游新行的收/不收裁决由执行测试钉住，而非仅靠 yaml。golden 车道不受影响：`session-turn-outline` 仅宿主侧（无 `dsh.client` 半面）、`ui-schedule` 禁用，组装 jsdom 图两者皆跳过。未来某 fork 表面开始渲染 outline 条目时，投影键已在 wire 上，座位决策（rail 位置、业务措辞）是产品表面变更，而非 roster 变更。
+daypaw 表面以零呈现成本向未来消费方供 outline 投影；漂移窗两行上游新行的收/不收裁决由执行测试钉住，而非仅靠 yaml。`session-turn-outline` 仅宿主侧（无 `dsh.client` 半面）、`ui-schedule` 禁用，组装 jsdom 图两者皆跳过。未来某 fork 表面开始渲染 outline 条目时，投影键已在 wire 上，座位决策（rail 位置、业务措辞）是产品表面变更，而非 roster 变更。
 
 ## 备选方案
 

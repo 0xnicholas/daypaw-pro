@@ -6,13 +6,13 @@ English | [中文](2026-08-25-daypaw-agent-catalog.zh.md)
 
 ## Problem
 
-Issue #60 (spec 05 §3/§5, shell increment ④b) wants the shell's Agents view to be a real catalog: a grid enumerating engine-registered agent definitions with title and description, and a detail page identified by `name@version`. The shell side already has the inbox workspace and its slot map (#58); the engine side already has the read view (#51 `listDefinitions`) but nothing exposes it across the wire — `ctx.durable` is a host-side service, and the web client only reaches the gateway's Typert Remote channel.
+Issue #60 (spec 05 §3/§5, shell increment ④b) wants the shell's Agents view to be a real catalog: a grid enumerating engine-registered agent definitions with title and description, and a detail page identified by `name@version`. The shell owns the inbox workspace and its slot map (#58); the engine owns the read view (#51 `listDefinitions`), which the web client reaches only through the gateway's Typert Remote channel because `ctx.durable` is a host-side service.
 
 ## Decision
 
 - **Expose `listDefinitions` over the Typert Remote channel** — `DurableService` gains a `@Remote('listDefinitions')` declaration and the gateway claims the `durable/listDefinitions` endpoint at runtime, following the GoalService precedent. The root `tsdown.config.ts` typertPlugin generates the host/remote-client descriptors in `build:lib:host`; no upstream apiproxy change. The fixture (`packages/client/connection`) answers the same endpoint with two canned definitions so every client lane runs keyless.
 - **Catalog reads definitions, not presets** — a definition carries `name@version` (the ticket's detail identity) and optional display metadata; a preset has neither version nor a stable roster identity. The new task dialog (#56) therefore keeps its preset roster, and the catalog page consumes the engine registry. The dual roster is a documented Known Limitation: the dialog offers presets, the catalog shows definitions, and they reconcile only when presets and definitions are registered in pairs.
-- **New package `@daypaw/ui-agents` occupies a new ui-inbox slot `inbox.agents.page`** — `scope: 'session-maybe'` (catalog browsing needs no session; starting a run goes through the existing sessions.create path). The upstream ui-agent-preset row stays untouched: it occupies a different slot for a different surface. The package derives card fields from `DefinitionView` (`title = display?.title ?? name`, agent-kind filter, `name@version` key), validates payloads when they arrive from the gateway, and renders grid + detail views through the inbox WorkspaceSwitch fallback.
+- **New package `@daypaw/ui-agents` occupies a new ui-inbox slot `inbox.agents.page`** — `scope: 'session-maybe'` (catalog browsing needs no session; starting a run goes through the existing sessions.create path). The upstream ui-agent-preset row occupies a different slot for a different surface. The package derives card fields from `DefinitionView` (`title = display?.title ?? name`, agent-kind filter, `name@version` key), validates payloads when they arrive from the gateway, and renders grid + detail views through the inbox WorkspaceSwitch fallback.
 - **Snapshot lane pins the transcript** — `apps/daypaw-web/tests/agents-catalog.snapshot.ts` records grid and detail goldens against the fixture roster, keyless.
 
 ## Alternatives considered
@@ -24,7 +24,7 @@ Issue #60 (spec 05 §3/§5, shell increment ④b) wants the shell's Agents view 
 
 ## Consequences
 
-The shell's Agents view renders the live engine roster, and the Typert Remote descriptors for `durable/listDefinitions` are generated and pinned by snapshot. Costs: a new package plus its root wiring (tsconfig references, knip entry, cordis.patch roster, assembled-boot PLUGINS), one upstream fixture touch (registered in `docs/fork/CORE_TOUCHES.md`), and the engine service now carries a Typert Remote declaration, making the protocol package a peer of `@daypaw/engine`.
+The shell's Agents view renders the live engine roster, and the Typert Remote descriptors for `durable/listDefinitions` are generated and pinned by snapshot. Costs: a new package plus its root wiring (tsconfig references, knip entry, cordis.patch roster, assembled-boot PLUGINS), one upstream fixture touch (registered in `docs/fork/CORE_TOUCHES.md`), and the engine service carries a Typert Remote declaration, which makes the protocol package a peer of `@daypaw/engine`.
 
 ## Testing
 

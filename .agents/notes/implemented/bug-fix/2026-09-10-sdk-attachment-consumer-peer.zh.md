@@ -19,11 +19,11 @@ Status: implemented
 
 **把 attachment 作为 SDK 真依赖 bundle**（与打包的 `@daypaw/sdk` 文件一并声明在 `dependencies` 里）。否决：bundle 副本与消费方经 peer 安装的副本构成同名第二身份；对仅类型引用而言它只是遮蔽消费方的解析，并破坏「消费方同时直用上游 dsh 包」时的 peer 契约。
 
-**按 ticket 草案的 peer range `^0.0.1-rc.1`**（镜像更早的上游 llm 发布）。经实证否决：该 range 解析落在 `0.0.1-rc` 线内，其面缺 `FileAttachmentRef`/`RequestImageAttachment`；冒烟消费方 TS2614/TS2724。上游当前已发布的 `dsh-llm@0.1.5-rc.1` 已不再把 attachment 声明为 peer（devDependency `^0.1.5-rc.1`），没有上游 peer 声明可镜像——锚点只能是 vendored 面。
+**peer range `^0.0.1-rc.1`**（镜像更早的上游 llm 发布）。否决：该 range 解析落在 `0.0.1-rc` 线内，其面缺 `FileAttachmentRef`/`RequestImageAttachment`；冒烟消费方 TS2614/TS2724。上游当前已发布的 `dsh-llm@0.1.5-rc.1` 已不再把 attachment 声明为 peer（devDependency `^0.1.5-rc.1`），没有上游 peer 声明可镜像——锚点只能是 vendored 面。
 
-**像 zod 那样经 `externalPeerPins` 钉版 attachment。** 否决：zod 钉版的存在前提是 zod 在 semver 兼容 range 内改泛型形状；attachment 的 range 本身已确定性解析（今天只匹配 `0.1.3-alpha.2`），且冒烟 typecheck 守漂移——`0.0.1-rc` 面缺口正是这样在本次修复中暴露的。
+**像 zod 那样经 `externalPeerPins` 钉版 attachment。** 否决：zod 钉版的存在前提是 zod 在 semver 兼容 range 内改泛型形状；attachment 的 range 本身已确定性解析（今天只匹配 `0.1.3-alpha.2`），且冒烟 typecheck 拒绝声明缺 `FileAttachmentRef`/`RequestImageAttachment` 的版本。
 
-**pack 后对 bundle 集合做「声明的 types import 全部可解析」断言**（ticket 的可选防线，另行裁决）。本次不做：冒烟 typecheck 已在同一车道步骤拦下这一失败类。
+**pack 后对 bundle 集合做「声明的 types import 全部可解析」断言。** 本次不做：冒烟 typecheck 已在同一车道步骤拦下这一失败类。
 
 ## Consequences
 

@@ -6,15 +6,15 @@ English | [中文](2026-09-13-upstream-sync-0-1-5.zh.md)
 
 ## Problem
 
-The 2026-09-13 sync merged 1301 upstream commits (0.1.3-alpha.1 → 0.1.5-rc.2). Four port hazards do not reduce to conflict resolution: each one leaves the tree green while a runtime surface breaks, so a future sync must recognize them on sight.
+Upstream 0.1.5-rc.2 differs from 0.1.3-alpha.1 by 1301 commits and four port hazards. Four port hazards do not reduce to conflict resolution: each one leaves the tree green while a runtime surface breaks, so a future sync must recognize them on sight.
 
 ## Decision
 
 **Archived notes are rename-graft targets.** Git's rename detection merged this fork's edits to an `implemented/` note into upstream's archived (frozen) copy, changing sealed content. Any sync that sees an archived note differing from upstream restores the upstream blob; live knowledge belongs in the owning script or a fresh note, never in the frozen twin.
 
-**The vendored front door must call `runCli()` explicitly.** Upstream's dsh bin now guards self-execution behind `import.meta.main`, so `@daypaw/cli`'s `bin.mjs` — which seeds the profile, rewrites argv, then imports the dsh bin — silently exits 0 unless it calls the exported `runCli`. A packaged-CLI smoke that exits 0 with no output is this guard, not a dead composition.
+**The vendored front door must call `runCli()` explicitly.** Upstream's dsh bin now guards self-execution behind `import.meta.main`, so `@daypaw/cli`'s `bin.mjs` imports the dsh bin after seeding the profile and rewriting argv, so upstream's `import.meta.main` guard sees no self-execution and the process exits 0 unless `bin.mjs` calls the exported `runCli`. A packaged-CLI smoke that exits 0 with no output hits this guard; it does not indicate a dead composition.
 
-**The npm closure drifts ahead of the fork patch.** The release restores missing closure packages from the registry, so upstream's newest published runtime rides the tarball even when the fork tree pins older semantics. New upstream rows that gain service dependencies (here: `ui-deliverables` waiting on `workspaceFiles`) must gain their provider row in `packages/daypaw/web-app/cordis.patch.yml` in the same sync; upstream's own web bundle is the reference for which rows a service needs.
+**The npm closure drifts ahead of the fork patch.** The release restores missing closure packages from the registry, so upstream's newest published runtime rides the tarball even when the fork tree pins older semantics. New upstream rows that gain service dependencies, such as `ui-deliverables` waiting on `workspaceFiles`, must gain their provider row in `packages/daypaw/web-app/cordis.patch.yml` in the same sync; upstream's own web bundle is the reference for which rows a service needs.
 
 **Golden names follow the corpus spec's filename/header pairing.** When `SESSION_FORMAT_VERSION` advances, refreshed owner-local goldens rename with the write face (`session.v2.jsonl` → `session.v3.jsonl`); the corpus spec fails on a filename/header generation mismatch before any replay does.
 

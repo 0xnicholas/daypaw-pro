@@ -6,15 +6,15 @@ Status: implemented
 
 ## 问题
 
-2026-09-13 同步合并了 1301 个上游提交(0.1.3-alpha.1 → 0.1.5-rc.2)。有四个移植危险点无法归约为冲突解决:每一个都会让树保持绿而某个运行时面坏掉,未来同步必须一眼认出它们。
+上游 0.1.5-rc.2 相较 0.1.3-alpha.1 多 1301 个提交，并带来四个移植危险点。有四个移植危险点无法归约为冲突解决:每一个都会让树保持绿而某个运行时面坏掉,未来同步必须一眼认出它们。
 
 ## 决策
 
 **归档笔记是 rename 嫁接目标。** Git 的 rename 检测把本 fork 对某 `implemented/` 笔记的编辑合并进了上游归档(冻结)副本,改变了密封内容。任何同步若发现归档笔记与上游不同,恢复上游 blob;活知识属于持有它的脚本或新笔记,绝不属于冻结孪生。
 
-**自含前门必须显式调用 `runCli()`。** 上游 dsh bin 现以 `import.meta.main` 守卫自执行,于是 `@daypaw/cli` 的 `bin.mjs` —— 先播种 profile、改写 argv、再 import dsh bin —— 除非调用导出的 `runCli`,否则静默 exit 0。打包 CLI 冒烟零输出退出是这道守卫,不是组合死了。
+**自含前门必须显式调用 `runCli()`。** `@daypaw/cli` 的 `bin.mjs` 在播种 profile、改写 argv 之后 import dsh bin，上游的 `import.meta.main` 守卫因此看不到自执行，除非 `bin.mjs` 调用导出的 `runCli`，进程静默 exit 0。打包 CLI 冒烟零输出退出就是撞上这道守卫，并不表示组合死了。
 
-**npm 闭包漂移在 fork patch 之前。** release 从 registry 补齐缺失闭包,即使 fork 树钉着旧语义,上游最新发布的运行时也会搭上 tarball。获得新服务依赖的上游新行(本次:`ui-deliverables` 等待 `workspaceFiles`)必须在同一次同步里于 `packages/daypaw/web-app/cordis.patch.yml` 补上供主行;上游自己的 web bundle 是「一个服务需要哪些行」的参照。
+**npm 闭包漂移在 fork patch 之前。** release 从 registry 补齐缺失闭包,即使 fork 树钉着旧语义,上游最新发布的运行时也会搭上 tarball。获得新服务依赖的上游新行，如 `ui-deliverables` 等待 `workspaceFiles`，必须在同一次同步里于 `packages/daypaw/web-app/cordis.patch.yml` 补上供主行;上游自己的 web bundle 是「一个服务需要哪些行」的参照。
 
 **金样命名跟随 corpus spec 的文件名/头部配对。** `SESSION_FORMAT_VERSION` 前进时,滚版后的属主本地金样随写入面更名(`session.v2.jsonl` → `session.v3.jsonl`);corpus spec 对文件名/头部代数不匹配的失败先于任何回放发生。
 

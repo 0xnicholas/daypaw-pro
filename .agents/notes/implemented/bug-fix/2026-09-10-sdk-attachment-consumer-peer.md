@@ -19,11 +19,11 @@ Upstream `a3207a758b` (inside the 2026-08-29 sync window) moved `@deepseek-ai/ds
 
 **Bundle attachment as a real SDK dependency** (declared in `dependencies` alongside the packaged `@daypaw/sdk` files). Rejected: a bundled copy beside the consumer's peer-installed copy is a second identity of the same name; for a type-only import it merely shadows the consumer's resolution and breaks the peer contract for consumers that also use upstream dsh packages directly.
 
-**Peer range `^0.0.1-rc.1`** as the ticket sketched (mirroring older upstream llm releases). Rejected empirically: the range resolves inside the `0.0.1-rc` line, whose surface lacks `FileAttachmentRef`/`RequestImageAttachment`; the smoke consumer fails TS2614/TS2724. Upstream's current published `dsh-llm@0.1.5-rc.1` no longer peers attachment at all (devDependency `^0.1.5-rc.1`), so there is no upstream peer declaration left to mirror — the vendored surface is the anchor.
+**Peer range `^0.0.1-rc.1`** mirroring older upstream llm releases. Rejected: the range resolves inside the `0.0.1-rc` line, whose surface lacks `FileAttachmentRef`/`RequestImageAttachment`; the smoke consumer fails TS2614/TS2724. Upstream's current published `dsh-llm@0.1.5-rc.1` no longer peers attachment at all (devDependency `^0.1.5-rc.1`), so there is no upstream peer declaration left to mirror — the vendored surface is the anchor.
 
-**Pin attachment through `externalPeerPins`** like zod. Rejected: the zod pin exists because zod changes generic shapes inside semver-compatible ranges; attachment's range already resolves deterministically (only `0.1.3-alpha.2` matches today) and the smoke typecheck guards drift — which is exactly how the `0.0.1-rc` gap surfaced during this fix.
+**Pin attachment through `externalPeerPins`** like zod. Rejected: the zod pin exists because zod changes generic shapes inside semver-compatible ranges; attachment's range already resolves deterministically (only `0.1.3-alpha.2` matches today) and the smoke typecheck guards drift — the smoke typecheck rejects a version whose declarations lack `FileAttachmentRef`/`RequestImageAttachment`.
 
-**A post-pack "every declared types import resolves" assertion over the bundle set** (the issue's optional defense line, adjudicated separately). Not taken here: the smoke typecheck already fails this failure class at the same lane step.
+**A post-pack "every declared types import resolves" assertion over the bundle set.** Not adopted: the smoke typecheck already fails this failure class at the same lane step.
 
 ## Consequences
 
