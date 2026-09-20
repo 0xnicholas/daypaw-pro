@@ -58,7 +58,7 @@ jobs:
         run: pnpm run release:daypaw
 
       - name: Upload tarballs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: daypaw-tarballs
           path: dist-daypaw/*.tgz
