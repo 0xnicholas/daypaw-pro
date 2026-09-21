@@ -1,3 +1,6 @@
+# daypaw-pro fork: version updates are suppressed for every ecosystem below
+# (open-pull-requests-limit: 0). Security updates are repository settings, not this file.
+# See docs/adr/0017-dependency-update-posture.md.
 version: 2
 
 updates:
@@ -12,6 +15,7 @@ updates:
       timezone: "Asia/Shanghai"
     cooldown:
       default-days: 30
+    open-pull-requests-limit: 0
     labels:
       - "kind/dependency"
       - "area/infra"
@@ -24,6 +28,7 @@ updates:
       timezone: "Asia/Shanghai"
     cooldown:
       default-days: 30
+    open-pull-requests-limit: 0
     labels:
       - "kind/dependency"
       - "area/infra"
@@ -36,6 +41,7 @@ updates:
       timezone: "Asia/Shanghai"
     cooldown:
       default-days: 30
+    open-pull-requests-limit: 0
     labels:
       - "kind/dependency"
       - "area/infra"

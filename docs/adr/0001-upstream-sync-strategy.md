@@ -44,7 +44,7 @@ git tag -a daypaw-sync/$(date +%F) -m "upstream: deepseek-ai/deepseek-harness@<s
 - `vendor/`（上游 pin Cordis 的机制）：**不用于**同步策略，跟随上游。
 - `patches/node-pty`：跟随上游。
 - 上游回赠：core-touch 中标记为 PR 候选的改动，成熟后向 deepseek-harness 提 PR；被接受的改动在下一次 sync 后从 CORE_TOUCHES.md 划掉。
-- dependabot 版本更新：**不采用**——fork 侧以仓库设置停用（零文件差异），依赖版本随上游的依赖升级经 sync 进入（[ADR 0017](0017-dependency-update-posture.md)）。
+- dependabot 版本更新：**不采用**——fork 侧在 `.github/dependabot.yml` 逐 ecosystem 以 `open-pull-requests-limit: 0` 抑制（三行差异，登记 CORE_TOUCHES），依赖版本随上游的依赖升级经 sync 进入（[ADR 0017](0017-dependency-update-posture.md)）。
 
 ## 后果
 
