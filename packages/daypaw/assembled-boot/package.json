@@ -21,7 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "@testing-library/react": "^16.3.2",
-    "vitest": "^4.1.8"
+    "vitest": "^5.0.1"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-client-connection": "workspace:^",
