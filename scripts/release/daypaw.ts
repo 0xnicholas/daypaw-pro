@@ -26,19 +26,24 @@ import { completeClosure, findWorkspacePackage, readManifest, writeManifest } fr
 const root = resolve(import.meta.dirname, '..', '..')
 
 /**
- * The zod registry range in staged manifests pins to the workspace-resolved
- * version: zod changes generic shapes inside semver-compatible ranges (the
- * 4.5 line), and a bundled package's loose range would re-resolve a drifting
- * copy beside the one the closure was built and typed against. Re-pinning is
- * a deliberate sync-time decision.
- * @param repoRoot - the repository root, for resolving the workspace zod.
+ * Exact-version pins for the drift-prone peers the sdk smoke installs: the
+ * registry serves newer in-range versions (cordis 4.0.4 under `~4.0.1`) whose
+ * typings no longer unify with the closure, so every peer whose types cross
+ * the consumer boundary is pinned to the workspace-resolved version the
+ * closure was built and typed against. A pin is a deliberate sync-time
+ * decision (ADR 0011 §2 addendum).
+ * @param repoRoot - the repository root, for workspace resolution.
  * @returns the name-to-exact-version pin map.
  */
 function externalPeerPins(repoRoot: string): Readonly<Record<string, string>> {
-  const zodResolution = createRequire(join(repoRoot, 'package.json')).resolve('zod/package.json')
-  const zodVersion = (JSON.parse(readFileSync(zodResolution, 'utf8')) as { version?: string }).version
-  if (zodVersion === undefined) throw new Error('release-daypaw: resolved zod carries no version.')
-  return { zod: zodVersion }
+  const pins: Record<string, string> = {}
+  for (const name of ['zod', '@deepseek-ai/cordis']) {
+    const resolution = createRequire(join(repoRoot, 'package.json')).resolve(`${name}/package.json`)
+    const version = (JSON.parse(readFileSync(resolution, 'utf8')) as { version?: string }).version
+    if (version === undefined) throw new Error(`release-daypaw: resolved ${name} carries no version.`)
+    pins[name] = version
+  }
+  return pins
 }
 
 /** Pack and smoke artifacts land here; the directory is gitignored. */
