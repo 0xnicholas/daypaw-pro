@@ -1,17 +1,16 @@
-// The daypaw fork's `durable/*` fixture answers, held as a decorator
-// transport over the upstream browser fixture (wayfinder #81 ruling 1,
-// ticket #90): the decorator intercepts the engine's six Remote endpoints,
-// owns the run ledger, journal, and definition-registry tables, and passes
-// every other call and stream through to the wrapped fixture transport. The
-// upstream `packages/client/connection/src/client/fixture.ts` keeps only the
-// fx-world seed adjustments (the registered core touch); these answers live
-// with the daypaw golden lanes that consume them.
+// The daypaw fork's `durable/*` answers, held as a decorator transport
+// over the fork's RemoteMock world (wayfinder #81 ruling 1, ticket #90;
+// ADR 0018 for the world's home): the decorator intercepts the engine's
+// seven Remote endpoints, owns the run ledger, journal, and
+// definition-registry tables, and passes every other call and stream
+// through to the wrapped world transport (`daypaw-remote.ts`, the mock
+// that owns the fx-world facts these answers join to).
 //
 // The `durable/startRun` arm drives the run's session twin through the
-// fixture's public face — `session/create` registers the twin (sessionId ≡
+// world's public face — `session/create` registers the twin (sessionId ≡
 // runId, the model default, and the `api-session/added` remote event) and
 // `session/prompt` drives the first turn, whose first user message is the
-// input's JSON serialization (ADR 0010) — so no fixture-internal state is
+// input's JSON serialization (ADR 0010) — so no world-internal state is
 // reached. Failure answers carry the engine's `durable/*` failure vocabulary
 // (`@daypaw/engine` `src/failures.ts`, ticket #86): codes and details match
 // the engine's throw sites verbatim.

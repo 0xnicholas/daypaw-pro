@@ -27,13 +27,13 @@ kind: "package-reference"
 
 ### 何时用它
 
-消费方是两条 web 车道的 `tests/assembled-boot.ts` 入口：上游车道（[`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts)，上游 web-app bundle、`?fixture` 搜索开关）与 fork 车道（[`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts)，base 层之上的 daypaw web-app bundle、包着 fork `durable/*` 装饰器的载体钩子）。只有第三条组装花名册需要 jsdom golden 覆盖时才添新 lane。
+消费方是两条 web 车道的 `tests/assembled-boot.ts` 入口：上游车道（[`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts)，上游 web-app bundle、`?fixture` 搜索开关）与 fork 车道（[`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts)，base 层之上的 daypaw web-app bundle、包着 fork RemoteMock 世界（[`daypaw-remote.ts`](../../../apps/daypaw-web/tests/daypaw-remote.ts)，ADR 0018）与 fork `durable/*` 装饰器的载体钩子）。只有第三条组装花名册需要 jsdom golden 覆盖时才添新 lane。
 
 ### 入口
 
 ```ts ignore-check
 import { connectionRpcCarrier, createAssembledBootLane } from '@daypaw/assembled-boot'
-import { createFixtureConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
+import { createDaypawRemote } from './daypaw-remote.ts'
 import { decorateDurableRpc } from './durable-rpc.ts'
 
 const lane = await createAssembledBootLane({
@@ -42,7 +42,7 @@ const lane = await createAssembledBootLane({
     patch: 'packages/daypaw/web-app/cordis.patch.yml',
   },
   documentTitle: 'daypaw',
-  carrier: () => connectionRpcCarrier(decorateDurableRpc(createFixtureConnectionRpc())),
+  carrier: () => connectionRpcCarrier(decorateDurableRpc(createDaypawRemote().mock.rpc)),
 })
 
 export const installAssembledBootEnv = lane.installAssembledBootEnv

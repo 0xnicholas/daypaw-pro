@@ -27,13 +27,13 @@ English | [中文](README.zh.md)
 
 ### When to use it
 
-Consumed by the two web lanes' `tests/assembled-boot.ts` entries: the upstream lane ([`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts), upstream web-app bundle, `?fixture` search switch) and the fork lane ([`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts), daypaw web-app bundle over the base layer, carrier hooks wrapping the fixture world with the fork's `durable/*` decorator). Reach for a new lane only when a third assembled roster needs jsdom golden coverage.
+Consumed by the two web lanes' `tests/assembled-boot.ts` entries: the upstream lane ([`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts), upstream web-app bundle, `?fixture` search switch) and the fork lane ([`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts), daypaw web-app bundle over the base layer, carrier hooks wrapping the fork's RemoteMock world ([`daypaw-remote.ts`](../../../apps/daypaw-web/tests/daypaw-remote.ts), ADR 0018) with the fork's `durable/*` decorator). Reach for a new lane only when a third assembled roster needs jsdom golden coverage.
 
 ### Entry point
 
 ```ts ignore-check
 import { connectionRpcCarrier, createAssembledBootLane } from '@daypaw/assembled-boot'
-import { createFixtureConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
+import { createDaypawRemote } from './daypaw-remote.ts'
 import { decorateDurableRpc } from './durable-rpc.ts'
 
 const lane = await createAssembledBootLane({
@@ -42,7 +42,7 @@ const lane = await createAssembledBootLane({
     patch: 'packages/daypaw/web-app/cordis.patch.yml',
   },
   documentTitle: 'daypaw',
-  carrier: () => connectionRpcCarrier(decorateDurableRpc(createFixtureConnectionRpc())),
+  carrier: () => connectionRpcCarrier(decorateDurableRpc(createDaypawRemote().mock.rpc)),
 })
 
 export const installAssembledBootEnv = lane.installAssembledBootEnv

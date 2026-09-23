@@ -1,20 +1,24 @@
 // The daypaw durable wire lane: the fork's `durable/*` Remote answers over
 // the decorator transport (the seeded run ledger's list/lineage/timeline/rerun,
 // startRun's registry resolution plus the session twin driven through the
-// fixture's public session face) and the approvalHistory projection fold
+// world's public session face) and the approvalHistory projection fold
 // (control-stream baseline plus live advance on asked/decided appends) over
-// the same composed fixture face the assembled golden lanes ride.
+// the same composed RemoteMock face the assembled golden lanes ride.
 import { describe, expect, it } from 'vitest'
-import { createFixtureConnectionRpc, type ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
+import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import { decorateDurableRpc } from './durable-rpc.ts'
+import { createDaypawRemote, type DaypawRemote } from './daypaw-remote.ts'
 
-interface TimingHooks {
-  appendApproval(id: string, approvalId: string, toolName: string, outcome: 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'): void
+/** One decorated world per call, mirroring the assembled boot's per-mount world. */
+interface DurableWorld {
+  readonly rpc: ClientConnectionRpc
+  readonly appendApproval: DaypawRemote['appendApproval']
 }
-const timing = (): TimingHooks => (globalThis as Record<string, unknown>).__fxTiming as TimingHooks
 
-/** One decorated fixture world per call, mirroring the assembled boot's per-mount world. */
-const durableRpc = (): ClientConnectionRpc => decorateDurableRpc(createFixtureConnectionRpc())
+const durableWorld = (): DurableWorld => {
+  const remote = createDaypawRemote()
+  return { rpc: decorateDurableRpc(remote.mock.rpc), appendApproval: remote.appendApproval }
+}
 
 /** Drive one durable Remote endpoint against the decorated transport. */
 async function callRemote<T>(
@@ -53,7 +57,7 @@ interface JournalRow {
 
 describe('fixture durable endpoints', () => {
   it('lists every run newest-first, honoring the optional status filter', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const all = await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})
     // created_at DESC: the running agent run (aliasing the fx-alpha session) leads.
     expect(all.map(row => row.run_id)).toEqual([
@@ -80,7 +84,7 @@ describe('fixture durable endpoints', () => {
   })
 
   it('answers run lineage: own row, parent, and direct children oldest-first', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const top = await callRemote<{ run?: RunRow; parent?: RunRow; children: RunRow[] }>(
       rpc, 'durable/runLineage', { runId: 'fx-run-invoice-audit' })
     expect(top.run?.run_id).toBe('fx-run-invoice-audit')
@@ -101,7 +105,7 @@ describe('fixture durable endpoints', () => {
   })
 
   it('serves the run journal in start order and an empty timeline for journal-less runs', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const steps = await callRemote<JournalRow[]>(rpc, 'durable/journalTimeline', { runId: 'fx-run-release-digest' })
     expect(steps.map(row => [row.step_key, row.name, row.status])).toEqual([
       ['collect-updates', 'Collect team updates', 'completed'],
@@ -112,7 +116,7 @@ describe('fixture durable endpoints', () => {
   })
 
   it('rerun appends a fresh running row chaining the source, visible to the next listRuns poll', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const before = await callRemote<RunRow[]>(rpc, 'durable/listRuns', {})
     const newId = await callRemote<string>(rpc, 'durable/rerun', { runId: 'fx-run-invoice-audit' })
     expect(newId).toMatch(/^fx-rerun-\d+$/)
@@ -143,7 +147,7 @@ describe('fixture durable endpoints', () => {
 
 describe('fixture durable startRun', () => {
   it('starts a run with a dialog-minted id, coerces the starter text shape, and lists the session twin', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const runId = 'fx-started-by-dialog'
     const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
       request: { defName: 'starter-assistant', defVersion: '1.0.0', input: 'write a poem', runId },
@@ -171,7 +175,7 @@ describe('fixture durable startRun', () => {
   })
 
   it('drives the twin first turn over the public session face', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const runId = 'fx-twin-first-turn'
     await callRemote(rpc, 'durable/startRun', {
       request: { defName: 'starter-assistant', defVersion: '1.0.0', input: 'hello twin', runId },
@@ -191,7 +195,7 @@ describe('fixture durable startRun', () => {
   })
 
   it('mints a fresh run id when the caller passes none', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const started = await callRemote<{ runId: string }>(rpc, 'durable/startRun', {
       request: { defName: 'invoice-checker', input: { invoice: 'INV-2044' } },
     })
@@ -202,7 +206,7 @@ describe('fixture durable startRun', () => {
   })
 
   it('rejects an unregistered definition name with the durable failure vocabulary', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const missing = await rpc.call('/api', 'durable/startRun', { args: { request: { defName: 'ghost-agent', input: 'x' } } })
     expect(missing).toMatchObject({
       ok: false,
@@ -232,7 +236,7 @@ describe('fixture approvalHistory projection', () => {
   }
 
   it('replays the seeded pairs in the control baseline', async () => {
-    const rpc = durableRpc()
+    const rpc = durableWorld().rpc
     const abort = new AbortController()
     for await (const frame of openControl(rpc, abort.signal)) {
       const baseline = frame as {
@@ -251,7 +255,8 @@ describe('fixture approvalHistory projection', () => {
   })
 
   it('pushes a live approvalHistory frame on each asked/decided append', async () => {
-    const rpc = durableRpc()
+    const world = durableWorld()
+    const rpc = world.rpc
     const abort = new AbortController()
     const framesPromise = (async (): Promise<unknown[]> => {
       const frames: unknown[] = []
@@ -263,7 +268,7 @@ describe('fixture approvalHistory projection', () => {
       return frames
     })()
     await new Promise(resolve => setTimeout(resolve, 10))
-    timing().appendApproval('fx-alpha', 'fx-approval-live-1', 'web_fetch', 'rejected')
+    world.appendApproval('fx-alpha', 'fx-approval-live-1', 'web_fetch', 'rejected')
     const frames = await framesPromise
     const history = frames
       .filter((f): f is { type: 'projection'; key: string; value: { id: string; toolName: string; outcome?: string }[] } =>
