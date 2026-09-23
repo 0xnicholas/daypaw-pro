@@ -33,6 +33,21 @@
     },
     {
       "path": "../../packages/daypaw/assembled-boot"
+    },
+    {
+      "path": "../../packages/llm/llm"
+    },
+    {
+      "path": "../../packages/core/session"
+    },
+    {
+      "path": "../../packages/util/brand"
+    },
+    {
+      "path": "../../packages/test-support/client-runtime"
+    },
+    {
+      "path": "../../packages/test-support/remote-mock"
     }
   ]
 }
