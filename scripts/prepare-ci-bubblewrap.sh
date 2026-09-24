@@ -4,14 +4,11 @@ set -euo pipefail
 # Ubuntu's package transaction scans the hosted image's full dpkg database and
 # runs post-install hooks. CI needs only the signed-archive payload, so pin and
 # verify that payload before extracting it into the ephemeral runner directory.
-# Pin the series' release revision: the archive pool drops a superseded security
-# revision as soon as Ubuntu publishes the next one, which turns this download
-# into a 404 until the pin is bumped. The release revision stays for the life of
-# the series, and the hash check plus the functional probe below remain the
-# gates that decide whether the payload is usable.
-readonly BUBBLEWRAP_VERSION='0.9.0-1build1'
-readonly BUBBLEWRAP_SHA256='dde30d1f24da50446d647ed504ec8dc5a714f171974d054c70a589b48ba38b48'
-readonly BUBBLEWRAP_URL="https://archive.ubuntu.com/ubuntu/pool/main/b/bubblewrap/bubblewrap_${BUBBLEWRAP_VERSION}_amd64.deb"
+# This amd64 build needs glibc 2.38+ and Linux 5.10+; Ubuntu 24.04 satisfies both.
+readonly BUBBLEWRAP_VERSION='0.12.0-1'
+readonly BUBBLEWRAP_SHA256='db4d572a7927bfd34cc9b8e24b56983efa8e0483d03da6c810f6caae081dcc36'
+# The recorded build remains addressable after Ubuntu prunes its live package pool.
+readonly BUBBLEWRAP_URL="https://launchpad.net/ubuntu/+source/bubblewrap/${BUBBLEWRAP_VERSION}/+build/33546835/+files/bubblewrap_${BUBBLEWRAP_VERSION}_amd64.deb"
 
 : "${RUNNER_TEMP:?prepare-ci-bubblewrap requires RUNNER_TEMP}"
 : "${GITHUB_PATH:?prepare-ci-bubblewrap requires GITHUB_PATH}"

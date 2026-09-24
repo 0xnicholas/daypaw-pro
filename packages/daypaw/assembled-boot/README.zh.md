@@ -1,5 +1,5 @@
 ---
-description: "jsdom web 车道的参数化 assembled-boot 脚手架：一个 module 经 AppWebEntry 的 ModuleLoader 路径启动真实构建的 client 花名册，bundle 层、transport 载体与钉制的文档标题作为 lane 选项"
+description: "jsdom web 车道的参数化 assembled-boot 脚手架：一个 module 经 AppWebEntry 的 ModuleLoader 路径启动真实构建的 client 花名册，bundle 层、remote 场景与钉制的文档标题作为 lane 选项"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`@daypaw/assembled-boot` 是两条 web 快照车道 jsdom 启动背后的唯一脚手架。一条 lane 交出自己的事实——组装哪些 bundle 层、页面经 `__DSH_TRANSPORT__` 载体钩子还是 `?fixture` 搜索开关抵达 fixture transport、钉制哪个文档标题——换回基于构建 `lib/client.js` 产物的 `installAssembledBootEnv()` / `mountAssembledApp()`。上游 apps/web e2e 车道与 fork 的 apps/daypaw-web golden 车道以不同选项消费同一 module，脚手架只有一个家，而不再是一对每次 sync 都漂移的近克隆。纯库：无插件、无 Cordis 服务、无配置。
+`@daypaw/assembled-boot` 是两条 web 快照车道 jsdom 启动背后的唯一脚手架。一条 lane 交出自己的事实——组装哪些 bundle 层、哪个 remote 场景世界作为 `__DSH_TRANSPORT__` 载体伺服页面、钉制哪个文档标题——换回基于构建 `lib/client.js` 产物的 `installAssembledBootEnv()` / `mountAssembledApp()`。上游 apps/web e2e 车道与 fork 的 apps/daypaw-web golden 车道以不同选项消费同一 module，脚手架只有一个家，而不再是一对每次 sync 都漂移的近克隆。纯库：无插件、无 Cordis 服务、无配置。
 
 ## 目录
 
@@ -27,29 +27,32 @@ kind: "package-reference"
 
 ### 何时用它
 
-消费方是两条 web 车道的 `tests/assembled-boot.ts` 入口：上游车道（[`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts)，上游 web-app bundle、`?fixture` 搜索开关）与 fork 车道（[`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts)，base 层之上的 daypaw web-app bundle、包着 fork RemoteMock 世界（[`daypaw-remote.ts`](../../../apps/daypaw-web/tests/daypaw-remote.ts)，ADR 0018）与 fork `durable/*` 装饰器的载体钩子）。只有第三条组装花名册需要 jsdom golden 覆盖时才添新 lane。
+消费方是两条 web 车道的 `tests/assembled-boot.ts` 入口：上游车道（[`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts)，上游 web-app bundle 层与上游 RemoteMock 场景 [`assembled-remote.ts`](../../../apps/web/tests/assembled-remote.ts)）与 fork 车道（[`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts)，base 层之上的 daypaw web-app bundle、fork 的 RemoteMock 世界（[`daypaw-remote.ts`](../../../apps/daypaw-web/tests/daypaw-remote.ts)，ADR 0018）rpc 经 fork `durable/*` 装饰器包裹）。只有第三条组装花名册需要 jsdom golden 覆盖时才添新 lane。
 
 ### 入口
 
 ```ts ignore-check
-import { connectionRpcCarrier, createAssembledBootLane } from '@daypaw/assembled-boot'
+import { createAssembledBootLane } from '@daypaw/assembled-boot'
 import { createDaypawRemote } from './daypaw-remote.ts'
 import { decorateDurableRpc } from './durable-rpc.ts'
 
 const lane = await createAssembledBootLane({
   webBundle: {
+    dir: 'packages/daypaw/web-app',
     manifest: 'packages/daypaw/web-app/package.json',
-    patch: 'packages/daypaw/web-app/cordis.patch.yml',
   },
   documentTitle: 'daypaw',
-  carrier: () => connectionRpcCarrier(decorateDurableRpc(createDaypawRemote().mock.rpc)),
+  remote: () => {
+    const world = createDaypawRemote()
+    return { mock: world.mock, rpc: decorateDurableRpc(world.mock.rpc) }
+  },
 })
 
 export const installAssembledBootEnv = lane.installAssembledBootEnv
 export const mountAssembledApp = lane.mountAssembledApp
 ```
 
-`installAssembledBootEnv()` 注册逐测试的 jsdom 装设（英语 navigator 钉制、缺失的 observers、完整清扫）；`mountAssembledApp(search?, options?)` 挂载该 lane 的花名册，有载体时逐挂载铸造载体 transport。lane 选项就是全部 sync 面：上游重构该脚手架时替换 module 本体、重穿这些缝即可。精确契约见 [`AssembledBootLaneOptions`](src/index.ts)。
+`installAssembledBootEnv()` 注册逐测试的 jsdom 装设（英语 navigator 钉制、缺失的 observers、完整清扫）；`mountAssembledApp(options?)` 挂载该 lane 的花名册，逐挂载铸造 remote 世界并把它的 rpc 装为页面载体；清扫断言该世界未见过未命中的请求。lane 选项就是全部 sync 面：上游重构该脚手架时替换 module 本体、重穿这些缝即可。精确契约见 [`AssembledBootLaneOptions`](src/index.ts)。
 
 -----
 
@@ -64,7 +67,7 @@ export const mountAssembledApp = lane.mountAssembledApp
 | 文件 | 职责 |
 |---|---|
 | [`src/composition.ts`](src/composition.ts) | `loadAssembledPlugins` / `buildBootGraph` / `buildBundleTable` —— patch 到图的推导与构建产物表 |
-| [`src/index.ts`](src/index.ts) | `createAssembledBootLane`（环境 + 挂载绑定）、`connectionRpcCarrier`（ClientRequest/ServerResponse 桥）、`hasClass`、`REFRESHING_GOLDEN` |
+| [`src/index.ts`](src/index.ts) | `createAssembledBootLane`（环境 + 挂载绑定）、`hasClass`、`REFRESHING_GOLDEN` |
 
 </details>
 
@@ -73,8 +76,8 @@ export const mountAssembledApp = lane.mountAssembledApp
 <a id="further-exploration"></a>
 ## 延伸阅读
 
-- [`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts) —— 上游车道的薄入口：上游 bundle 层、无载体。
-- [`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts) —— fork 车道的薄入口：daypaw bundle 层、durable 装饰载体。
+- [`apps/web/tests/assembled-boot.ts`](../../../apps/web/tests/assembled-boot.ts) —— 上游车道的薄入口：上游 bundle 层与上游 RemoteMock 场景。
+- [`apps/daypaw-web/tests/assembled-boot.ts`](../../../apps/daypaw-web/tests/assembled-boot.ts) —— fork 车道的薄入口：daypaw bundle 层、fork 世界之上的 durable 装饰 rpc。
 - [ADR 0015](../../../docs/adr/0015-assembled-boot-shared-scaffold-home.md) —— 脚手架的家为何取 fork 局部参数化包、何时退役。
 
 -----
@@ -99,8 +102,7 @@ export const mountAssembledApp = lane.mountAssembledApp
 ## Known Limitations and Deferred Work
 
 - **仅测试面**——本 module 在 vitest + jsdom 下运行；从不进被伺服的 web app bundle，`lib/` 构建只为 workspace 构建布局而存在。
-- **lane 选项就是 sync 面**——上游重构该脚手架意味着替换 module 本体、重读三条选项缝（bundle 层、载体、标题）；选项不变时重放成本为零。退役触发：上游若自建同等参数化，下次 sync 评估换家。
-- **载体车道拥有 `?fixture` 拒绝**——载体车道拒绝 `fixture` 搜索键，因为 fixture 走载体钩子；无载体车道保持上游默认：经搜索开关自选 fixture transport。
+- **lane 选项就是 sync 面**——上游重构该脚手架意味着替换 module 本体、重读三条选项缝（bundle 层、remote 场景、标题）；选项不变时重放成本为零。退役触发：上游若自建同等参数化，下次 sync 评估换家。
 - **不独立发布**——本包随 fork 的 workspace 一起存在（ADR 0011）。
 
 <a id="dev-note"></a>

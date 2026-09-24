@@ -2,30 +2,29 @@
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { connectionRpcCarrier, createAssembledBootLane, hasClass, REFRESHING_GOLDEN } from '../src/index.ts'
-import type { AssembledBootLane } from '../src/index.ts'
+import { createAssembledBootLane, hasClass, REFRESHING_GOLDEN } from '../src/index.ts'
+import type { AssembledBootLane, AssembledRemoteWorld } from '../src/index.ts'
 
 const fixture = (file: string): string => join(import.meta.dirname, 'fixtures/micro', file)
 
-/** A carrier bridging a no-op Connection transport: installed as the page's carrier without answering anything. */
-const stubCarrier = (): (() => ReturnType<typeof connectionRpcCarrier>) => {
-  const rpc: ClientConnectionRpc = { call: async () => ({ ok: true, value: {} }) }
-  return () => connectionRpcCarrier(rpc)
-}
+/** A remote world answering nothing: its rpc serves as the page's carrier without any rule. */
+const stubWorld = (): AssembledRemoteWorld => ({
+  mock: { rpc: { call: async () => ({ ok: true, value: {} }) }, assertNoUnmatched: () => {} },
+})
 
 interface MicroLaneOptions {
-  readonly basePatch?: string
-  readonly webPatch?: string
+  readonly baseManifest?: string
+  readonly webManifest?: string
   readonly documentTitle?: string
-  readonly carrier?: () => ReturnType<typeof connectionRpcCarrier>
+  readonly remote?: () => AssembledRemoteWorld
 }
 
 const microLane = async (options: MicroLaneOptions = {}): Promise<AssembledBootLane> =>
   createAssembledBootLane({
-    baseBundle: { manifest: fixture('package.json'), patch: fixture(options.basePatch ?? 'base-modules.patch.yml') },
-    webBundle: { manifest: fixture('package.json'), patch: fixture(options.webPatch ?? 'base-disabled.patch.yml') },
+    baseBundle: { dir: fixture(''), manifest: fixture(options.baseManifest ?? 'manifest-base-modules.json') },
+    webBundle: { dir: fixture(''), manifest: fixture(options.webManifest ?? 'manifest-base-disabled.json') },
     documentTitle: options.documentTitle ?? 'micro lane',
-    ...(options.carrier === undefined ? {} : { carrier: options.carrier }),
+    remote: options.remote ?? stubWorld,
   })
 
 const lane = await microLane()
@@ -33,76 +32,14 @@ const lane = await microLane()
 // neither API); this lane's setup then finds them present and skips.
 const shimmedLane = await microLane({ documentTitle: 'shimmed lane' })
 
-describe('connectionRpcCarrier', () => {
-  it('bridges unary calls through the ClientRequest/ServerResponse envelope', async () => {
-    const calls: Array<{ endpoint: string; payload: unknown }> = []
-    const rpc: ClientConnectionRpc = {
-      call: async (_channel, endpoint, payload) => {
-        calls.push({ endpoint, payload })
-        return { ok: true, value: { echoed: endpoint } }
-      },
-    }
-    const fetch = connectionRpcCarrier(rpc).fetch
-    if (fetch === undefined) throw new Error('spec: carrier lacks its unary fetch hook')
-    const response = await fetch(
-      new URL('http://localhost/api/durable%2FlistDefinitions'),
-      {
-        method: 'POST',
-        body: JSON.stringify({ rpcId: 'rpc-1', payload: { task: 'x' } }),
-        signal: new AbortController().signal,
-      },
-    )
-    expect(calls).toEqual([{ endpoint: 'durable/listDefinitions', payload: { task: 'x' } }])
-    expect(response.status).toBe(200)
-    expect(response.headers.get('content-type')).toBe('application/json')
-    await expect(response.json()).resolves.toEqual({
-      type: 'server-response',
-      rpcId: 'rpc-1',
-      result: { ok: true, value: { echoed: 'durable/listDefinitions' } },
-    })
-    // The same call without an AbortSignal exercises the carrier's no-signal arm.
-    await expect(fetch(
-      new URL('http://localhost/api/durable%2FlistDefinitions'),
-      { method: 'POST', body: JSON.stringify({ rpcId: 'rpc-2', payload: {} }) },
-    )).resolves.toBeInstanceOf(Response)
-  })
-
-  it('rejects a non-string request body from a foreign caller', async () => {
-    const rpc: ClientConnectionRpc = { call: async () => ({ ok: true, value: {} }) }
-    const fetch = connectionRpcCarrier(rpc).fetch
-    if (fetch === undefined) throw new Error('spec: carrier lacks its unary fetch hook')
-    await expect(
-      fetch(new URL('http://localhost/api/x'), { method: 'POST' }),
-    ).rejects.toThrow('non-string request body')
-  })
-
-  it('delegates streams to the transport\'s in-process opens', () => {
-    const stream = { marker: 'stream' }
-    const rpc: ClientConnectionRpc = {
-      call: async () => ({ ok: true, value: {} }),
-      open: (_channel, _endpoint, _payload, _signal) => stream as never,
-    }
-    const openStream = connectionRpcCarrier(rpc).openStream
-    if (openStream === undefined) throw new Error('spec: carrier lacks its stream hook')
-    expect(openStream('endpoint', {}, new AbortController().signal)).toBe(stream)
-  })
-
-  it('fails loud when the transport offers no stream for an endpoint', () => {
-    const rpc: ClientConnectionRpc = { call: async () => ({ ok: true, value: {} }) }
-    const openStream = connectionRpcCarrier(rpc).openStream
-    if (openStream === undefined) throw new Error('spec: carrier lacks its stream hook')
-    expect(() => openStream('endpoint', {}, new AbortController().signal))
-      .toThrow('stream endpoint "endpoint" is unavailable')
-  })
-})
-
 describe('assembled boot lane (jsdom)', () => {
   lane.installAssembledBootEnv()
 
   it('defaults the base bundle layer to the repo dsh-base layer', async () => {
     const defaultBaseLane = await createAssembledBootLane({
-      webBundle: { manifest: fixture('package.json'), patch: fixture('web-locale.patch.yml') },
+      webBundle: { dir: fixture(''), manifest: fixture('manifest-web-locale.json') },
       documentTitle: 'default base lane',
+      remote: stubWorld,
     })
     expect(typeof defaultBaseLane.installAssembledBootEnv).toBe('function')
     expect(typeof defaultBaseLane.mountAssembledApp).toBe('function')
@@ -114,37 +51,40 @@ describe('assembled boot lane (jsdom)', () => {
     expect(navigator.languages).toEqual(['en-US'])
   })
 
-  it('mounts on the carrier transport with an empty search by default', async () => {
-    const carrierLane = await microLane({ carrier: stubCarrier(), webPatch: 'web-locale.patch.yml' })
-    carrierLane.mountAssembledApp()
+  it('installs the mounted world\'s mock rpc as the page carrier', async () => {
+    const remoteLane = await microLane({ webManifest: 'manifest-web-locale.json' })
+    const world = remoteLane.mountAssembledApp()
+    const transport = (window as { __DSH_TRANSPORT__?: { rpc: ClientConnectionRpc } }).__DSH_TRANSPORT__
+    if (transport === undefined) throw new Error('spec: page carrier missing')
+    expect(transport.rpc).toBe(world.mock.rpc)
     expect(window.location.search).toBe('')
     expect(document.getElementById('root')).not.toBeNull()
     expect((window as { __DSH_BOOT__?: { entries: unknown[] } }).__DSH_BOOT__?.entries.length).toBe(2)
-    expect((window as { __DSH_TRANSPORT__?: unknown }).__DSH_TRANSPORT__).toBeDefined()
   })
 
-  it('rejects the ?fixture switch on a carrier lane', async () => {
-    const carrierLane = await microLane({ carrier: stubCarrier() })
-    expect(() => { carrierLane.mountAssembledApp('?fixture') }).toThrow('remove the ?fixture switch')
-  })
-
-  it('defaults a carrier-less lane to the ?fixture search switch', async () => {
-    const searchLane = await microLane()
-    searchLane.mountAssembledApp()
-    expect(window.location.search).toBe('?fixture')
-    expect((window as { __DSH_TRANSPORT__?: unknown }).__DSH_TRANSPORT__).toBeUndefined()
+  it('installs the world\'s rpc override as the page carrier when present', async () => {
+    const world = stubWorld()
+    const decorated: ClientConnectionRpc = { call: async () => ({ ok: true, value: {} }) }
+    const remoteLane = await microLane({
+      webManifest: 'manifest-web-locale.json',
+      remote: () => ({ ...world, rpc: decorated }),
+    })
+    remoteLane.mountAssembledApp()
+    const transport = (window as { __DSH_TRANSPORT__?: { rpc: ClientConnectionRpc } }).__DSH_TRANSPORT__
+    if (transport === undefined) throw new Error('spec: page carrier missing')
+    expect(transport.rpc).toBe(decorated)
   })
 
   it('applies per-mount exclusions to the mounted composition', async () => {
-    const excludeLane = await microLane({ webPatch: 'web-locale.patch.yml' })
-    excludeLane.mountAssembledApp('', { exclude: ['@deepseek-ai/dsh-client-locale'] })
+    const excludeLane = await microLane({ webManifest: 'manifest-web-locale.json' })
+    excludeLane.mountAssembledApp({ exclude: ['@deepseek-ai/dsh-client-locale'] })
     expect((window as { __DSH_BOOT__?: { entries: unknown[] } }).__DSH_BOOT__?.entries.length).toBe(1)
-    excludeLane.mountAssembledApp('', { exclude: ['@deepseek-ai/dsh-not-in-roster'] })
+    excludeLane.mountAssembledApp({ exclude: ['@deepseek-ai/dsh-not-in-roster'] })
     expect((window as { __DSH_BOOT__?: { entries: unknown[] } }).__DSH_BOOT__?.entries.length).toBe(2)
   })
 
   it('fails loud when the composition has no parser-preloaded bootstrap batch', async () => {
-    const emptyLane = await microLane({ basePatch: 'base-disabled.patch.yml' })
+    const emptyLane = await microLane({ baseManifest: 'manifest-base-disabled.json' })
     expect(() => { emptyLane.mountAssembledApp() }).toThrow('missing parser-preloaded fixture batch')
   })
 

@@ -1,0 +1,10 @@
+{
+  "name": "@daypaw/assembled-boot-micro-fixture",
+  "private": true,
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": "./base-modules.patch.yml"
+    }
+  }
+}

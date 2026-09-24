@@ -9,12 +9,12 @@ import { pathToFileURL } from 'node:url'
 import { orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
 import type { WebBootEntry, WebBootGraph } from '@deepseek-ai/dsh-client-modules/client'
 
-/** One bundle layer: the package whose node_modules scope resolves the layer's rows, plus its overlay patch. */
+/** One bundle layer: the layer's package dir, whose manifest declares the overlay patches `dsh web` composes. */
 export interface AssembledBundleLayer {
+  /** The layer bundle package's dir (patch paths in its manifest resolve against it). */
+  readonly dir: string
   /** Absolute path to the layer bundle package's manifest (require-resolution root for `@deepseek-ai/dsh-app-boot`). */
   readonly manifest: string
-  /** Absolute path to the layer's cordis.patch.yml overlay. */
-  readonly patch: string
 }
 
 /** A browser plugin row with its built artifact attached for bundle-table reads. */
@@ -46,6 +46,7 @@ interface ComposedEntry {
 }
 
 interface BootComposition {
+  bundlePatchPaths(packageDir: string, bundle: { patch: string | string[] }): string[]
   loadOverlayPatches(binName: string, file: string): unknown[]
   composeEntries(layers: readonly unknown[][]): ComposedEntry[]
 }
@@ -61,7 +62,7 @@ const workspacePackageManifests = new Map(globSync('packages/*/*/package.json', 
 }))
 
 const comboUrl = (ids: readonly string[], rev: string): string =>
-  `/plugins/??${ids.map(id => `${id}/client.js`).join(',')}&rev=${rev}`
+  `plugins/??${ids.map(id => `${id}/client.js`).join(',')}&rev=${rev}`
 
 function resolvePackageManifest(specifier: string): string | undefined {
   return workspacePackageManifests.get(specifier)
@@ -90,8 +91,10 @@ export async function loadAssembledPlugins(layers: readonly AssembledBundleLayer
   /* v8 ignore next 2 -- a lane always carries at least one bundle layer */
   if (webBundleResolver === undefined) throw new Error('assembled boot: web bundle resolver missing')
   const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@deepseek-ai/dsh-app-boot')).href) as unknown as BootComposition
-  const entries = appBoot.composeEntries(layers.map(layer =>
-    appBoot.loadOverlayPatches('assembled boot', layer.patch)))
+  const entries = appBoot.composeEntries(layers.map((layer) => {
+    const declared = (JSON.parse(readFileSync(layer.manifest, 'utf8')) as { dsh: { bundle: { patch: string | string[] } } }).dsh.bundle
+    return appBoot.bundlePatchPaths(layer.dir, declared).flatMap(patch => appBoot.loadOverlayPatches('assembled boot', patch))
+  }))
   const plugins = new Map<string, AssembledPlugin>()
   for (const entry of entries) {
     if (entry.disabled === true || typeof entry.name !== 'string') continue

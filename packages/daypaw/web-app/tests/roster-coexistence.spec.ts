@@ -121,7 +121,7 @@ describe('roster rows (ticket #103)', () => {
     // The preset roster stays disabled (ADR 0012 §4: presets are the upstream
     // compatibility layer): sessions compose the host plane, and a live row on
     // both planes would mount twice — a row belongs to exactly one plane.
-    expect(rows.get('@deepseek-ai/dsh-agent-presets')).toEqual({ enabled: false })
+    expect(rows.get('@deepseek-ai/dsh-agent-preset')).toEqual({ enabled: false })
   })
 })
 

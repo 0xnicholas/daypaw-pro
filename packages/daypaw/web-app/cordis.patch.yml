@@ -49,10 +49,6 @@
 
 # `dsh.client` rows are the browser roster the modules node half scans into
 # window.__DSH_BOOT__; the modules row is simultaneously a host row.
-- insert:
-    - id: code-runtime
-      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
-
     - id: message-feedback
       name: '@deepseek-ai/dsh-message-feedback'
       config:
@@ -462,8 +458,6 @@
 # composition; the stale identity is harmless, and the ui-agent-preset
 # surface is disabled above under the same ruling.
 - insert:
-    - id: agent-presets
-      name: '@deepseek-ai/dsh-agent-presets'
+    - id: agent-preset
+      name: '@deepseek-ai/dsh-agent-preset'
       disabled: true
-      config:
-        default: standard
