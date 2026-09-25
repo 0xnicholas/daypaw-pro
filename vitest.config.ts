@@ -161,10 +161,12 @@ const processBoundTests = [
 export default defineConfig({
   plugins: [pathsPlugin(), standardDecoratorPlugin()],
   test: {
-    setupFiles: ['./scripts/test-proxy-environment.ts', './scripts/test-invariants.ts', './scripts/test-dom-environment.ts'],
-    // .tsx: client component specs (jsdom via per-file @vitest-environment pragma).
-    include: testIncludes,
-    exclude: platformUnsupportedTests,
+    // Vitest 5 inherits root-level test fields into every project, so
+    // setupFiles/include/exclude live ONLY in the projects; duplicating them
+    // here would run the setup suite twice per process and widen the
+    // process-bound inventory with the thread-safe include.
+    // One coverage invocation aggregates both projects. Every suite forks for
+    // Node stability; process-bound suites stay separate for inventory control.
     // One coverage invocation aggregates both projects. Every suite forks for
     // Node stability; process-bound suites stay separate for inventory control.
     projects: [
