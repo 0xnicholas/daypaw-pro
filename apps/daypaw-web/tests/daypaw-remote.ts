@@ -41,7 +41,7 @@ import type {
 import type { AttachmentIdType, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { SESSION_FORMAT_VERSION, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
-import { deriveEventMessage, foldSurface } from '@deepseek-ai/dsh-session/surface'
+import { deriveEventMessage, foldSurface, isAppendSurfaceEvent } from '@deepseek-ai/dsh-session/surface'
 import type { CommandDefinitionId, CommandId } from '@deepseek-ai/dsh-commands/brand'
 import type { CommandDescriptor, CommandExecution, CommandResult } from '@deepseek-ai/dsh-commands/types'
 import type { TodoItem } from '@deepseek-ai/dsh-tool-todo/client'
@@ -86,6 +86,7 @@ interface PageRequest {
   readonly throughSeq: number
   readonly beforeSeq?: number
   readonly maxMessages?: number
+  readonly turnWindow?: { readonly minMessages: number; readonly minTurns: number }
 }
 
 interface SessionWireHeader {
@@ -243,7 +244,7 @@ interface WorkspaceView {
 }
 
 type WorkspaceFollowFrame =
-  | { readonly type: 'baseline'; readonly value: { readonly items: readonly WorkspaceView[]; readonly archivedSessionIds: readonly SessionId[] } }
+  | { readonly type: 'baseline'; readonly value: { readonly items: readonly WorkspaceView[]; readonly archivedSessionIds: readonly SessionId[]; readonly pinnedSessionIds: readonly SessionId[] } }
   | { readonly type: 'upsert'; readonly workspace: WorkspaceView }
 
 // ---------------------------------------------------------------------------
@@ -1269,25 +1270,58 @@ function projectionFramesOf(id: SessionId, log: readonly SessionEvent[], event: 
  * Message-boundary paging mirrors the Host contract: count `maxMessages`
  * backwards from the end and cut at a turn/start boundary.
  */
+/**
+ * Mirror the Host's history window (session-controller `paginate`): walk back
+ * from the end accumulating append-surface messages until the turn window
+ * (minMessages inside minTurns) closes on a `turn/start` boundary, or the
+ * maxMessages cap cuts the page at a source group's first seq.
+ */
 function pageOf(
   log: readonly SessionEvent[],
   beforeSeq: number | undefined,
   maxMessages: number,
+  throughSeq: number,
+  turnWindow?: { readonly minMessages: number; readonly minTurns: number },
 ): { records: HistoryEntry[]; hasMore: boolean } {
-  const end = beforeSeq === undefined ? log.length : Math.max(0, Math.min(beforeSeq, log.length))
-  let start = 0
-  let messages = 0
-  for (let i = end - 1; i >= 0; i--) {
-    const event = log[i]
+  const end = Math.min(throughSeq + 1, beforeSeq ?? throughSeq + 1)
+  let count = 0
+  let turns = 0
+  let cut = 0
+  for (let index = end - 1; index >= 0; index--) {
+    const event = log[index]
     if (event === undefined) break
-    if (event.type === 'user/message' || event.type === 'assistant/message') messages++
-    if (event.type === 'turn/start' && messages >= maxMessages) {
-      start = i
+    if (turnWindow !== undefined && event.type === 'turn/start') {
+      turns++
+      if (count >= turnWindow.minMessages && turns >= turnWindow.minTurns) {
+        cut = index
+        break
+      }
+    }
+    if (event.type !== 'user/message' && event.type !== 'assistant/message') continue
+    if (!isAppendSurfaceEvent(event)) continue
+    count++
+    let groupStart = event.seq
+    const sources = event.sourceEventSeqs
+    if (sources !== undefined) {
+      for (const source of sources) if (source < groupStart) groupStart = source
+    }
+    if (count >= maxMessages) {
+      cut = groupStart
       break
     }
   }
-  const records = log.slice(start, end).map((event): HistoryEntry => ({ type: 'event', event }))
-  return { records, hasMore: start > 0 }
+  return { records: log.slice(cut, end).map((event): HistoryEntry => ({ type: 'event', event })), hasMore: cut > 0 }
+}
+
+/** Read the wire's turn-window option (minMessages inside minTurns), when the caller sent one. */
+function turnWindowOf(request: Record<string, unknown>): { minMessages: number; minTurns: number } | undefined {
+  const window = request.turnWindow
+  if (typeof window !== 'object' || window === null) return undefined
+  const record = window as Record<string, unknown>
+  const minMessages = record.minMessages
+  const minTurns = record.minTurns
+  if (typeof minMessages !== 'number' || typeof minTurns !== 'number') return undefined
+  return { minMessages, minTurns }
 }
 
 /** Session-scoped attachment authorization: the log must name the attachment id. */
@@ -1641,6 +1675,7 @@ export function createDaypawRemote(): DaypawRemote {
       value: {
         items: workspaces.map(workspace => ({ ...workspace, sessionIds: [...workspace.sessionIds] })),
         archivedSessionIds: [],
+        pinnedSessionIds: [],
       },
     })
   })
@@ -1655,7 +1690,7 @@ export function createDaypawRemote(): DaypawRemote {
     }
     const snapshot = [...logOf(sessionId)]
     const cursor = snapshot.at(-1)?.seq ?? -1
-    const initial = pageOf(snapshot, undefined, readNumber(request, 'maxMessages', 50))
+    const initial = pageOf(snapshot, undefined, readNumber(request, 'maxMessages', 50), cursor, turnWindowOf(request))
     stream.push({
       type: 'snapshot',
       header: {
@@ -1837,8 +1872,7 @@ export function createDaypawRemote(): DaypawRemote {
     const page = recordValue(args, 'request') as PageRequest
     const log = logs.get(page.address.sessionId) ?? []
     const throughSeq = page.throughSeq ?? log.length - 1
-    const boundedLog = log.slice(0, throughSeq + 1)
-    return ok(pageOf(boundedLog, page.beforeSeq, page.maxMessages ?? 50))
+    return ok(pageOf(log, page.beforeSeq, page.maxMessages ?? 50, throughSeq, page.turnWindow))
   })
 
   mock.unary('session/attachment', (args: unknown) => {

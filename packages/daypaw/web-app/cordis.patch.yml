@@ -111,11 +111,25 @@
     - id: workspace-controller
       name: '@deepseek-ai/dsh-api-workspace-controller'
 
+    # Client jobs service (upstream web bundle parity): ui-jobs waits on
+    # `ctx.jobs`, whose client half this row installs.
+    - id: job-controller
+      name: '@deepseek-ai/dsh-api-job-controller'
+
+    # Terminal control face (upstream web bundle parity): the terminal
+    # observation stream the sidebar terminal tab consumes.
+    - id: terminal-controller
+      name: '@deepseek-ai/dsh-api-terminal-controller'
+
     # Workspace file service (upstream web bundle parity): bounded read,
     # directory listing, and the agent-write change feed inside the session
     # workspace root; ui-deliverables' host half waits on its service.
     - id: workspace-files
       name: '@deepseek-ai/dsh-api-workspace-files'
+
+    # Settings: the account section page (upstream web bundle parity).
+    - id: ui-settings-account
+      name: '@deepseek-ai/dsh-client-ui-settings-account'
 
     - id: cordis-host-runner
       name: '@deepseek-ai/dsh-cordis-host-runner'
@@ -226,6 +240,12 @@
     # document/file-tab occupants stay unshipped fork trims.
     - id: ui-sidebar-right
       name: '@deepseek-ai/dsh-client-ui-sidebar-right'
+
+    # Sidebar browser tab (upstream web bundle parity; the row is inert off
+    # desktop, and the daypaw shell ships no browser panel on the web plane).
+    - id: ui-sidebar-browser
+      name: '@deepseek-ai/dsh-client-ui-sidebar-browser'
+      disabled: !!js "ctx.get('profileContext')?.name !== 'desktop'"
 
     # The durable wire vocabulary (ticket #116): the single client face the
     # four daypaw ui-* rows read the engine's `durable/*` Remote endpoints
@@ -387,6 +407,24 @@
     # cards. A namespace this deployment does not expose renders nothing.
     - id: ui-settings-plugins
       name: '@deepseek-ai/dsh-client-ui-settings-plugins'
+
+    # Plugin manager page (upstream web bundle parity): install/uninstall and
+    # per-plugin configuration, past the read-only inventory tab.
+    - id: ui-plugin-manager
+      name: '@deepseek-ai/dsh-client-ui-plugin-manager'
+
+    # Settings section pages (upstream web bundle parity).
+    - id: ui-settings-shell
+      name: '@deepseek-ai/dsh-client-ui-settings-shell'
+
+    - id: ui-settings-agent-loop
+      name: '@deepseek-ai/dsh-client-ui-settings-agent-loop'
+
+    - id: ui-settings-subagent
+      name: '@deepseek-ai/dsh-client-ui-settings-subagent'
+
+    - id: ui-settings-web-search
+      name: '@deepseek-ai/dsh-client-ui-settings-web-search'
 
     # Plan control: the composer plan seat over the plan projection + /plan channel.
     - id: ui-plan

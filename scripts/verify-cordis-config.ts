@@ -73,6 +73,7 @@ const ROSTER_TRIMS = [
   '@deepseek-ai/dsh-client-ui-sidebar', // @daypaw/ui-inbox replaces the generic sidebar wholesale
   '@deepseek-ai/dsh-client-ui-sidebar-documentpreview', // right-sidebar document tab stays unshipped
   '@deepseek-ai/dsh-client-ui-sidebar-files', // right-sidebar file-tree tab stays unshipped
+  '@deepseek-ai/dsh-client-ui-sidebar-terminal', // right-sidebar terminal tab stays unshipped
   '@deepseek-ai/dsh-client-ui-brand-official', // @daypaw/ui-brand occupies the brand slots
 ]
 
