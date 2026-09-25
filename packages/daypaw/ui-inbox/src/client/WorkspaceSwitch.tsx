@@ -79,12 +79,12 @@ const GROUP_EMPTY: Record<InboxGroup, InboxKey> = {
  * @returns the workspace element tree.
  */
 export function WorkspaceSwitch({
-  useSelection, useBoard, useConnectionState, useSessions, useSessionPendingInteraction, sessionId,
+  useSelection, useBoard, useConnectionState, useSessions, useSessionStatus, sessionId,
   reconnect, select, renderSlot, t,
 }: WorkspaceSwitchProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
-  const pending = useSessionPendingInteraction(s => s)
+  const pending = useSessionStatus(s => s)
   const runs = useBoard(s => s.runs)
   const openTask = (sessionId: SessionId): void => { select({ kind: 'task', sessionId }) }
   // The conversation seat's run-status owner share: the ledger row keyed by

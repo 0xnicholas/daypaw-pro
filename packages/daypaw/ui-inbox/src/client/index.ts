@@ -60,6 +60,7 @@ import { WorkspaceSwitch } from './WorkspaceSwitch.tsx'
 import { TaskDetail, type TaskDetailInjected } from './TaskDetail.tsx'
 import { InboxSelectionController } from './selection.ts'
 import { createDurableClient } from '@daypaw/durable-client/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { RunsBoardStore, TaskDetailStore } from './runs-store.ts'
 import { en, zh, type InboxKey } from './locales.ts'
 
@@ -88,7 +89,7 @@ export function apply(ctx: ClientContext): void {
   // One apply-closure controller; a shared store handle cannot cross the
   // three slot scopes, so the bare source travels through each register
   // call's inject hooks compartment (renderer binds it as useSelection).
-  const selection = new InboxSelectionController((id) => { ctx.sessions.open(id) })
+  const selection = new InboxSelectionController((id) => { ctx.uiWorkspace.openSession(id) })
 
   const connection = ctx.get('connection') as ConnectionHandle
   // The durable wire face (the single home of the engine's Remote vocabulary);

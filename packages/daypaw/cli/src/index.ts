@@ -24,10 +24,8 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import {
-  healProfilesModuleFallback,
   initProfile,
   PROFILE_PATCH_FILENAME,
   readProfileManifest,
@@ -65,9 +63,6 @@ const DAYPAW_PROFILE_PATCH = `# The daypaw CLI seeded this file on first run; it
         # Relative to the directory you run \`daypaw\` from.
         path: daypaw/ledger.db
 `
-
-/** This package's manifest: the heal anchor whose dependency closure is the delivered installation. */
-const CLI_MANIFEST = fileURLToPath(new URL('../package.json', import.meta.url))
 
 /**
  * The starter agent the CLI seeds into the workspace on first run (ruling
@@ -160,7 +155,6 @@ export async function seedDaypawProfile(home: string = resolveDshHome()): Promis
   } else {
     migrateShippedBundles(dir)
   }
-  await healProfilesModuleFallback({ installAnchor: CLI_MANIFEST, home })
 }
 
 /**

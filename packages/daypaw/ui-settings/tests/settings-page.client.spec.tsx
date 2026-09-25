@@ -36,7 +36,7 @@ interface SectionCall {
 function mountPage(api: FakeHostApi) {
   const tabs = new SettingsTabController()
   const credentials = new CredentialsStore({ credentials: api.credentials, llm: api.llm })
-  const about = new AboutStore(api.session, { list: { getSnapshot: () => ({ ids: [], byId: {}, current: undefined, phase: 'ready' as const, subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined }), subscribe: () => () => {} } })
+  const about = new AboutStore(api.session, { list: { getSnapshot: () => ({ ids: [], byId: {}, phase: 'ready' as const, projectionsBySession: {} }), subscribe: () => () => {} } })
   const themeRow = createThemeRowStore({ preference: 'light' })
   const setLocale = vi.fn()
   const setTheme = vi.fn()
@@ -53,7 +53,7 @@ function mountPage(api: FakeHostApi) {
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}
-      useSessionPendingInteraction={neverHook}
+      useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
       close={close}
       renderSlot={renderSlot}
       useTab={bindSnapshotSelector(tabs.store)}

@@ -6,7 +6,7 @@
 // options live here.
 import { join } from 'node:path'
 import { createAssembledBootLane, hasClass, REFRESHING_GOLDEN } from '@daypaw/assembled-boot'
-import { createAssembledRemote } from './assembled-remote.ts'
+import { createAssembledRemote, type AssembledRemoteOptions } from './assembled-remote.ts'
 
 const lane = await createAssembledBootLane({
   webBundle: {
@@ -14,7 +14,7 @@ const lane = await createAssembledBootLane({
     manifest: join(process.cwd(), 'packages/bundle/web-app/package.json'),
   },
   documentTitle: 'DeepSeek Harness',
-  remote: () => createAssembledRemote(),
+  remote: (options?: AssembledRemoteOptions) => createAssembledRemote(options),
 })
 
 export const installAssembledBootEnv = lane.installAssembledBootEnv

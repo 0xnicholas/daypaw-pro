@@ -5,7 +5,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { stubSettingsScope, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
+import { stubConfigForm, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ThemeSettings } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
@@ -25,7 +25,7 @@ async function bench(withConversation: boolean) {
   ctx.provide('locale', locale)
   // The theme service the General tab's preference row rides (a real
   // ThemeRuntime over a stub settings scope, the ui-theme bench shape).
-  const theme = new ThemeRuntime(ctx, stubSettingsScope<ThemeSettings>().scope)
+  const theme = new ThemeRuntime(ctx, stubConfigForm<ThemeSettings>().scope)
   ctx.provide('theme', theme)
   // The plugin injects `remote` + `sessions` + `connection`; namespaces ride
   // the TestRemote constructor and the engine roster rides the fake's RPC.
@@ -39,7 +39,7 @@ async function bench(withConversation: boolean) {
   ctx.provide('connection', { rpc: api.rpc } as never)
   ctx.provide('sessions', {
     list: createSnapshotStore<SessionListState>({
-      ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+      ids: [], byId: {}, phase: 'ready', projectionsBySession: {},
     }),
   })
   const conversation = { blocks: { set: vi.fn() } }

@@ -2,9 +2,9 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionPendingInteraction, SessionStatus } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { WireRun, WireRunStatus } from '@daypaw/durable-client/client'
-import { projectInboxBoard } from '../src/client/task-projection.ts'
+import { projectInboxBoard, type InboxPending } from '../src/client/task-projection.ts'
 
 function run(overrides: Partial<WireRun> = {}): WireRun {
   return {
@@ -37,26 +37,28 @@ function listState(rows: readonly SummarySpec[]): SessionListState {
       running: row.running ?? false,
       blank: row.blank ?? false,
       updatedAt: row.updatedAt ?? 1,
+      retainedBy: {},
     }
   }
   return {
     ids: rows.map(row => row.id as SessionId),
     byId,
-    current: undefined,
     phase: 'ready',
-    subagentsByParent: {},
-    jobsBySession: {},
-    currentAddress: undefined,
+    projectionsBySession: {},
   }
 }
+
+/** Status entry carrying one effective pending interaction. */
+const statusOf = (kind: string): SessionStatus =>
+  ({ running: false, pendingInteraction: interaction(kind), completionUnread: false })
 
 /** Roster entry carrying one effective interaction kind. */
 const interaction = (kind: string): SessionPendingInteraction =>
   ({ key: `fx-${kind}`, kind, sessionId: 'x' as SessionId }) as unknown as SessionPendingInteraction
 
 /** Roster map helper: id → effective kind. */
-function roster(entries: readonly (readonly [string, string])[]): ReadonlyMap<SessionId, SessionPendingInteraction> {
-  return new Map(entries.map(([id, kind]) => [id as SessionId, interaction(kind)]))
+function roster(entries: readonly (readonly [string, string])[]): InboxPending {
+  return new Map(entries.map(([id, kind]) => [id as SessionId, statusOf(kind)]))
 }
 
 describe('projectInboxBoard', () => {

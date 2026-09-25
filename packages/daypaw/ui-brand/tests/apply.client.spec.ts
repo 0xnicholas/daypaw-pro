@@ -6,7 +6,7 @@
 // leaves no trace when the plugin fiber disposes.
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
+import { stubConfigForm } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ThemeSettings, ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { apply, inject } from '../src/client/index.ts'
@@ -18,7 +18,7 @@ const DARK_PRIMARY = 'rgb(240, 146, 74)'
 
 async function bench(): Promise<{ ctx: Context; theme: ThemeRuntime; events: ThemeSnapshot[] }> {
   const ctx = new Context()
-  const host = stubSettingsScope<ThemeSettings>()
+  const host = stubConfigForm<ThemeSettings>()
   const theme = new ThemeRuntime(ctx, host.scope)
   ctx.provide('theme', theme)
   const events: ThemeSnapshot[] = []

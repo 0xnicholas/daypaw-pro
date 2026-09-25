@@ -20,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 // in so PropsRenderSlots resolves.
 import type {} from './contract.ts'
 import {
-  Button, IconNewChatOutline16, IconPanelLeftOutline16, IconPlusOutline16, Modal, Tooltip,
+  Button, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, IconPlusOutlineRegular, Modal, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InboxGroup, InboxSelection } from './selection.ts'
 import { projectInboxBoard } from './task-projection.ts'
@@ -69,12 +69,12 @@ const GROUP_LABEL: Record<InboxGroup, InboxKey> = {
  * @returns the column element tree.
  */
 export function InboxNav({
-  collapsed, useSelection, useBoard, useSessions, useSessionPendingInteraction,
+  collapsed, useSelection, useBoard, useSessions, useSessionStatus,
   select, toggleSidebar, refreshBoard, startChat, renderSlot, t,
 }: InboxNavProps) {
   const selection = useSelection(s => s)
   const list = useSessions(s => s)
-  const pending = useSessionPendingInteraction(s => s)
+  const pending = useSessionStatus(s => s)
   const runs = useBoard(s => s.runs)
   const counts = projectInboxBoard(list, runs, pending).counts
   // Dialog open state is component-local: only this component knows it.
@@ -123,7 +123,7 @@ export function InboxNav({
             aria-label={t('nav.toggle.open')}
             onClick={() => { toggleSidebar() }}
           >
-            <IconPanelLeftOutline16 size={18} />
+            <IconPanelLeftOutlineRegular size={18} />
           </button>
         </Tooltip>
         <Tooltip label={t('nav.new-task.label')} delayMs={500}>
@@ -133,7 +133,7 @@ export function InboxNav({
             aria-label={t('nav.new-task.label')}
             onClick={() => { setDialogOpen(true) }}
           >
-            <IconPlusOutline16 size={18} />
+            <IconPlusOutlineRegular size={18} />
           </button>
         </Tooltip>
         <Tooltip label={t('nav.chat')} delayMs={500}>
@@ -143,7 +143,7 @@ export function InboxNav({
             aria-label={t('nav.chat')}
             onClick={() => { startChat() }}
           >
-            <IconNewChatOutline16 size={18} />
+            <IconNewChatOutlineRegular size={18} />
           </button>
         </Tooltip>
         {newTaskDialog}
@@ -162,7 +162,7 @@ export function InboxNav({
             aria-label={t('nav.toggle.collapse')}
             onClick={() => { toggleSidebar() }}
           >
-            <IconPanelLeftOutline16 size={16} />
+            <IconPanelLeftOutlineRegular size={16} />
           </button>
         </Tooltip>
       </div>
@@ -170,7 +170,7 @@ export function InboxNav({
       <Button
         variant="primary"
         className={css.newTask}
-        icon={<IconPlusOutline16 size={14} />}
+        icon={<IconPlusOutlineRegular size={14} />}
         onClick={() => { setDialogOpen(true) }}
       >
         {t('nav.new-task')}
@@ -179,7 +179,7 @@ export function InboxNav({
       <Button
         variant="outline"
         className={css.chatEntry}
-        icon={<IconNewChatOutline16 size={14} />}
+        icon={<IconNewChatOutlineRegular size={14} />}
         onClick={() => { startChat() }}
       >
         {t('nav.chat')}

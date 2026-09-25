@@ -32,6 +32,7 @@ function chatWith(nodes: readonly ConversationNode[], runningCalls: readonly Run
     order: [], nodes: {
       get: () => undefined,
       values: () => [],
+      turnDataSource: () => neverHook,
       source: () => neverHook,
       processSource: () => neverHook,
     },
@@ -67,7 +68,7 @@ const errorNode = (): ConversationNode => {
 
 /** One running tool call record (the approval pairing source). */
 const runningCall = (callId: string, argsRaw: string): RunningToolCall =>
-  ({ callId, name: 'bash', argsRaw, turn: 1, step: 0, time: 1, subCalls: [] })
+  ({ phase: 'start', callId, name: 'bash', argsRaw, turn: 1, step: 0, time: 1, subCalls: [] })
 
 /** Build the full composed props for one mount (the rerender path reuses it with a new session). */
 function viewProps(
@@ -94,21 +95,23 @@ function viewProps(
   const chat = options.chat ?? chatWith([])
   const useSession: ConversationViewProps['useSession'] = sel => sel(session)
   const useChat: ConversationViewProps['useChat'] = sel => sel(chat)
-  const useSessionPendingInteraction: ConversationViewProps['useSessionPendingInteraction'] =
-    sel => sel(options.pending === undefined ? new Map() : new Map([[session.sessionId, options.pending]]))
+  const useSessionStatus: ConversationViewProps['useSessionStatus'] =
+    sel => sel(options.pending === undefined
+      ? new Map()
+      : new Map([[session.sessionId, { running: false, pendingInteraction: options.pending, completionUnread: false }]]))
   const byId: SessionListState['byId'] = {}
   for (const [id, title] of Object.entries(options.titles ?? {})) {
-    byId[id as SessionId] = { id: id as SessionId, displayTitle: title, running: false, blank: false, updatedAt: 1 }
+    byId[id as SessionId] = { id: id as SessionId, displayTitle: title, running: false, blank: false, updatedAt: 1, retainedBy: {} }
   }
   const useSessions: ConversationViewProps['useSessions'] = sel => sel({
-    ids: Object.keys(byId) as SessionId[], byId, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    ids: Object.keys(byId) as SessionId[], byId, phase: 'ready', projectionsBySession: {},
   })
   return {
     useSession, sessionId: session.sessionId, useProjection: neverHook,
     useConversation: neverHook, useTrajectory: neverHook,
     useInput: neverHook, inputActions: undefined as never,
     useChat,
-    useSessionPendingInteraction,
+    useSessionStatus,
     useSessions, useWorkspaces: neverHook,
     sendNote: options.sendNote ?? (() => Promise.resolve()),
     steer: options.steer ?? (() => Promise.resolve()),

@@ -19,7 +19,7 @@
  */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionStatus } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { TaskRow } from './contract.ts'
 import type { WireRun } from '@daypaw/durable-client/client'
 import { isUnfinishedWireRun } from '@daypaw/durable-client/client'
@@ -39,11 +39,11 @@ function runGroup(run: WireRun): 'running' | 'done' {
 }
 
 /** The effective pending interaction a session currently carries, if any. */
-export type InboxPending = ReadonlyMap<SessionId, SessionPendingInteraction>
+export type InboxPending = ReadonlyMap<SessionId, SessionStatus>
 
 /** Whether the session's effective pending interaction is an approval (the 等待你确认 triage). */
 function awaitsApproval(id: SessionId, pending: InboxPending): boolean {
-  return pending.get(id)?.kind === 'approval'
+  return pending.get(id)?.pendingInteraction?.kind === 'approval'
 }
 
 /**
@@ -51,7 +51,7 @@ function awaitsApproval(id: SessionId, pending: InboxPending): boolean {
  * roster into the inbox board.
  * @param list - the sessions list snapshot (useSessions standard feed).
  * @param runs - the run ledger's rows (the board store's latest fetch).
- * @param pending - the pending-interaction roster (useSessionPendingInteraction feed).
+ * @param pending - the session-status roster (useSessionStatus feed).
  * @returns counts and rows for the three groups.
  */
 export function projectInboxBoard(list: SessionListState, runs: readonly WireRun[], pending: InboxPending): InboxBoard {

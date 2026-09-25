@@ -35,6 +35,7 @@ function listState(): SessionListState {
     running,
     blank,
     updatedAt: 1,
+    retainedBy: {},
   })
   return {
     // 'ghost' proves the masked-gap arm: an id the list names but byId lacks
@@ -46,11 +47,8 @@ function listState(): SessionListState {
       c: row('c', false),
       draft: row('draft', false, true),
     } as SessionListState['byId'],
-    current: undefined,
     phase: 'ready',
-    subagentsByParent: {},
-    jobsBySession: {},
-    currentAddress: undefined,
+    projectionsBySession: {},
   }
 }
 
@@ -100,7 +98,8 @@ function mountWorkspace(
       sessionId={sessionId}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
+      useSessionRetainInfo={neverHook as never}
+      useSessionStatus={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
       useSessions={bindSnapshotSelector(createSnapshotStore(listState()))} useWorkspaces={neverHook}
       useConversation={neverHook}
       SessionProvider={neverHook}

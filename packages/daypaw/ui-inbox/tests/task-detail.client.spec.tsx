@@ -54,13 +54,14 @@ function mountDetail({ selection = DEFAULT_SELECTION, state = detailState() }: {
   }) as never
   render(
     <TaskDetail
+      active={true} retainTab={() => () => {}}
       width={360} viewportWidth={1024} canShow={true}
       usePanelInfo={neverHook} useResource={neverHook}
       sessionId={'session-1' as never}
       SessionProvider={(() => null) as never}
       useSession={neverHook} useProjection={neverHook} useConversation={neverHook} useChat={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
       useSelection={bindSnapshotSelector(createSnapshotStore<InboxSelection>(selection))}
       useDetail={bindSnapshotSelector(createSnapshotStore<TaskDetailState>(state))}
       retry={retry}

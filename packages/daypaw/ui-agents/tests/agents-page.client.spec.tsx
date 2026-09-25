@@ -44,7 +44,7 @@ function mountPage(api: DurableClient = CARDS_API) {
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}
-      useSessionPendingInteraction={neverHook}
+      useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
       useCatalog={bindSnapshotSelector(store.store)}
       store={store}
       t={t}

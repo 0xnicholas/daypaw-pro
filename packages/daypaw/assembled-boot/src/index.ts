@@ -31,13 +31,15 @@ export interface AssembledRemoteWorld {
 }
 
 /** Composition changes applied to one mount. */
-export interface AssembledBootOptions {
+export interface AssembledBootOptions<TRemote = unknown> {
   /** Package ids omitted from this mounted composition. */
   readonly exclude?: readonly string[]
+  /** Per-mount payload forwarded to the lane's remote-scenario factory. */
+  readonly remote?: TRemote
 }
 
 /** Lane facts: which roster to boot, which remote world serves it, and the pinned title. */
-export interface AssembledBootLaneOptions {
+export interface AssembledBootLaneOptions<TRemote = unknown> {
   /** Top bundle layer layered over the lane's base layer. */
   readonly webBundle: AssembledBundleLayer
   /** Base bundle layer; defaults to the repo's `packages/bundle/base` layer. */
@@ -45,14 +47,15 @@ export interface AssembledBootLaneOptions {
   /** Document title pinned before each boot. */
   readonly documentTitle: string
   /**
-   * Remote-scenario factory minting one world per mount; the teardown
-   * registered by `installAssembledBootEnv` asserts it before clearing.
+   * Remote-scenario factory minting one world per mount from the mount's
+   * remote payload; the teardown registered by `installAssembledBootEnv`
+   * asserts it before clearing.
    */
-  readonly remote: () => AssembledRemoteWorld
+  readonly remote: (options?: TRemote) => AssembledRemoteWorld
 }
 
 /** One web snapshot lane's environment and mount surface. */
-export interface AssembledBootLane {
+export interface AssembledBootLane<TRemote = unknown> {
   /** Register the per-test jsdom setup and teardown (call once per spec file, at import). */
   readonly installAssembledBootEnv: () => void
   /**
@@ -61,7 +64,7 @@ export interface AssembledBootLane {
    * @param options - composition changes applied to this mount.
    * @returns the mounted remote-scenario world.
    */
-  readonly mountAssembledApp: (options?: AssembledBootOptions) => AssembledRemoteWorld
+  readonly mountAssembledApp: (options?: AssembledBootOptions<TRemote>) => AssembledRemoteWorld
 }
 
 interface FixtureWindow extends Window {
@@ -90,7 +93,9 @@ let mountedRemote: AssembledRemoteWorld | undefined
  * @param options - the lane's bundle layers, remote scenario, and pinned title.
  * @returns the lane's `installAssembledBootEnv` / `mountAssembledApp` pair.
  */
-export async function createAssembledBootLane(options: AssembledBootLaneOptions): Promise<AssembledBootLane> {
+export async function createAssembledBootLane<TRemote = unknown>(
+  options: AssembledBootLaneOptions<TRemote>,
+): Promise<AssembledBootLane<TRemote>> {
   const baseLayer: AssembledBundleLayer = options.baseBundle ?? {
     dir: join(process.cwd(), 'packages/bundle/base'),
     manifest: join(process.cwd(), 'packages/bundle/base/package.json'),
@@ -100,7 +105,7 @@ export async function createAssembledBootLane(options: AssembledBootLaneOptions)
     installAssembledBootEnv: () => {
       installAssembledBootEnv(options.documentTitle)
     },
-    mountAssembledApp: (mountOptions: AssembledBootOptions = {}) =>
+    mountAssembledApp: (mountOptions: AssembledBootOptions<TRemote> = {}) =>
       mountAssembledApp(plugins, options.remote, mountOptions),
   }
 }
@@ -188,14 +193,14 @@ function installAssembledBootEnv(documentTitle: string): void {
  * @param options - composition changes applied to this mount.
  * @returns the mounted remote-scenario world.
  */
-function mountAssembledApp(
+function mountAssembledApp<TRemote>(
   plugins: readonly AssembledPlugin[],
-  remote: () => AssembledRemoteWorld,
-  options: AssembledBootOptions,
+  remote: (options?: TRemote) => AssembledRemoteWorld,
+  options: AssembledBootOptions<TRemote>,
 ): AssembledRemoteWorld {
   const excluded = new Set(options.exclude)
   const mounted = plugins.filter(plugin => !excluded.has(plugin.id))
-  const world = remote()
+  const world = remote(options.remote)
   mountedRemote = world
   win.__DSH_TRANSPORT__ = { rpc: world.rpc ?? world.mock.rpc }
   history.replaceState(null, '', '/')

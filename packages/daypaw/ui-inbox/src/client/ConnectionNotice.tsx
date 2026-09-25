@@ -69,7 +69,6 @@ export function ConnectionNotice({ useConnectionState, reconnect, t }: Connectio
     <ConnectionIndicator
       state={state}
       disconnectedLabel={t('connection.disconnected')}
-      reconnectLabel={t('connection.retry')}
       connectingLabel={t('connection.connecting')}
       recoveredLabel={t('connection.recovered')}
       reconnectActionLabel={t('connection.reconnect-action')}

@@ -107,6 +107,8 @@ const SERVICE_ROLES: ServiceRole[] = [
     implementations: ['engine'],
     consumers: ['sdk'],
     note: 'Fork-owned orchestrator: run lifecycle, step-dedup re-drive, and boot-scan revival over the @daypaw/store ledger; the @daypaw/sdk facade is its typed consumer (packages/daypaw/engine/README.md).',
+  },
+  {
     key: 'hmr',
     pkg: 'hmr',
     title: 'Serialized module and configuration reloads',

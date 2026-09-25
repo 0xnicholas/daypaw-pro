@@ -757,8 +757,7 @@ describe('steer channel: multi-segment agent runs (issue #53)', () => {
     first.ctx.sessions.get(SessionId('agent-steer-injected-1'))?.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'Current runtime context. This snapshot supersedes earlier runtime-context snapshots.' }],
       source: {
-        kind: 'plugin',
-        plugin: 'dsh/agent-loop/runtime-context',
+        kind: 'runtime-context',
         form: 'snapshot',
         sections: [{ name: 'sandbox:policy', text: 'sandbox: policy snapshot' }],
       },

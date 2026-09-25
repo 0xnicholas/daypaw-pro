@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import {
-  boot, composeEntries, healProfilesModuleFallback, initProfile, loadOverlayPatches, loadProfile,
+  boot, composeEntries, createRuntimeResolution, initProfile, loadOverlayPatches, loadProfile, PluginPackages,
 } from '@deepseek-ai/dsh-app-boot'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -145,7 +145,7 @@ beforeAll(async () => {
   const profile = loadProfile('daypaw-agent-plane', 'daypaw', INSTALL_ANCHOR, home, { userLayer: false })
   const rootConfig = join(profile.dir, 'cordis.yml')
   writeFileSync(rootConfig, '[]\n')
-  await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, profile, home })
+  const resolution = await createRuntimeResolution({ installAnchor: INSTALL_ANCHOR, profile })
   rosterRows = composeEntries(profile.layers.map(layer => layer.patches))
   const overlayFile = join(home, 'web-transport-off.patch.yml')
   writeFileSync(overlayFile, webTransportOffOverlay(rosterRows, clientPluginPackages(REPO_ROOT)))
@@ -153,7 +153,12 @@ beforeAll(async () => {
     ...profile.layers.flatMap(layer => layer.patches),
     ...loadOverlayPatches('daypaw-agent-plane', overlayFile),
   ]
-  ctx = await boot('daypaw-agent-plane', rootConfig, patches)
+  ctx = await boot('daypaw-agent-plane', rootConfig, patches, async (rootCtx) => {
+    // The runtime resolution replaces the healed profiles/node_modules links:
+    // PluginPackages supplies the installation generation to Node's resolvers
+    // before any config-tree entry imports.
+    await rootCtx.plugin(PluginPackages, { resolution })
+  })
 }, 180_000)
 
 afterEach(async () => {

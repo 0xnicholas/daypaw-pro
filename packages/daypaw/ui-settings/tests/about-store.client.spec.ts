@@ -13,7 +13,7 @@ const base: HostFacts = { provider: 'deepseek', model: 'deepseek-chat', attached
 /** Sessions-list fake: the attached count's only source (a real store over the full list state). */
 function fakeSessions(ids: readonly string[]): { list: ObservableSnapshot<SessionListState> } {
   const store = createSnapshotStore<SessionListState>({
-    ids: ids.map(id => id as SessionId), byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    ids: ids.map(id => id as SessionId), byId: {}, phase: 'ready', projectionsBySession: {},
   })
   return { list: store }
 }

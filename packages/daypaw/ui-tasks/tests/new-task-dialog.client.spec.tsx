@@ -27,13 +27,12 @@ function sessionsDouble(listOnDemand: () => SessionId | undefined = () => undefi
   listSession: (id: SessionId) => void
 } {
   const list: SnapshotStore<SessionListState> = createSnapshotStore<SessionListState>({
-    ids: [], byId: {}, current: undefined, phase: 'ready',
-    subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    ids: [], byId: {}, phase: 'ready', projectionsBySession: {},
   })
   const listSession = (id: SessionId): void => {
     list.update((draft) => {
       draft.ids.push(id)
-      draft.byId[id] = { id, displayTitle: id, running: false, blank: true, updatedAt: 1 }
+      draft.byId[id] = { id, displayTitle: id, running: false, blank: true, updatedAt: 1, retainedBy: {} }
     })
   }
   return { sessions: { list }, listSession: (id) => { void listOnDemand; listSession(id) } }
@@ -48,7 +47,7 @@ function mountDialog(api: FakeTaskApi, sessions: NewTaskSessions = sessionsDoubl
     <NewTaskDialog
       usePanelInfo={neverHook} useResource={neverHook}
       close={close} openTask={openTask} openRun={openRun}
-      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
       useNewTask={bindSnapshotSelector(owned.store)}
       store={owned} t={t}
     />,

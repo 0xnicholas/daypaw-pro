@@ -12,10 +12,10 @@
       "path": "../../../vendor/cordis"
     },
     {
-      "path": "../../client/ui-theme"
+      "path": "../../client/ui-theme/tsconfig.client.json"
     },
     {
-      "path": "../../client/ui-theme"
+      "path": "../../client/ui-theme/tsconfig.client.json"
     }
   ]
 }

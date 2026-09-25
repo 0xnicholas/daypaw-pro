@@ -13,8 +13,7 @@ import { FakeTaskApi, fail, ok, definition } from './fake-task-api.client.ts'
 
 function emptyList(): SnapshotStore<SessionListState> {
   return createSnapshotStore<SessionListState>({
-    ids: [], byId: {}, current: undefined, phase: 'ready',
-    subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    ids: [], byId: {}, phase: 'ready', projectionsBySession: {},
   })
 }
 
@@ -26,7 +25,7 @@ function sessionsBench() {
   const listSession = (id: SessionId): void => {
     list.update((draft) => {
       draft.ids.push(id)
-      draft.byId[id] = { id, displayTitle: id, running: false, blank: true, updatedAt: 1 }
+      draft.byId[id] = { id, displayTitle: id, running: false, blank: true, updatedAt: 1, retainedBy: {} }
     })
   }
   return { sessions, listSession }

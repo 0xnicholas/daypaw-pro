@@ -40,16 +40,14 @@ function sessionsStore(rows: readonly SummarySpec[]): SnapshotStore<SessionListS
       running: row.running ?? false,
       blank: row.blank ?? false,
       updatedAt: 1,
+      retainedBy: {},
     }
   }
   return createSnapshotStore<SessionListState>({
     ids: rows.map(row => row.id as SessionId),
     byId,
-    current: undefined,
     phase: 'ready',
-    subagentsByParent: {},
-    jobsBySession: {},
-    currentAddress: undefined,
+    projectionsBySession: {},
   })
 }
 
@@ -70,7 +68,8 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
   const view = render(
     <InboxNav
       collapsed={collapsed} width={collapsed ? 56 : 300}
-      useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
+      useSessionRetainInfo={neverHook as never}
+      useSessionStatus={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
       usePanelInfo={neverHook} useResource={neverHook}
       useSessions={bindSnapshotSelector(sessionsStore(rows))} useWorkspaces={neverHook}
       useSelection={bindSnapshotSelector(controller.store)}
@@ -162,7 +161,8 @@ describe('InboxNav', () => {
     render(
       <InboxNav
         collapsed={false} width={300}
-        useSessionPendingInteraction={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
+        useSessionRetainInfo={neverHook as never}
+        useSessionStatus={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
         usePanelInfo={neverHook} useResource={neverHook}
         useSessions={bindSnapshotSelector(sessionsStore([]))} useWorkspaces={neverHook}
         useSelection={bindSnapshotSelector(controller.store)}

@@ -51,6 +51,10 @@ import type { CredentialInfo } from '@deepseek-ai/dsh-credentials/types'
 // Wire types (local mirrors of the host contracts this world serves)
 // ---------------------------------------------------------------------------
 
+/** The V3-era context-injection attribution, retained verbatim on the wire (upstream's migrated
+ * fixture JSON carries the same record); the V4 source union dropped the catch-all `plugin` kind. */
+const LEGACY_FIXTURE_SOURCE = { kind: 'plugin', plugin: 'fixture' } as unknown as Parameters<typeof userMessage>[1]
+
 interface SessionSummary {
   readonly sessionId: SessionId
   updatedAt: number
@@ -556,7 +560,7 @@ function buildAlphaLog(): SessionEvent[] {
     if (turn === 0) {
       push({
         type: 'system/message', surfaceOp: 'append',
-        data: { turn, step: 0, message: createSystemMessage(FIXTURE_SYSTEM_PROMPT, '@deepseek-ai/dsh-system-prompt') },
+        data: { turn, step: 0, message: createSystemMessage(FIXTURE_SYSTEM_PROMPT) },
       })
     }
     const userSeq = push({
@@ -570,7 +574,7 @@ function buildAlphaLog(): SessionEvent[] {
       })
     }
     if (turn % 9 === 4) {
-      push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text(`[fixture] 上下文注入（turn ${turn}）`), { kind: 'plugin', plugin: 'fixture' }) })
+      push({ type: 'user/message', surfaceOp: 'append', data: userMessage(text(`[fixture] 上下文注入（turn ${turn}）`), LEGACY_FIXTURE_SOURCE) })
     }
     push({ type: 'step/start', data: { turn, step: 0 } })
     const withTool = turn % 5 === 2
@@ -1060,11 +1064,8 @@ function estimateFixtureContent(blocks: readonly ContentBlock[]): number {
       return tokens + densityPrice(block.name) + densityPrice(block.arguments) + BLOCK_OVERHEAD
     }
     // ContentBlockMap is merge-extensible: this client graph sees only the
-    // base four members, but fixture turns do carry extended blocks at
-    // runtime, so the structural JSON fallback below is live code.
-    if (block.type === 'tool-result') {
-      return tokens + estimateFixtureContent(block.content) + BLOCK_OVERHEAD
-    }
+    // base members, but fixture turns do carry extended blocks at runtime,
+    // so the structural JSON fallback below is live code.
     return tokens + densityPrice(JSON.stringify(block)) + BLOCK_OVERHEAD
   }, 0)
 }

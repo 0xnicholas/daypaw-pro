@@ -83,12 +83,12 @@ export type ConversationViewProps =
  * @returns the conversation element tree.
  */
 export function ConversationView({
-  useSession, useSessions, useChat, useSessionPendingInteraction, sessionId, runStatus,
+  useSession, useSessions, useChat, useSessionStatus, sessionId, runStatus,
   sendNote, steer, sendChat, renderSlot, t,
 }: ConversationViewProps) {
   const chat = useChat(s => s)
   const running = useSession(s => s.running)
-  const pending = useSessionPendingInteraction(s => s.get(sessionId))
+  const pending = useSessionStatus(s => s.get(sessionId)?.pendingInteraction)
   const runningCalls = useChat(s => s.legacy.runningCalls)
   const taskTitle = useSessions(s => s.byId[sessionId]?.displayTitle)
   const rows = projectBusinessRows(chat)
@@ -129,15 +129,17 @@ export function ConversationView({
   const approval: PendingApprovalWait | undefined = pending
   // The paired call stays in the running calls while the approval blocks its
   // execution; its raw args feed the card's details expander.
-  const callArgs = approval === undefined
+  const pairedCall = approval === undefined
     ? undefined
-    : runningCalls.find(call => call.callId === approval.callId)?.argsRaw
+    : runningCalls.find(call => call.callId === approval.callId)
+  const callArgs = pairedCall?.phase === 'start' ? pairedCall.argsRaw : undefined
 
   // The ring's owner face: the seat originates no focus request (nothing in
   // the fork surfaces targets a ring view yet), so viewRequest stays null and
   // completeViewRequest acknowledges nothing; openView still routes a
   // ring-bound switch to the inspector pane.
   const ringOwner: ConvViewOwnerProps = {
+    inspectCall: undefined,
     viewRequest: null,
     openView: (view) => { if (view === 'trajectory') setPane({ sessionId, inspecting: true }) },
     completeViewRequest: () => {},

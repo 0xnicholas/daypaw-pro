@@ -32,8 +32,7 @@ async function bench() {
   }
   ctx.provide('connection', { rpc } as never)
   const list: SnapshotStore<SessionListState> = createSnapshotStore<SessionListState>({
-    ids: [], byId: {}, current: undefined, phase: 'ready',
-    subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    ids: [], byId: {}, phase: 'ready', projectionsBySession: {},
   })
   const sessions = { list, open: vi.fn(), binding: vi.fn() }
   ctx.provide('sessions', sessions as never)

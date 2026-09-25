@@ -45,6 +45,7 @@ function chatWith(nodes: readonly ConversationNode[]): ChatSnapshot {
     order: [], nodes: {
       get: () => undefined,
       values: () => [],
+      turnDataSource: () => neverHook,
       source: () => neverHook,
       processSource: () => neverHook,
     },
@@ -119,7 +120,7 @@ function mountBody(detail: TaskDetailView, opts: MountOptions = {}) {
       sessionId={(opts.seatSessionId ?? 's1') as SessionId}
       useConversation={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook} t={t}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook} t={t}
     />,
   )
 }

@@ -26,7 +26,7 @@ function mountList(rows: TaskListProps['rows']) {
     <TaskList
       usePanelInfo={neverHook} useResource={neverHook}
       rows={rows} now={NOW} openTask={openTask} openRun={openRun} tStatus={tStatus}
-      useSessions={neverHook} useWorkspaces={neverHook} useSessionPendingInteraction={neverHook} t={t}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionStatus={neverHook} useSessionRetainInfo={neverHook as never} t={t}
     />,
   )
   return { openTask, openRun }
