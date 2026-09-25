@@ -96,8 +96,15 @@ export class ReactLoopInbox implements InboxContract {
 
   /** Durably cancel all pending input, clearing next-step before next-turn. */
   clear(): void {
-    this.splice('next-step', 0, this.nextStep.length, [])
-    this.splice('next-turn', 0, this.nextTurn.length, [])
+    // A retired projection registration means the session scope already tore
+    // down and no durable inbox state survives to cancel. Teardown aborts the
+    // run signal, so this runs from an abort listener: throwing here would
+    // surface as an unhandled exception during disposal (fork ticket: sdk
+    // agent teardown).
+    const state = this.projections.stateOf(this.session, 'inbox')
+    if (state === undefined) return
+    this.splice('next-step', 0, state['next-step'].length, [])
+    this.splice('next-turn', 0, state['next-turn'].length, [])
   }
 
   /**

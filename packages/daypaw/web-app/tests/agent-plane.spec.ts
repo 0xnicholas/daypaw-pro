@@ -296,7 +296,7 @@ onPosix('the open agent plane under the conservative approval default (ticket #1
     expect(names).toEqual([
       'ask_user_question', 'bash', 'create_goal', 'edit', 'exit_plan_mode', 'get_goal',
       'glob', 'grep', 'interrupt_agent', 'job_kill', 'job_list', 'job_output', 'list_agents',
-      'ralph', 'read', 'read_image', 'send_message', 'skill', 'str_replace_editor',
+      'read', 'read_image', 'send_message', 'skill', 'str_replace_editor',
       'subagent', 'subagent_fork', 'todo_write', 'update_goal', 'web_fetch', 'web_search',
       'workflow', 'write',
     ])

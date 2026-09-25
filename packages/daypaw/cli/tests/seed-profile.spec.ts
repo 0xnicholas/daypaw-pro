@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -11,7 +10,6 @@ import { composeEntries, loadProfile } from '@deepseek-ai/dsh-app-boot'
 import DurableEngine from '@daypaw/engine'
 import { DAYPAW_PROFILE_NAME, seedDaypawProfile, seedStarterAgent, withDefaultProfile } from '../src/index.ts'
 
-const CLI_MANIFEST = fileURLToPath(new URL('../package.json', import.meta.url))
 /** The repo's dsh app manifest: the resolution anchor the seeded profile's bundles resolve from. */
 const INSTALL_ANCHOR = fileURLToPath(new URL('../../../apps/cli/package.json', import.meta.url))
 
@@ -34,11 +32,6 @@ async function seed(): Promise<string> {
   return join(home, 'profiles', DAYPAW_PROFILE_NAME)
 }
 
-/** The launcher-style flat fallback the seed heals the daypaw family into. */
-function fallbackLink(name: string): string {
-  return join(home!, 'profiles', 'node_modules', ...name.split('/'))
-}
-
 /** The manifest fields profile staging writes and the assertions read back. */
 interface SeededManifest {
   name?: string
@@ -57,10 +50,9 @@ async function stageProfile(manifest: SeededManifest): Promise<string> {
 }
 
 const readFileUtf8 = (path: string): Promise<string> => readFile(path, 'utf8')
-const isSymlink = async (path: string): Promise<boolean> => (await lstat(path)).isSymbolicLink()
 
 describe('seedDaypawProfile', () => {
-  it('materializes the product-shell profile template and heals the family fallback on first run', async () => {
+  it('materializes the product-shell profile template on first run', async () => {
     const dir = await seed()
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as {
@@ -73,42 +65,23 @@ describe('seedDaypawProfile', () => {
     expect(patch).toContain("name: '@daypaw/engine'")
     expect(patch).toContain('path: daypaw/ledger.db')
     expect(existsSync(join(dir, 'pnpm-workspace.yaml'))).toBe(true)
-
-    // The engine row, the shell bundle, and every roster package the composed
-    // tree names resolve through the flat installation fallback, healed from
-    // this CLI package's own dependency closure.
-    for (const name of [
-      '@daypaw/engine', '@daypaw/web-app', '@daypaw/web-frontend',
-      '@daypaw/approval-history', '@daypaw/ui-inbox', '@daypaw/ui-tasks',
-      '@daypaw/ui-settings', '@daypaw/ui-agents',
-    ]) {
-      const link = fallbackLink(name)
-      expect(await isSymlink(link), name).toBe(true)
-    }
-    // The link lands on the anchor probe's directory (a pnpm node_modules
-    // entry in the workspace, a real directory in the packed tarball); what
-    // must hold in both layouts is that it resolves to this CLI's engine.
-    const engineDir = dirname(createRequire(CLI_MANIFEST).resolve('@daypaw/engine/package.json'))
-    expect(await realpath(fallbackLink('@daypaw/engine'))).toBe(await realpath(engineDir))
-    // The profile-local engine link of the prior seed mechanism is gone: the
-    // fallback link is the one resolution path, and pnpm runs inside the
-    // profile cannot prune it.
-    expect(existsSync(join(dir, 'node_modules', '@daypaw', 'engine'))).toBe(false)
+    // Seeding stages files only: the launcher's runtime resolution supplies
+    // the installation generation to Node's resolvers at boot, so no
+    // profiles/node_modules fallback links are created here.
+    expect(existsSync(join(home!, 'profiles', 'node_modules'))).toBe(false)
   })
 
-  it('never overwrites an initialized profile, and re-heals a removed fallback link', async () => {
+  it('never overwrites an initialized profile', async () => {
     const dir = await seed()
     const patchPath = join(dir, 'cordis.patch.yml')
     await writeFile(patchPath, '# user edits\n[]\n')
     const manifestPath = join(dir, 'package.json')
     const manifest = await readFileUtf8(manifestPath)
-    await rm(fallbackLink('@daypaw/engine'))
 
     await seedDaypawProfile(home)
 
     expect(await readFileUtf8(patchPath)).toBe('# user edits\n[]\n')
     expect(await readFileUtf8(manifestPath)).toBe(manifest)
-    expect(await isSymlink(fallbackLink('@daypaw/engine'))).toBe(true)
   })
 
   it('migrates the exact previously-shipped bundle tuple to the shell template, preserving the rest', async () => {
@@ -127,25 +100,15 @@ describe('seedDaypawProfile', () => {
     expect(manifest.dependencies).toEqual({ 'some-plugin': '^1.0.0' })
   })
 
-  it('upgrades a prior CLI install: migrates the tuple and leaves the orphaned profile-local link to the fallback', async () => {
+  it('upgrades a prior CLI install: migrates the shipped bundle tuple', async () => {
     const dir = await stageProfile({
       name: 'dsh-profile-daypaw',
       dsh: { profile: { bundles: [...PREVIOUS_BUNDLES] } },
     })
-    await mkdir(join(dir, 'node_modules', '@daypaw'), { recursive: true })
-    // A prior install's profile-local engine link: dangling after that
-    // install is removed. Node treats the dangling entry as absent and the
-    // parent walk continues to the healed fallback.
-    await symlink(join(home!, 'removed-prefix', 'engine'), join(dir, 'node_modules', '@daypaw', 'engine'), 'junction')
-
     await seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base', '@daypaw/web-app'])
-    expect(await isSymlink(fallbackLink('@daypaw/engine'))).toBe(true)
-    expect(await realpath(fallbackLink('@daypaw/engine'))).toBe(
-      await realpath(dirname(createRequire(CLI_MANIFEST).resolve('@daypaw/engine/package.json'))),
-    )
   })
 
   it('leaves a user-owned bundle list untouched', async () => {

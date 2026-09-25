@@ -75,7 +75,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 const NS = 'inbox'
 
 /** Services required by the inbox workbench plugin. */
-export const inject = ['slots', 'layout', 'locale', 'sessions', 'connection']
+export const inject = ['slots', 'layout', 'locale', 'sessions', 'connection', 'uiWorkspace']
 
 /** Priority below ui-conversation's default-0 occupants: lowest live priority renders. */
 const SHADOW_PRIORITY = -1

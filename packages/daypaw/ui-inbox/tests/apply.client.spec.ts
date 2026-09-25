@@ -50,8 +50,10 @@ async function bench(declare = true) {
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('zh')
   ctx.provide('locale', locale)
-  const sessions = { open: vi.fn(), create: vi.fn() }
+  const sessions = { create: vi.fn() }
   ctx.provide('sessions', sessions as never)
+  const uiWorkspace = { openSession: vi.fn() }
+  ctx.provide('uiWorkspace', uiWorkspace as never)
   const rpc = fakeRpc()
   // The wire face the shell consumes for transport health (issue #93): the
   // recovery state source and the immediate-reconnect command.
@@ -86,7 +88,7 @@ async function bench(declare = true) {
       () => null,
     )
   }
-  return { ctx, slots, layout, sessions, rpc, reconnect, connectionState, stateSubscribers }
+  return { ctx, slots, layout, sessions, uiWorkspace, rpc, reconnect, connectionState, stateSubscribers }
 }
 
 /** Let the stores' fetch microtask chains settle. */
@@ -108,7 +110,7 @@ describe('ui-inbox apply', () => {
   afterEach(() => { vi.useRealTimers() })
 
   it('declares only the services it uses', () => {
-    expect(inject).toEqual(['slots', 'layout', 'locale', 'sessions', 'connection'])
+    expect(inject).toEqual(['slots', 'layout', 'locale', 'sessions', 'connection', 'uiWorkspace'])
   })
 
   it('the node half provides no host-side behavior', () => {
@@ -191,12 +193,12 @@ describe('ui-inbox apply', () => {
     const { navFace } = faces(b)
     navFace.select({ kind: 'task', sessionId: 's1' as SessionId })
     expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'task', sessionId: 's1' })
-    expect(b.sessions.open).toHaveBeenCalledWith('s1')
+    expect(b.uiWorkspace.openSession).toHaveBeenCalledWith('s1')
     // Group, run, and page selections never touch the runtime current session.
     navFace.select({ kind: 'run', runId: 'r1' })
     navFace.select({ kind: 'group', group: 'done' })
     navFace.select({ kind: 'settings' })
-    expect(b.sessions.open).toHaveBeenCalledTimes(1)
+    expect(b.uiWorkspace.openSession).toHaveBeenCalledTimes(1)
   })
 
   it('starts a light chat by creating a plain session and selecting it as the conversation (issue #102)', async () => {
@@ -211,7 +213,7 @@ describe('ui-inbox apply', () => {
     expect(b.sessions.create).toHaveBeenCalledWith()
     // The created session opens as the middle column's conversation selection.
     expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'task', sessionId: 'fresh' })
-    expect(b.sessions.open).toHaveBeenCalledWith('fresh')
+    expect(b.uiWorkspace.openSession).toHaveBeenCalledWith('fresh')
   })
 
   it('warns and keeps the selection when the chat session create fails', async () => {
@@ -225,7 +227,7 @@ describe('ui-inbox apply', () => {
     expect(warn).toHaveBeenCalledOnce()
     // The failed create never moves the selection or the runtime session.
     expect(navFace.hooks.selection.getSnapshot()).toEqual({ kind: 'group', group: 'running' })
-    expect(b.sessions.open).not.toHaveBeenCalled()
+    expect(b.uiWorkspace.openSession).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 
