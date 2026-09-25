@@ -68,7 +68,7 @@ function mountNav({ collapsed = false, rows = [], runs = [] }: MountNavOptions =
   const view = render(
     <InboxNav
       collapsed={collapsed} width={collapsed ? 56 : 300}
-      useSessionRetainInfo={neverHook as never}
+      useSessionRetainInfo={neverHook}
       useSessionStatus={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
       usePanelInfo={neverHook} useResource={neverHook}
       useSessions={bindSnapshotSelector(sessionsStore(rows))} useWorkspaces={neverHook}
@@ -161,7 +161,7 @@ describe('InboxNav', () => {
     render(
       <InboxNav
         collapsed={false} width={300}
-        useSessionRetainInfo={neverHook as never}
+        useSessionRetainInfo={neverHook}
         useSessionStatus={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
         usePanelInfo={neverHook} useResource={neverHook}
         useSessions={bindSnapshotSelector(sessionsStore([]))} useWorkspaces={neverHook}

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-06-reuse-boundary-current-package-names.md
-2026-09-06-reuse-boundary-current-package-names.md: 23a1d6c3b0dcd5c063440ac6292723fce7add96a
+2026-09-06-reuse-boundary-current-package-names.md: cb94fa872ce05f657f5cf93d11b56a5e77544fe3
 2026-09-06-reuse-boundary-current-package-names.zh.md: e35be0ab1f893587b0bffb2db773bfb35a1f844d

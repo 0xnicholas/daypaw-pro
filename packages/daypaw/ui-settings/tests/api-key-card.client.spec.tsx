@@ -31,7 +31,7 @@ function mountCard(options: { sessionId?: SessionId; configured?: boolean } = {}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}
-      useSessionRetainInfo={neverHook as never}
+      useSessionRetainInfo={neverHook}
       useSessionStatus={neverHook}
       openSettings={openSettings}
       useCard={bindSnapshotSelector(card.store)}

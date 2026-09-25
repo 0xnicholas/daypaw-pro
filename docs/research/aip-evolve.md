@@ -4,7 +4,7 @@
 
 **Timeline correction to the task premise:** AIP Evolve was **not** announced in late 2025. First public marketing appears to be **~June 2, 2026** (Palantir LinkedIn launch post + the "Chad & Colton" video; third-party commentary on the announcement is dated 2026-06-02). **DevCon 6 was July 2026** (DevCon 6 videos published 2026-07-14 on the official Palantir channel; DevCon 6 LinkedIn posts 2026-07-15/16), where AIP Evolve was positioned inside the newly introduced "Agent Stack". The Q2 2026 investor deck (Aug 2026) recaps it. Note: an unanswered community question titled "AIP Evolve? Where's the tutorial?" is dated **2026-04-30**, i.e., the name was circulating slightly before the June launch — unexplained by public sources (see Gaps).
 
-**Provenance caveats (read first):**
+**Source caveats (read first):**
 - The two demo "transcripts" quoted below are the **auto-captions of Palantir's own videos, embedded on Palantir's official LinkedIn post pages** (first-party distribution). ASR garbling exists; I mark obvious ones (`GT 4.1 mini` = GPT-4.1 mini, `OS DK` = OSDK, `Evolved` = Evolve).
 - The investor-deck quote is from the OCR'd PDF of Palantir's Q2 2026 Business Update.
 - The DevCon 6 "Product Launch: Agent Observability & Optimization" talk (YouTube `GZHSCMz6Aio`, official channel confirmed via oEmbed) could **not** be transcribed in this environment (no yt-dlp/credentials); only its title is used.
@@ -51,7 +51,7 @@ AIP Evolve is Palantir's product for optimizing deployed agents/agent workflows:
 - **Diff/preview exists for prompts and outputs.** "here on the left side you can see the old unoptimized version of the AIP logic, on the right you can see the optimized version" (prompt diff), and the review app shows "the old version of the outputs versus the new optimized version" (output diff). [rMlx transcript]
 - **The run terminates in a "final proposal"** — "that's what progressed us towards this final proposal." [rMlx transcript]
 - **Full per-step lineage is retained:** "the agent graph, the lineage here of each optimization step Evolve took." [rMlx transcript]
-- **How a proposal becomes the production version, versioning of variants, rollback, provenance records:** **not documented** in any public source.
+- **How a proposal becomes the production version, versioning of variants, rollback, and version-lineage records:** **not documented** in any public source.
 
 ## 5. Human-in-the-loop & safety
 
@@ -85,7 +85,7 @@ AIP Evolve is Palantir's product for optimizing deployed agents/agent workflows:
 4. Source of eval sets (production traffic replay vs. human-curated vs. synthetic); the meaning of the "rod [sic] scenarios" categories.
 5. Formal integration with the AIP Evals product (shared suites? separate?).
 6. Pass/regression criteria, thresholds, statistical-significance handling.
-7. Promotion mechanics: how a "final proposal" is deployed; versioning; rollback; provenance records; approval workflows.
+7. Promotion mechanics: how a "final proposal" is deployed; versioning; rollback; version-lineage records; approval workflows.
 8. Whether any promotion is autonomous; monetary cost budgets/caps.
 9. Hard infrastructure prerequisites (Ontology mandatory? Agent Manager traces mandatory?).
 10. Availability (GA/beta/waitlist), pricing, API/SDK surface.

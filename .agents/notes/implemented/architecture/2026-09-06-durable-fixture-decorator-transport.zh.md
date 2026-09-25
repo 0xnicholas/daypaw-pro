@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-daypaw fork 的 `durable/*` Remote 应答原住在上游浏览器 fixture（`packages/client/connection/src/client/fixture.ts`）里：六个 rpc 臂、三张可变表、rerun/start 串行——约 370 行上游文件内的 fork 代码，每次 sync 手工重放，durable 契约每变一次都要三处镜像（[前端架构债审计 §2.1](../../../../docs/research/2026-09-02-frontend-arch-debt-audit.md)，wayfinder [#81](https://github.com/0xnicholas/daypaw-pro/issues/81)）。fork 自持装饰器也驱动 `durable/startRun` 的会话孪生——fixture 臂原经内部件驱动（`sessionApi.prompt`、`emitRemote('api-session/added')`）。
+daypaw fork 的 `durable/*` Remote 应答原住在上游浏览器 fixture（connection 包内已退役的 `client/fixture.ts`）里：六个 rpc 臂、三张可变表、rerun/start 串行——约 370 行上游文件内的 fork 代码，每次 sync 手工重放，durable 契约每变一次都要三处镜像（[前端架构债审计 §2.1](../../../../docs/research/2026-09-02-frontend-arch-debt-audit.md)，wayfinder [#81](https://github.com/0xnicholas/daypaw-pro/issues/81)）。fork 自持装饰器也驱动 `durable/startRun` 的会话孪生——fixture 臂原经内部件驱动（`sessionApi.prompt`、`emitRemote('api-session/added')`）。
 
 ## 决策
 

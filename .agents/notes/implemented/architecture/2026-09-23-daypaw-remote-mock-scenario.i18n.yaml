@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-23-daypaw-remote-mock-scenario.md
-2026-09-23-daypaw-remote-mock-scenario.md: 89d8f10578eee9f26318457271c96c9cda578893
-2026-09-23-daypaw-remote-mock-scenario.zh.md: f5e06ae35382a9f2e6478d1fc33ea5d87792ed69
+2026-09-23-daypaw-remote-mock-scenario.md: bf88efa45a0d9cce199847121dfbe9e343165df7
+2026-09-23-daypaw-remote-mock-scenario.zh.md: dbcc9098244a3cf8a5b2b6d1a6a0e449534140ce

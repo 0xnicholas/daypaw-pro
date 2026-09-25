@@ -14,7 +14,7 @@ Two directions must hold against the 2026-08-28 upstream checkpoint (`cd5ef81481
 
 - built-boot row: the path is `apps/web/tests/built-boot.expected.e2e.ts`, and the row's edit is the expected built-boot text containing the "Waiting for approval" line.
 - ui-theme row: the dialog golden path is `expected/`; `src/client/settings-store.ts` and `apply.client.spec.ts` are byte-identical to upstream and carry no fork edit, so they are not in the row's connected set; the fork edit in `settings-store.client.spec.ts` is its test title.
-- fixture.ts row names its owning-spec companion `packages/client/connection/tests/fixture.client.spec.ts` (assertion adaptations for callId pairing, the fx-gamma question, `flipGammaRunning`, and approvalHistory folding).
+- the fixture row named its owning-spec companion (`tests/fixture.client.spec.ts`, both retired with the fixture) (assertion adaptations for callId pairing, the fx-gamma question, `flipGammaRunning`, and approvalHistory folding).
 - A new row registers the `apps/web/tests/todo-row.expected.e2e.ts` header comment, which states the current turn value; the row mirrors the built-boot adaptive-text row.
 - The session-controller manager row (#94) names its doc companions: the `service.ts` `list`-field JSDoc and the README removal-frame re-pull paragraph.
 - The fixture-durable spec lives at `apps/daypaw-web/tests/durable-rpc.spec.ts`; `packages/client/connection/tests/` holds no fork-added file.

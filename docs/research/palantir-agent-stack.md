@@ -25,7 +25,7 @@
 1. Palantir 跑在 Rubix（硬化 k8s、节点 ≤48h 强制轮换、「为中断而设计」）——自用单机没有这个底座，「关机零算力等待」的等价物 = 进程退出 + 外部唤醒机制（v1 的持久化级别问题的参照）。
 2. Ontology 是 Context Items/结构化数据消除 LLM 调用的前提——daypaw 无 ontology，EVO 的「消除不必要调用」需要别的结构化数据源（journal + tool schema）。
 3. multiplayer/distributed state machine 在自用单机 v1 = 进程内多 agent 组合（dsh 的 subagent/preset 已有雏形）。
-4. 权限模型（marking/purpose/role、provenance-based security）属企业治理面，自用基础设施按已锁定决策不做（map Notes）。
+4. 权限模型（marking/purpose/role、来源链安全）属企业治理面，自用基础设施按已锁定决策不做（map Notes）。
 
 ## 来源
 

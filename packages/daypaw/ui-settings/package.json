@@ -1,6 +1,6 @@
 {
   "name": "@daypaw/ui-settings",
-  "description": "daypaw settings single page (\u901a\u7528/\u51ed\u636e/\u6a21\u578b/\u5173\u4e8e) and the first-run API-key banner over the ui-inbox workspace slots",
+  "description": "daypaw settings single page (通用/凭据/模型/关于) and the first-run API-key banner over the ui-inbox workspace slots",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -37,13 +37,13 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@daypaw/client-load": "workspace:^",
-    "@daypaw/durable-client": "workspace:^",
-    "@daypaw/ui-inbox": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@daypaw/client-load": "workspace:~",
+    "@daypaw/durable-client": "workspace:~",
+    "@daypaw/ui-inbox": "workspace:~",
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-api-remotes": "workspace:*",
     "@deepseek-ai/dsh-api-session-controller": "workspace:*",
     "@deepseek-ai/dsh-client-connection": "workspace:*",

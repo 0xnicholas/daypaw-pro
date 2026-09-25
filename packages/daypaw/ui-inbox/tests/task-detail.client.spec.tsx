@@ -61,7 +61,7 @@ function mountDetail({ selection = DEFAULT_SELECTION, state = detailState() }: {
       SessionProvider={(() => null) as never}
       useSession={neverHook} useProjection={neverHook} useConversation={neverHook} useChat={neverHook} useTrajectory={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook} useSessionStatus={neverHook}
       useSelection={bindSnapshotSelector(createSnapshotStore<InboxSelection>(selection))}
       useDetail={bindSnapshotSelector(createSnapshotStore<TaskDetailState>(state))}
       retry={retry}

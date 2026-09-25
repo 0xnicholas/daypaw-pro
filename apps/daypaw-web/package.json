@@ -29,7 +29,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@daypaw/assembled-boot": "workspace:^",
+    "@daypaw/assembled-boot": "workspace:~",
     "@deepseek-ai/dsh-brand": "workspace:*",
     "@deepseek-ai/dsh-client-connection": "workspace:*",
     "@deepseek-ai/dsh-client-modules": "workspace:*",

@@ -6,7 +6,7 @@ English | [中文](2026-09-23-daypaw-remote-mock-scenario.zh.md)
 
 ## Problem
 
-The fork's ten golden lanes booted against the shared upstream browser fixture (`packages/client/connection/src/client/fixture.ts`, 4,136 lines in-tree), so the fork's world facts — the approval pair with its `callId`, the turn-75 `todo_write` sample behind the resident pending approval, the question waterfall parked on fx-gamma — lived as seed edits inside an upstream file, registered as core touches. Upstream replaces that fixture with `@deepseek-ai/dsh-remote-mock` (endpoint rule table, stream scripts, call log, `assertNoUnmatched()`) plus the client-test-runtime assembly tier; the deletion commit lands with the 2026-09-27 sync window. Until the fork's world moved onto the replacement surface, every sync rehearsed a dead fixture and the lanes had no home that survives the deletion.
+The fork's ten golden lanes booted against the shared upstream browser fixture (the connection package's retired `client/fixture.ts`, 4,136 lines in-tree), so the fork's world facts — the approval pair with its `callId`, the turn-75 `todo_write` sample behind the resident pending approval, the question waterfall parked on fx-gamma — lived as seed edits inside an upstream file, registered as core touches. Upstream replaces that fixture with `@deepseek-ai/dsh-remote-mock` (endpoint rule table, stream scripts, call log, `assertNoUnmatched()`) plus the client-test-runtime assembly tier; the deletion commit lands with the 2026-09-27 sync window. Until the fork's world moved onto the replacement surface, every sync rehearsed a dead fixture and the lanes had no home that survives the deletion.
 
 ## Decision
 

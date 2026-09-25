@@ -23,6 +23,13 @@
   "apps/cli/tests/web-auth.e2e.ts": {
     "a2b9a35fdf6552ba148d15436c9b3f98ed5763a2b91a95f579b951fd6613e75c": 1
   },
+  "apps/daypaw-web/tests/daypaw-remote.ts": {
+    "2e881364000bd1a4d98c74e34dff6339122937e8db584168a47bc1129897a964": 1,
+    "50cdfa37200485f1e9ab731e3bb6404eb56ff860ee0b856ad92668b9762da14c": 1,
+    "971ec45a1146ab52f2fb13f75b782d5d35c0fb2ddba1fb9ccab14cc54f7291d5": 4,
+    "e45cff8ca88d996ff7e8eefdf86db1a9976b85de0811c136d662a3b313832fdf": 1,
+    "ff9d09917a49d268e1a0f258efb3033bfbcd55c0e1885738a46ff8818682fa87": 1
+  },
   "apps/desktop-host/tests/office.spec.ts": {
     "3f8653cd87f99ebd70765379dae51ab308ed9c280e831d39e1abd469bfcdc6e3": 1
   },
@@ -87,11 +94,6 @@
   },
   "apps/desktop/tests/windows-update-publisher.spec.ts": {
     "166d96cf5548261d768f2ca6566611cfed9b98c954cbf1abfb6349e5f6a1f16e": 1
-  },
-  "apps/web/tests/assembled-boot.ts": {
-    "203f87d9e4f18ce1f00bf575fe96f724975341cbb67b8c51ea45d4cbb8e60005": 1,
-    "56cede35ce34488cdae4b19aec217c9c939377eb891fe68827fbd64cd019170c": 1,
-    "fda84896a47e7f9d046fcd7e10e9096c8b002bc5f1ea0c7753e57abe87528dea": 1
   },
   "apps/web/tests/onboarding-deepseek-config.e2e.ts": {
     "326597b335539db945b2e3b7c86638d40849d2077c0a5670d064e45486f4e407": 2
@@ -1093,6 +1095,100 @@
   },
   "packages/credentials/credentials-local/tests/watcher.spec.ts": {
     "6dfe702b6cb8848eeb1d56c5af6ff723d84841aaa1d96790295db4ed70616c65": 1
+  },
+  "packages/daypaw/approval-history/tests/loader-composition.spec.ts": {
+    "59c63f734e8bba862325f776e3fcbebd78a84cfb4161f8df41c216950d9bf351": 1
+  },
+  "packages/daypaw/approval-history/tests/projection.spec.ts": {
+    "4f824cb003ad6fd944f2ede4d895251cb427361864ce3ffcc50cb64cf334ae34": 1
+  },
+  "packages/daypaw/assembled-boot/src/composition.ts": {
+    "fda84896a47e7f9d046fcd7e10e9096c8b002bc5f1ea0c7753e57abe87528dea": 1
+  },
+  "packages/daypaw/assembled-boot/src/index.ts": {
+    "203f87d9e4f18ce1f00bf575fe96f724975341cbb67b8c51ea45d4cbb8e60005": 1,
+    "56cede35ce34488cdae4b19aec217c9c939377eb891fe68827fbd64cd019170c": 1
+  },
+  "packages/daypaw/cli/tests/seed-profile.spec.ts": {
+    "c579777fa37e32452c1cb4c2da975e4471f6f0e6a068be24a314ef5e5f01ca58": 1
+  },
+  "packages/daypaw/engine/src/core.ts": {
+    "cdd3c9b728336e191ef5345192b10e696834ef3c74de3c95742fc0fb9cd21b08": 1
+  },
+  "packages/daypaw/engine/src/sqlite-journal-store.ts": {
+    "35226b1e5143473ed159ea987cabb195f5b65ab3a26b5b771e7209cfc77b2fbb": 1,
+    "3ec0bf5236fb0b1cda09043f6d02efe1f0489e8bb0e0a0a6895bb6d0fcb2b67a": 1,
+    "8b6fe78be05f70fe838dcc61ef1fecd79553057e80494ee0821d2091ba165b79": 1,
+    "ab975bb83202964a3341836f1ee2563575222cc03199ad3bd273eda4e85ce5e8": 1,
+    "b223de610cb5ac33483a733e0aa23647ffa38056556e64c39474387a4220525b": 1,
+    "faebc423fbb0a00d155abea3ec002347c89401679e2a3be0777ad8e0ff3a90c8": 1,
+    "fe18d316855493a4258051018bb913307dda8f921ad0214d675e795d6dc58774": 1
+  },
+  "packages/daypaw/engine/tests/behavior.spec.ts": {
+    "19aa101eff39a8801a8e22764b2f3a77086f62d7fdf4c4ceb75b2284e2915bee": 1
+  },
+  "packages/daypaw/engine/tests/fault-injection.spec.ts": {
+    "7d5e2fba67575c4e6d3e7c2f26449592b859502c6ce6c7b2db12c5f53139c796": 1
+  },
+  "packages/daypaw/engine/tests/loader-composition.spec.ts": {
+    "c579777fa37e32452c1cb4c2da975e4471f6f0e6a068be24a314ef5e5f01ca58": 1
+  },
+  "packages/daypaw/sdk/src/agent.ts": {
+    "2498029ae05b98191e8614dca64b96d8d981d87818f3ecae1b3466a46876f2fb": 1,
+    "443c3d7586d59fd13c994fbf5ce8971dfc054dae951e11ebfea9062cfa2dd878": 1
+  },
+  "packages/daypaw/sdk/src/run-handle.ts": {
+    "fe253828aac689a136be6451c37ff9590ef8c67f7f7e9162686ec4457ff996c9": 1
+  },
+  "packages/daypaw/sdk/tests/agent.spec.ts": {
+    "59c63f734e8bba862325f776e3fcbebd78a84cfb4161f8df41c216950d9bf351": 2
+  },
+  "packages/daypaw/sdk/tests/sdk.spec.ts": {
+    "5105dce7e9b7f54ec8e6414fd5fca0ed0508efbadc8eb92072a865e3a1454de1": 1,
+    "54487cc6396abdb7306424411a2a19b36cf42f950880a56f9b87401f995f9005": 1,
+    "8a7ab9c3c14b5c786e8968ffda11940c8b1c1fc4051483353f690d7c898309ed": 1,
+    "b31d9a43797dadafb751f84be0d680697224681c08d854c186f2d22c1d819a91": 1,
+    "fe253828aac689a136be6451c37ff9590ef8c67f7f7e9162686ec4457ff996c9": 1
+  },
+  "packages/daypaw/ui-agents/tests/apply.client.spec.ts": {
+    "f64d4e68b0852b06c10160a47824dfd79cc10e6b26ff57d5f0fa0f4b3bdcee2c": 1
+  },
+  "packages/daypaw/ui-inbox/tests/apply.client.spec.ts": {
+    "1030bd319ecf0fc75cea9acfce2f3465ab98843a376ed85f6a64c63172c23610": 1,
+    "7fe58280287ff63d40e979e72329f975e11015a95e9a8eec207a5a78748d3c89": 1,
+    "856ee0b14b246a6a2d2874115c1bac280db2765c44b9fe7d13a5cc1a82355afc": 1,
+    "8c0b2f44e71eeac623ac3901e2c38e5f7ee04e91f589a21594a87ea42cac528d": 1
+  },
+  "packages/daypaw/ui-inbox/tests/task-projection.client.spec.ts": {
+    "84f10742cc9764b8a67af217675f9a4170e0c7d54254803ca2678d324000230a": 1
+  },
+  "packages/daypaw/ui-inbox/tests/workspace-switch.client.spec.tsx": {
+    "322497eebeaba716ff194caf640ff4c6b5c7833fe7284703766cfb5e5df87b85": 1,
+    "9493cfa09ec69004f01206207444414ade097084e60ea12eea27728584cf2785": 1,
+    "97b239d4ff61ce7511f8c0c7f30069983c3e5cdb127bdca303e0d15b00b4ddf1": 1,
+    "ab9c1ab92aab752dcef4b41288b5c45ebb1a54055a9ec8d06b61267e8f06a1c2": 1,
+    "e8237179a5616013d42bcbc4c3d4153f074764846c31f6740ad8d2928f5ba722": 2
+  },
+  "packages/daypaw/ui-settings/tests/apply.client.spec.ts": {
+    "bbccbb50fd866054ec4b1387982e889b1ab87dc22ca5772eb05321bce3a6bbd7": 2,
+    "da22a5229074bfab4ee783517400667ee0d230dbbcb77297cd608ce21ffbfe4c": 3
+  },
+  "packages/daypaw/ui-tasks/tests/apply.client.spec.ts": {
+    "14cdbabb858791dddc19bb9d5cd4798b03819b5744532e8774dd659b70555eaf": 1,
+    "befd0da446f1fe6c9aa91405d265b0bb083e2516612bd2283edc28d13e767219": 1
+  },
+  "packages/daypaw/ui-tasks/tests/approval-card.client.spec.tsx": {
+    "4d3856c66cd9cbed386703262d0a0231d91e6d27beccb49e4dbd54d6048b2167": 1
+  },
+  "packages/daypaw/ui-tasks/tests/conversation-view.client.spec.tsx": {
+    "2ce8e88dcc568e9bcd0cc56e8b8022554f12d9bcd4eca94a07bbe70b40aeadd0": 1,
+    "e5bdf84a7955aba425812324008d4cf93c46aa3facd4bae19383bcac95a61f0e": 1
+  },
+  "packages/daypaw/web-app/tests/startup.spec.ts": {
+    "2e78263d16d54ccfd8d322bcdf1bf738bd8134e15c24063ece9a1d1b52f4ebd9": 1
+  },
+  "packages/daypaw/web-app/tests/web-app.spec.ts": {
+    "450588d1194e7d52501d786af54d449d01a026f0cb014484d3d054c7d0bb407a": 1
   },
   "packages/deliverables/tool-present/tests/present.spec.ts": {
     "64ab5463fdb068e88a33f022baff473b7a0da77854c4ecf8e26412763d6dccf6": 1

@@ -16,7 +16,7 @@ Per wayfinder [#80](https://github.com/0xnicholas/daypaw-pro/issues/80) adjudica
 - The rewrite cluster's chat-presentation member is `ui-chat`, and its rewrite scope is only the chat presentation the old `ui-conversation` contributed; ui-chat's model and assembly-fed-data layers stay wholesale-reused (the fork roster ships ui-chat whole and `@daypaw/ui-tasks` draws the business-language view over it). The feeding sentence names `ui-conversation`'s ConversationNode assembler, the home of the former `runtime` assembler (`ui-conversation/src/client/conversation/assembler.ts`, consumed by `@daypaw/ui-tasks`).
 - The bundled shell graph (`apps/daypaw-web/src` plus the aliased `packages/client/web/src` chain) imports neither specifier, and no alias row names a removed directory or an unimported specifier.
 
-Pre-reorg names remain only in dated research records (`docs/research/2026-09-02-upstream-drift-client-stack.md` §0 owns the rename evidence with SHAs) and in the spec's one bridging sentence, which needs the old names to keep the [#36](https://github.com/0xnicholas/daypaw-pro/issues/36)/[#37](https://github.com/0xnicholas/daypaw-pro/issues/37) provenance readable.
+Pre-reorg names remain only in dated research records (`docs/research/2026-09-02-upstream-drift-client-stack.md` §0 owns the rename evidence with SHAs) and in the spec's one bridging sentence, which needs the old names to keep the [#36](https://github.com/0xnicholas/daypaw-pro/issues/36)/[#37](https://github.com/0xnicholas/daypaw-pro/issues/37) record readable.
 
 ## Alternatives considered
 

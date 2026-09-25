@@ -6,7 +6,7 @@ English | [中文](2026-09-06-durable-fixture-decorator-transport.zh.md)
 
 ## Problem
 
-The daypaw fork's `durable/*` Remote answers lived inside the upstream browser fixture (`packages/client/connection/src/client/fixture.ts`): six rpc arms, three mutable tables, and the rerun/start serials — roughly 370 lines of fork code in an upstream file, replayed by hand at every sync and mirroring every durable change ([frontend debt audit §2.1](../../../../docs/research/2026-09-02-frontend-arch-debt-audit.md), wayfinder [#81](https://github.com/0xnicholas/daypaw-pro/issues/81)). A fork-owned decorator also drives `durable/startRun`'s session twin, which the fixture arm drove through fixture internals (`sessionApi.prompt`, `emitRemote('api-session/added')`).
+The daypaw fork's `durable/*` Remote answers lived inside the upstream browser fixture (the connection package's retired `client/fixture.ts`): six rpc arms, three mutable tables, and the rerun/start serials — roughly 370 lines of fork code in an upstream file, replayed by hand at every sync and mirroring every durable change ([frontend debt audit §2.1](../../../../docs/research/2026-09-02-frontend-arch-debt-audit.md), wayfinder [#81](https://github.com/0xnicholas/daypaw-pro/issues/81)). A fork-owned decorator also drives `durable/startRun`'s session twin, which the fixture arm drove through fixture internals (`sessionApi.prompt`, `emitRemote('api-session/added')`).
 
 ## Decision
 

@@ -157,7 +157,7 @@
 - 遥测记录流（候选筛选输入）；`storageDomain`（dataset/experiment 存储，注意其单进程/无事务限制）；jobs/workflow（EVO 自身循环的进程内执行）；subagent providers（候选生成执行体）。
 
 **必须新造**：
-- dataset / experiment / 版本 / provenance 数据模型（含发布物与回滚）。
+- dataset / experiment / 版本 / 来源记录的数据模型（含发布物与回滚）。
 - 回归评估 harness（「不差于 incumbent」的判据与评估集漂移防护）。
 - 候选生成循环（可作为 durable workflow 写——直接吃支柱①的狗粮）。
 - 发布机制（改 preset/agent 配置的受控通道）、成本/同意 gate。

@@ -51,9 +51,16 @@ import type { CredentialInfo } from '@deepseek-ai/dsh-credentials/types'
 // Wire types (local mirrors of the host contracts this world serves)
 // ---------------------------------------------------------------------------
 
-/** The V3-era context-injection attribution, retained verbatim on the wire (upstream's migrated
- * fixture JSON carries the same record); the V4 source union dropped the catch-all `plugin` kind. */
-const LEGACY_FIXTURE_SOURCE = { kind: 'plugin', plugin: 'fixture' } as unknown as Parameters<typeof userMessage>[1]
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /** V3-era context-injection attribution retained verbatim on the wire; upstream's
+     * migrated fixture JSON carries the same record, and readers fall through unknown kinds. */
+    'plugin': { kind: 'plugin'; plugin: string }
+  }
+}
+
+/** The legacy context-injection attribution the fixture's historical turns carry. */
+const LEGACY_FIXTURE_SOURCE: Parameters<typeof userMessage>[1] = { kind: 'plugin', plugin: 'fixture' }
 
 interface SessionSummary {
   readonly sessionId: SessionId
@@ -1314,8 +1321,8 @@ function pageOf(
 }
 
 /** Read the wire's turn-window option (minMessages inside minTurns), when the caller sent one. */
-function turnWindowOf(request: Record<string, unknown>): { minMessages: number; minTurns: number } | undefined {
-  const window = request.turnWindow
+function turnWindowOf(request: unknown): { minMessages: number; minTurns: number } | undefined {
+  const window = isRecord(request) ? request.turnWindow : undefined
   if (typeof window !== 'object' || window === null) return undefined
   const record = window as Record<string, unknown>
   const minMessages = record.minMessages

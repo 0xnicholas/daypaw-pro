@@ -98,7 +98,7 @@ function mountWorkspace(
       sessionId={sessionId}
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
-      useSessionRetainInfo={neverHook as never}
+      useSessionRetainInfo={neverHook}
       useSessionStatus={bindSnapshotSelector(createSnapshotStore<Map<string, unknown>>(new Map())) as never}
       useSessions={bindSnapshotSelector(createSnapshotStore(listState()))} useWorkspaces={neverHook}
       useConversation={neverHook}

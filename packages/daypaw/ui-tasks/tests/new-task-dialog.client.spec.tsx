@@ -47,7 +47,7 @@ function mountDialog(api: FakeTaskApi, sessions: NewTaskSessions = sessionsDoubl
     <NewTaskDialog
       usePanelInfo={neverHook} useResource={neverHook}
       close={close} openTask={openTask} openRun={openRun}
-      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
+      useSessions={neverHook} useWorkspaces={neverHook} useSessionRetainInfo={neverHook} useSessionStatus={neverHook}
       useNewTask={bindSnapshotSelector(owned.store)}
       store={owned} t={t}
     />,

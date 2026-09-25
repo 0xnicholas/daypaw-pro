@@ -14,7 +14,7 @@ CORE_TOUCHES 登记簿是同步仪式的重放清单（ADR 0001 §4）：每行�
 
 - built-boot 行：路径为 `apps/web/tests/built-boot.expected.e2e.ts`，该行的编辑是含「Waiting for approval」一行的预期 built-boot 文本。
 - ui-theme 行：dialog golden 路径为 `expected/`；`src/client/settings-store.ts` 与 `apply.client.spec.ts` 与上游逐字节一致、无 fork 编辑，故不在连带集内；`settings-store.client.spec.ts` 的 fork 编辑仅测试标题一句。
-- fixture.ts 行补认领自有 spec 伴生物 `packages/client/connection/tests/fixture.client.spec.ts`（callId 配对、fx-gamma question、`flipGammaRunning`、approvalHistory 折叠的断言随动）。
+- fixture 行补认领其自有 spec 伴生物（`tests/fixture.client.spec.ts`，随 fixture 一并退役）（callId 配对、fx-gamma question、`flipGammaRunning`、approvalHistory 折叠的断言随动）。
 - 新增一行登记 `apps/web/tests/todo-row.expected.e2e.ts` 的头注，该头注声明当前 turn 值；该行与 built-boot 的适应性文本行同形。
 - session-controller manager 行（#94）补认领文档伴生物：`service.ts` 的 `list` 字段 JSDoc 与 README 的 removal 帧重拉段。
 - fixture-durable spec 现住 `apps/daypaw-web/tests/durable-rpc.spec.ts`；`packages/client/connection/tests/` 不再含 fork 新增文件。

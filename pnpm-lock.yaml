@@ -577,7 +577,7 @@ importers:
         version: 18.3.1(react@18.3.1)
     devDependencies:
       '@daypaw/assembled-boot':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../packages/daypaw/assembled-boot
       '@deepseek-ai/dsh-brand':
         specifier: workspace:*
@@ -6789,13 +6789,13 @@ importers:
         version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-include':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/include
       '@deepseek-ai/cordis-plugin-loader':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/loader
       '@deepseek-ai/dsh-session':
         specifier: workspace:*
@@ -6832,19 +6832,19 @@ importers:
   packages/daypaw/cli:
     dependencies:
       '@daypaw/engine':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../engine
       '@daypaw/web-app':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../web-app
       '@deepseek-ai/cordis-plugin-group':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/group
       '@deepseek-ai/cosmokit':
         specifier: link:../../../vendor/cosmokit
         version: link:../../../vendor/cosmokit
       '@deepseek-ai/dsh':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../apps/cli
       '@deepseek-ai/dsh-anonymous-user-id':
         specifier: workspace:*
@@ -6908,7 +6908,7 @@ importers:
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
 
   packages/daypaw/client-load:
@@ -6920,7 +6920,7 @@ importers:
   packages/daypaw/durable-client:
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
@@ -6935,14 +6935,14 @@ importers:
   packages/daypaw/engine:
     dependencies:
       '@daypaw/store':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../store
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-typert-protocol':
         specifier: workspace:*
@@ -6951,7 +6951,7 @@ importers:
   packages/daypaw/sdk:
     dependencies:
       '@daypaw/engine':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../engine
       '@deepseek-ai/dsh-agent':
         specifier: workspace:*
@@ -6976,13 +6976,13 @@ importers:
         version: link:../../core/tools
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-include':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/include
       '@deepseek-ai/cordis-plugin-loader':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/loader
       '@deepseek-ai/dsh-agent-loop':
         specifier: workspace:*
@@ -7002,16 +7002,16 @@ importers:
   packages/daypaw/ui-agents:
     devDependencies:
       '@daypaw/client-load':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../client-load
       '@daypaw/durable-client':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../durable-client
       '@daypaw/ui-inbox':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../ui-inbox
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
@@ -7047,7 +7047,7 @@ importers:
   packages/daypaw/ui-brand:
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-client-test-runtime':
         specifier: workspace:*
@@ -7062,13 +7062,13 @@ importers:
   packages/daypaw/ui-inbox:
     devDependencies:
       '@daypaw/client-load':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../client-load
       '@daypaw/durable-client':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../durable-client
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
@@ -7128,16 +7128,16 @@ importers:
   packages/daypaw/ui-settings:
     devDependencies:
       '@daypaw/client-load':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../client-load
       '@daypaw/durable-client':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../durable-client
       '@daypaw/ui-inbox':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../ui-inbox
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
@@ -7185,19 +7185,19 @@ importers:
   packages/daypaw/ui-tasks:
     devDependencies:
       '@daypaw/approval-history':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../approval-history
       '@daypaw/client-load':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../client-load
       '@daypaw/durable-client':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../durable-client
       '@daypaw/ui-inbox':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../ui-inbox
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
@@ -7257,31 +7257,31 @@ importers:
   packages/daypaw/web-app:
     dependencies:
       '@daypaw/approval-history':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../approval-history
       '@daypaw/durable-client':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../durable-client
       '@daypaw/sdk':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../sdk
       '@daypaw/ui-agents':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../ui-agents
       '@daypaw/ui-brand':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../ui-brand
       '@daypaw/ui-inbox':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../ui-inbox
       '@daypaw/ui-settings':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../ui-settings
       '@daypaw/ui-tasks':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../ui-tasks
       '@daypaw/web-frontend':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../apps/daypaw-web
       '@deepseek-ai/dsh-agent-preset':
         specifier: workspace:*
@@ -7519,13 +7519,13 @@ importers:
         version: 15.0.0
     devDependencies:
       '@daypaw/engine':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../engine
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-loader':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/loader
       '@deepseek-ai/dsh-api-gateway':
         specifier: workspace:*
@@ -7672,13 +7672,13 @@ importers:
   packages/examples/daypaw-skeleton:
     devDependencies:
       '@daypaw/engine':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../daypaw/engine
       '@daypaw/sdk':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../daypaw/sdk
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/dsh-agent':
         specifier: workspace:*

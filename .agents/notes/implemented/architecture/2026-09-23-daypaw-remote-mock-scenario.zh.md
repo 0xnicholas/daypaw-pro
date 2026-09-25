@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-fork 的十条 golden 车道踩在共享的上游浏览器 fixture（`packages/client/connection/src/client/fixture.ts`，fork 树内 4,136 行）上启动，fork 的世界事实——带 `callId` 的审批对、常驻待审批之后承载 `todo_write` 样本的 turn 75、停在 fx-gamma 上的问句 waterfall——作为种子编辑活在上游文件内，登记为 core touch。上游以 `@deepseek-ai/dsh-remote-mock`（端点规则表、流脚本、调用日志、`assertNoUnmatched()`）加 client-test-runtime 的 assembly tier 接替该 fixture；删除提交随 2026-09-27 sync 窗口落地。fork 的世界迁到接替面之前，每次 sync 都在排练一个将死的 fixture，车道也没有能活过删除的家。
+fork 的十条 golden 车道踩在共享的上游浏览器 fixture（connection 包内已退役的 `client/fixture.ts`，fork 树内 4,136 行）上启动，fork 的世界事实——带 `callId` 的审批对、常驻待审批之后承载 `todo_write` 样本的 turn 75、停在 fx-gamma 上的问句 waterfall——作为种子编辑活在上游文件内，登记为 core touch。上游以 `@deepseek-ai/dsh-remote-mock`（端点规则表、流脚本、调用日志、`assertNoUnmatched()`）加 client-test-runtime 的 assembly tier 接替该 fixture；删除提交随 2026-09-27 sync 窗口落地。fork 的世界迁到接替面之前，每次 sync 都在排练一个将死的 fixture，车道也没有能活过删除的家。
 
 ## 决策
 

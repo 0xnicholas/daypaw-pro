@@ -138,13 +138,13 @@ function migrateShippedBundles(dir: string): void {
 /**
  * Seed the daypaw profile under the Harness home: on first run, write the
  * template's user patch layer, manifest, and pnpm settings; on every run,
- * migrate a prior CLI's exact shipped bundle tuple and heal the flat
- * installation fallback from this package's dependency closure. Existing
- * files are never touched apart from the bundle migration, so re-seeding is
- * a no-op on a current profile.
+ * migrate a prior CLI's exact shipped bundle tuple. Module resolution for the
+ * seeded profile belongs to the launcher's runtime generation, not to seeding.
+ * Existing files are never touched apart from the bundle migration, so
+ * re-seeding is a no-op on a current profile.
  * @param home - the Harness home; defaults to {@link resolveDshHome}.
  */
-export async function seedDaypawProfile(home: string = resolveDshHome()): Promise<void> {
+export function seedDaypawProfile(home: string = resolveDshHome()): void {
   const dir = resolveProfileDir(DAYPAW_PROFILE_NAME, home)
   if (!existsSync(join(dir, 'package.json'))) {
     mkdirSync(dir, { recursive: true })

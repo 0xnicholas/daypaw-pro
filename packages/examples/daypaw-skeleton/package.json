@@ -5,9 +5,9 @@
   "type": "module",
   "description": "Runnable demo: the daypaw walking skeleton — a three-step durable workflow that survives SIGKILL",
   "devDependencies": {
-    "@daypaw/engine": "workspace:^",
-    "@daypaw/sdk": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@daypaw/engine": "workspace:~",
+    "@daypaw/sdk": "workspace:~",
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-loop": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",

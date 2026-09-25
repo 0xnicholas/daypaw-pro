@@ -30,7 +30,7 @@ export type AgentsSdk = {
   readonly z: typeof z
 }
 
-/** One loaded definition's provenance. */
+/** One loaded definition's source file and line. */
 export interface LoadedDefinition {
   /** Source module file name within the agents directory. */
   readonly file: string

@@ -28,7 +28,7 @@ afterEach(async () => {
 
 async function seed(): Promise<string> {
   home = await mkdtemp(join(tmpdir(), 'daypaw-cli-seed-'))
-  await seedDaypawProfile(home)
+  seedDaypawProfile(home)
   return join(home, 'profiles', DAYPAW_PROFILE_NAME)
 }
 
@@ -78,7 +78,7 @@ describe('seedDaypawProfile', () => {
     const manifestPath = join(dir, 'package.json')
     const manifest = await readFileUtf8(manifestPath)
 
-    await seedDaypawProfile(home)
+    seedDaypawProfile(home)
 
     expect(await readFileUtf8(patchPath)).toBe('# user edits\n[]\n')
     expect(await readFileUtf8(manifestPath)).toBe(manifest)
@@ -92,7 +92,7 @@ describe('seedDaypawProfile', () => {
       dsh: { profile: { bundles: [...PREVIOUS_BUNDLES] } },
     })
 
-    await seedDaypawProfile(home)
+    seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base', '@daypaw/web-app'])
@@ -105,7 +105,7 @@ describe('seedDaypawProfile', () => {
       name: 'dsh-profile-daypaw',
       dsh: { profile: { bundles: [...PREVIOUS_BUNDLES] } },
     })
-    await seedDaypawProfile(home)
+    seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base', '@daypaw/web-app'])
@@ -118,7 +118,7 @@ describe('seedDaypawProfile', () => {
       dsh: { profile: { bundles: userOwned } },
     })
 
-    await seedDaypawProfile(home)
+    seedDaypawProfile(home)
 
     const manifest = JSON.parse(await readFileUtf8(join(dir, 'package.json'))) as SeededManifest
     expect(manifest.dsh?.profile?.bundles).toEqual(userOwned)

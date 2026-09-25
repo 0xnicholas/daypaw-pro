@@ -56,7 +56,7 @@
 
 1. **Canonical 层（已有，勿动）**：dsh session log。"model-visible means logged" 不变量意味着**任何重放/审计都不缺料**。Manager 不新建事实源。
 2. **Trace 投影层（新，OTel 导出）**：把 session/engine 事件投影为 GenAI semconv spans——`turn ≈ invoke_agent internal`、`step ≈ inference span`、`tool/call→tool/result ≈ execute_tool`、`workflow run ≈ invoke_workflow`（依赖「Durable Execution 语义与基座」票的 run 概念）；metrics 用 `gen_ai.client.token.usage` / `operation.duration` / `ttft`；EVO 评估可吐 `gen_ai.evaluation.result` 事件。投影是**只读派生**（同 session-stats 的折叠模式），从 live 事件或 canonical 重放皆可生成。
-3. **本地关联层（新，SQLite，复用 storage-sqlite 模式）**：score/feedback/eval-run/dataset/experiment 五张小表，全部以 `(session.id, event.seq)` 指针指回 canonical log，**不复制内容**。EVO 的确定重放与 provenance 锚在这里。
+3. **本地关联层（新，SQLite，复用 storage-sqlite 模式）**：score/feedback/eval-run/dataset/experiment 五张小表，全部以 `(session.id, event.seq)` 指针指回 canonical log，**不复制内容**。EVO 的确定重放与来源锚定在这里。
 
 ### 4.2 OTel 导出 vs 本地存储的分界
 

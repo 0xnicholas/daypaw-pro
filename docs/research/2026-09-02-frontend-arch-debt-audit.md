@@ -12,7 +12,7 @@
 
 | 条目 | 债形状 | sync 重放成本 | 审计建议 |
 |---|---|---|---|
-| [packages/client/connection/src/client/fixture.ts](../../packages/client/connection/src/client/fixture.ts) durable/* 应答 | ~600+ 行 fork 代码住上游测试运输文件；引擎契约的第三处镜像 | **高**（上游重构 fixture 即手工重放；#75 实证 fixture 绿 ≠ 真网关绿） | 立装饰器迁移 spike（图外执行票）；迁移前保留登记 |
+| 上游 browser fixture（connection 包内 `client/fixture.ts`，上游已删）的 durable/* 应答 | ~600+ 行 fork 代码住上游测试运输文件；引擎契约的第三处镜像 | **高**（上游重构 fixture 即手工重放；#75 实证 fixture 绿 ≠ 真网关绿） | 立装饰器迁移 spike（图外执行票）；迁移前保留登记 |
 | `client/connection/tests/fixture-durable.client.spec.ts` | **未登记**：fork 自有文件住上游包 tests/ | 静默漂移（新增文件不进 merge 冲突） | 迁到 apps/daypaw-web/tests/（与车道同 owner）或补登记 |
 | built-boot 断言（apps/web/tests/built-boot.expected.e2e.ts:94） | **登记路径过期**：登记簿仍写 `built-boot.snapshot.ts` | 重放时按登记找不到文件 | 修登记行；执行票顺带全量校验登记簿路径 |
 | ui-theme `DEFAULT_PREFERENCE`→light | 唯一改上游**产品行为**的触碰；涟漪面已登记 | 低而稳定（一行常量 + 固定涟漪） | 保留登记，不动 |

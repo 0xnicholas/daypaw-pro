@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-02-core-touches-registry-timeliness-audit.md
-2026-09-02-core-touches-registry-timeliness-audit.md: 8dd4717d029f14f24ae335eeeb34b2968caa9472
-2026-09-02-core-touches-registry-timeliness-audit.zh.md: b932498dbf1979d0e94c19311989e2d9c1db9120
+2026-09-02-core-touches-registry-timeliness-audit.md: d7b62e5d9f8be8b7f4f291bd7d1b4654f007c4a3
+2026-09-02-core-touches-registry-timeliness-audit.zh.md: 397dc89a83f594289348153aa0f52ed8d492abb1

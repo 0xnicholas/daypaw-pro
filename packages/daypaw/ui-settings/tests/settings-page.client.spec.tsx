@@ -53,7 +53,7 @@ function mountPage(api: FakeHostApi) {
       useSession={neverHook} useProjection={neverHook}
       useInput={neverHook} inputActions={undefined as never}
       useSessions={neverHook} useWorkspaces={neverHook} useConversation={neverHook}
-      useSessionRetainInfo={neverHook as never} useSessionStatus={neverHook}
+      useSessionRetainInfo={neverHook} useSessionStatus={neverHook}
       close={close}
       renderSlot={renderSlot}
       useTab={bindSnapshotSelector(tabs.store)}
