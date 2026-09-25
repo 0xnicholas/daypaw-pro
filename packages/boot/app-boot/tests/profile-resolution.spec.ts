@@ -645,10 +645,9 @@ describe('runtime resolution', { concurrent: false }, () => {
     registrations.push(registration)
     const parent = pathToFileURL(join(f.profile.dir, 'entry.mjs')).href
     await expect(importFrom('#library', parent)).resolves.toMatchObject({ marker: 1 })
-    await expect(importFrom('#missing', parent)).rejects.toMatchObject({
-      code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
-      message: expect.stringContaining(fileURLToPath(parent)) as unknown as string,
-    })
+    const failure = await importFrom('#missing', parent).catch((error: unknown) => error as NodeJS.ErrnoException)
+    expect(failure.code).toBe('ERR_PACKAGE_PATH_NOT_EXPORTED')
+    expect(failure.message).toContain(fileURLToPath(parent))
   })
 
   it('leaves relative package imports targets and their diagnostics to Node', async () => {
