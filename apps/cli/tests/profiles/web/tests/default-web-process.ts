@@ -10,7 +10,16 @@ import type { IncomingHttpHeaders } from 'node:http'
 import { resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
 import ts from 'typescript'
 import { expect } from 'vitest'
-import type { TestContext } from 'vitest'
+/**
+ * Structural subset of Vitest's TestContext: cancellation signal, per-case timeout, and
+ * cleanup hooks. Apps resolve `vitest` to peer-distinct instances, so one app's nominal
+ * TestContext is not assignable where another's is expected.
+ */
+interface TestLifecycle {
+  signal: AbortSignal
+  task: { timeout: number }
+  onTestFinished(fn: () => void | Promise<void>): void
+}
 import { PROCESS_SHUTDOWN_TIMEOUT_MS } from '../../../../src/process-shutdown.ts'
 import type { RuntimeRoster } from './runtime-roster.ts'
 
@@ -27,7 +36,7 @@ interface DefaultWeb {
  * @param test - owning Vitest case, including its timeout, cancellation, and cleanup hooks.
  * @param inspect - assertions against the running process and its ephemeral loopback URL.
  */
-export async function withDefaultWeb(test: TestContext, inspect: (app: DefaultWeb) => Promise<void>): Promise<void> {
+export async function withDefaultWeb(test: TestLifecycle, inspect: (app: DefaultWeb) => Promise<void>): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-web-default-isolation-'))
   let removal: Promise<void> | undefined
   const removeRoot = (): Promise<void> => removal ??= rm(root, { recursive: true, force: true })

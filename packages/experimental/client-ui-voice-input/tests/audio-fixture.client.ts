@@ -1,5 +1,6 @@
 /** Controlled browser audio devices with real Recording ownership and conversion. */
 import { vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { Recording } from '../src/client/audio.ts'
 
 /**
@@ -8,7 +9,7 @@ import { Recording } from '../src/client/audio.ts'
  * @returns the recording, device controls, and resource observations.
  */
 export function captureFixture(options: { empty?: boolean; recorderError?: boolean; constructError?: boolean } = {}) {
-  const trackStop = vi.fn(), close = vi.fn(async () => {}), disposed = vi.fn()
+  const trackStop: Mock = vi.fn(), close = vi.fn(async () => {}), disposed: Mock = vi.fn()
   const decoding = vi.fn(async (_data: ArrayBuffer) => ({ duration: 2 }))
   const rendering = vi.fn(async () => ({ getChannelData: () => new Float32Array([0.5, -0.5]) }))
   let failRecorder: () => void
