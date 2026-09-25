@@ -69,11 +69,10 @@ describe('theme bootstrap row', () => {
     )
   })
 
-  it('falls back to light for the system preference when matchMedia is unavailable', () => {
-
+  it('defaults to light when matchMedia is unavailable', () => {
     vi.stubGlobal('matchMedia', undefined)
-    executeBootstrap('system')
-    expect(document.documentElement.style.colorScheme).toBe('light')
+    executeBootstrap()
+    expect(document.documentElement.dataset.dsThemeSource).toBe('light')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
   })
 

@@ -118,8 +118,14 @@ describe('Client reference sources', () => {
     await b.feed(true)
     expect(b.svc.list.getSnapshot().byId[ID]?.retainedBy).toBe(snapshot.retainedBy)
     b.svc.handleSessionRemoved(ID)
+    // Fork ruling (ticket #94): the removal frame applies, then one
+    // reconciling re-pull reconciles the list with the Host, so a Session the
+    // Host still serves from persistence (a run twin detaching at settlement)
+    // keeps its retained row instead of disappearing until reconnect. The
+    // catalog membership returns on the next refresh; the counts project onto
+    // the retained row meanwhile.
     await vi.waitFor(() => {
-      expect(b.svc.list.getSnapshot().byId[ID]).toBeUndefined()
+      expect(b.svc.list.getSnapshot().byId[ID]?.retainedBy).toBe(snapshot.retainedBy)
     })
     expect(b.svc.list.getSnapshot().ids).not.toContain(ID)
     expect(source.getSnapshot()).toBe(snapshot)
