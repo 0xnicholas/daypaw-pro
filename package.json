@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.11.0",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
@@ -253,7 +253,7 @@
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",
     "playwright": "^1.49.0",
-    "pnpm": "11.7.0",
+    "pnpm": "11.11.0",
     "publint": "^0.3.21",
     "smol-toml": "^1.7.1",
     "spdx-expression-parse": "^5.0.0",

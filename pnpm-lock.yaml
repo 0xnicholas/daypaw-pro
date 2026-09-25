@@ -155,8 +155,8 @@ importers:
         specifier: ^1.49.0
         version: 1.61.1
       pnpm:
-        specifier: 11.7.0
-        version: 11.7.0
+        specifier: 11.11.0
+        version: 11.11.0
       publint:
         specifier: ^0.3.21
         version: 0.3.21
@@ -21068,11 +21068,6 @@ packages:
     engines: {node: '>=22.13'}
     hasBin: true
 
-  pnpm@11.7.0:
-    resolution: {integrity: sha512-GcyFLBIMcSV2DyRD7mvgyltA+fUFmN4aCaHxd1A+AQ5Xwjx3ZG4B52HeWb+HT7IqM5jDOrlpH8E+uUa28PTWIA==}
-    engines: {node: '>=22.13'}
-    hasBin: true
-
   points-on-curve@0.2.0:
     resolution: {integrity: sha512-0mYKnYYe9ZcqMCWhUjItv/oHjvgEsfKvnUTg8sAtnHr3GVy7rGkXCb6d5cSyqrWqL4k81b9CPg3urd+T7aop3A==}
 
@@ -28800,8 +28795,6 @@ snapshots:
       xmlbuilder: 15.1.1
 
   pnpm@11.11.0: {}
-
-  pnpm@11.7.0: {}
 
   points-on-curve@0.2.0: {}
 

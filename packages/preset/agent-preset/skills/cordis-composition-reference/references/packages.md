@@ -157,6 +157,20 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-credentials-local` | yes | File-backed credentials provider ($DSH_HOME/.env under the live process environment) for the DeepSeek Harness |
 | `@deepseek-ai/dsh-deepseek-account-platform` | yes | Authorize DeepSeek accounts through browser PKCE |
 
+## daypaw
+
+| Package | Config | Description |
+|---|---|---|
+| `@daypaw/approval-history` | no | Approval-history session projection (approvalHistory) for the daypaw browser shell: folds the approval/asked + approval/decided audit pair into the ordered per-session approval list the task detail pane renders |
+| `@daypaw/durable-client` | no | daypaw browser plane's single wire-vocabulary home for the durable engine's Remote face: the seven durable/* endpoint calls, hand-declared wire row types with fail-loud parsing, the five-value run-status vocabulary, and its zh/en status copy |
+| `@daypaw/engine` | yes | Durable execution engine (ctx.durable): run lifecycle, step dedup, boot-scan revival, single-writer claims |
+| `@daypaw/ui-agents` | no | daypaw agent catalog page over the ui-inbox slots: business-language catalog cards from the engine's definition registry read view, with a per-agent detail view carrying the name@version identity |
+| `@daypaw/ui-brand` | no | daypaw brand theme: warm-orange accent and warm-neutral base --dsw-* token overrides plus the --dp-space-* density scale, stacked as one ui-theme override layer |
+| `@daypaw/ui-inbox` | no | daypaw shell IA skeleton: inbox navigation column, workspace switch, and task-detail placeholder over the ui-layout three-column frame |
+| `@daypaw/ui-settings` | no | daypaw settings single page (通用/凭据/模型/关于) and the first-run API-key banner over the ui-inbox workspace slots |
+| `@daypaw/ui-tasks` | no | daypaw task surfaces over the ui-inbox slots: new-task dialog (engine-definition picker + durable startRun), group task list, and the business-language conversation view |
+| `@daypaw/web-app` | yes | The daypaw browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, web-surface prompt, bash runtime variables, URL line) |
+
 ## deliverables
 
 | Package | Config | Description |

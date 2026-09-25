@@ -961,6 +961,88 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'durable',
+    summary: 'The `ctx.durable` service.',
+    description: 'The `ctx.durable` service. Opens the ledger on construction (methods await readiness), runs the boot scan once the database is open, and on context disposal awaits the open, stops driving, and closes the database without writing terminal run states — unfinished runs stay revivable by the next process, and fiber disposal resolves only once no ledger write can still land. `listDefinitions` doubles as the browser catalog\'s wire face: the TypertRemoteService binding lets the API gateway claim `durable/listDefinitions` (spec 05 §5; the GoalService precedent) without any upstream apiproxy edit.',
+    methods: [
+      {
+        signature: 'async register(def: EngineDefinition): Promise<void>',
+        description: 'Register a definition for execution and boot-time revival.',
+        parameters: [{ name: 'def', description: 'opaque definition record (see `@daypaw/sdk`).' }],
+      },
+      {
+        signature: 'async run(def: EngineDefinition, input: unknown, opts?: EngineRunOptions): Promise<EngineRunHandle>',
+        description: 'Start a run, or attach to an existing one (idempotent start-or-attach).',
+        parameters: [{ name: 'def', description: 'registered definition to run.' }, { name: 'input', description: 'JSON-serializable run input.' }, { name: 'opts', description: 'run identity and caller cancellation.' }],
+        returns: 'the run handle.',
+      },
+      {
+        signature: 'async idle(): Promise<void>',
+        description: 'Resolve when this process drives no run (boot scan included).',
+        parameters: [],
+      },
+      {
+        signature: '@Remote(\'listRuns\') async listRuns(filter?: RunListFilter): Promise<RunRow[]>',
+        description: 'List run rows from the ledger, newest first (spec 05 §5).',
+        parameters: [{ name: 'filter', description: 'optional status restriction.' }],
+        returns: 'matching run rows.',
+      },
+      {
+        signature: '@Remote(\'runLineage\') async runLineage(runId: string): Promise<RunLineage>',
+        description: 'Read one run\'s parent/child lineage in one call: its own row, its parent, and its direct children.',
+        parameters: [{ name: 'runId', description: 'run identity.' }],
+        returns: 'the lineage; every field is empty when the runId is unknown.',
+      },
+      {
+        signature: '@Remote(\'journalTimeline\') async journalTimeline(runId: string): Promise<JournalRow[]>',
+        description: 'Enumerate one run\'s journal steps in start order (spec 05 §5).',
+        parameters: [{ name: 'runId', description: 'run identity.' }],
+        returns: 'the run\'s journal steps in start order.',
+      },
+      {
+        signature: '@Remote(\'listDefinitions\') async listDefinitions(): Promise<DefinitionView[]>',
+        description: 'Enumerate the registered definitions in registration order (spec 05 §5): identity and display metadata, never the body — the definition registry\'s one read face, so hosts never reach into the core\'s private Map. Served to the browser as the Remote endpoint `durable/listDefinitions`.',
+        parameters: [],
+        returns: 'the registry entries in registration order.',
+      },
+      {
+        signature: '@Remote(\'startRun\') async startRun(request: StartRunRequest): Promise<{ runId: string }>',
+        description: 'Start a run of a registered definition over the wire, or attach to an existing runId (idempotent start-or-attach, ruling #65): resolve the registry identity, validate the input through the definition\'s wire face when present, then run. The handle\'s result is deliberately not awaited or returned — browsers observe runs through `listRuns` and `journalTimeline` (spec 05 §5\'s polling model), so a failed run must not surface as an unhandled rejection on the host.',
+        parameters: [{ name: 'request', description: 'definition identity, input, and optional run identity.' }],
+        returns: 'the run id.',
+      },
+      {
+        signature: '@Remote(\'resolveGate\') async resolveGate( runId: string, gate: string, settlement: WireGateSettlement, source?: GateResolutionSource, ): Promise<boolean>',
+        description: 'Settle a gate (first-wins): the one resolve seam for SDK direct calls, Manager UI, and (deferred) webhooks. See DurableEngineCore.resolveGate. Served to the browser as the Remote endpoint `durable/resolveGate` (ticket #128): the browser plane omits `source`, so the shell\'s answers record `\'manager\'` — ADR 0002 §3\'s Manager UI entry. The settlement value is Json (the WireGateSettlement shape) because it crosses the Remote boundary; the host seam keeps the wider `unknown`.',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'gate', description: 'gate name.' }, { name: 'settlement', description: 'resolved value or rejection reason.' }, { name: 'source', description: 'who settled, recorded on the row; the browser plane omits it and the host records `\'manager\'` (ADR 0002 §3\'s Manager UI entry).' }],
+        returns: 'whether this call won the settlement (false when the row is already settled).',
+      },
+      {
+        signature: '@Remote(\'steer\') async steer(runId: string, input: Json): Promise<number>',
+        description: 'Append a steer segment to an unfinished steerable run (issue #53): durable before delivery — a body parked in this process wakes immediately, elsewhere the parked poll or the next boot scan observes the segment row. Served to the browser as the Remote endpoint `durable/steer` (the `listDefinitions` precedent). The input records as given: in-process callers pass contract-validated values, and a run this process cannot resolve a definition for still records (the consumption side re-validates — the cross-writer defense). See DurableEngineCore.steer.',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'input', description: 'contract-validated follow-up input (the SDK face owns validation).' }],
+        returns: 'the assigned segment sequence (1-based).',
+      },
+      {
+        signature: '@Remote(\'steerText\') async steerText(runId: string, text: string): Promise<number>',
+        description: 'Append a free-text follow-up segment to an unfinished steerable run (ticket #94): the browser follow-up seat\'s channel. Resolves the run\'s definition and validates the text through its wire face — the same starter-text rule startRun applies; `@daypaw/sdk/wire` owns the rule\'s declaration. The journal records the input the consuming body expects. Fails loud when the run is unknown, its definition is not registered, or the wire contract rejects the text (a json-kind definition takes no free-text follow-up); nothing records on failure. Served to the browser as the Remote endpoint `durable/steerText` (the `steer` precedent).',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'text', description: 'free-text follow-up; the definition\'s wire face owns the starter shape.' }],
+        returns: 'the assigned segment sequence (1-based).',
+      },
+      {
+        signature: '@Remote(\'rerun\') async rerun(runId: string): Promise<string>',
+        description: 'Rerun a terminal top-level run (issue #57): a fresh row with the same definition identity and input, chained to its source by attempt number and `retried_from_run_id`, driven immediately. Served to the browser as the Remote endpoint `durable/rerun` (the `listDefinitions` precedent). See DurableEngineCore.rerun.',
+        parameters: [{ name: 'runId', description: 'source run identity.' }],
+        returns: 'the new run\'s id.',
+      },
+      {
+        signature: '@Remote(\'cancel\') async cancel(runId: string, cause?: string): Promise<void>',
+        description: 'Request cancellation of an unfinished run (ticket #74): the terminal `cancelled` row with the cause is written first, pending gates settle cancelled, and a driver in this process aborts. Served to the browser as the Remote endpoint `durable/cancel` (the `steer` precedent). Idempotent on terminal runs — a run that already ended satisfies the request, and a lingering driver still aborts — and loud on unknown runs. See DurableEngineCore.cancel.',
+        parameters: [{ name: 'runId', description: 'run identity.' }, { name: 'cause', description: 'human-readable cancel cause.' }],
+      },
+    ],
+  },
+  {
     key: 'fileReferences',
     summary: 'Host capability for cancellable file-reference discovery.',
     description: 'Host capability for cancellable file-reference discovery.',
@@ -4806,6 +4888,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type DeepSeekLlmApiJson = null | boolean | number | string | DeepSeekLlmApiJson[] | {\n    [key: string]: DeepSeekLlmApiJson;\n};',
   },
   {
+    name: 'DefinitionDisplay',
+    declaration: 'export interface DefinitionDisplay {\n    readonly title: string;\n    readonly description: string;\n}',
+  },
+  {
+    name: 'DefinitionView',
+    declaration: 'export interface DefinitionView {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly display?: DefinitionDisplay;\n    readonly inputKind: \'text\' | \'json\' | null;\n}',
+  },
+  {
     name: 'DeveloperMessage',
     declaration: 'export interface DeveloperMessage extends MessageBase {\n    readonly role: \'developer\';\n}',
   },
@@ -4930,6 +5020,34 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
   {
+    name: 'EngineDefinition',
+    declaration: 'export interface EngineDefinition {\n    readonly kind: RunDefKind;\n    readonly name: string;\n    readonly version: string;\n    readonly wire?: EngineWireFace;\n    readonly display?: DefinitionDisplay;\n    readonly steerable?: boolean;\n    readonly body: (ctx: EngineStepCtx, input: unknown) => Promise<unknown>;\n}',
+  },
+  {
+    name: 'EngineRunHandle',
+    declaration: 'export interface EngineRunHandle {\n    readonly id: string;\n    readonly result: Promise<unknown>;\n    status(): EngineRunStatus;\n    cancel(cause?: string): Promise<void>;\n}',
+  },
+  {
+    name: 'EngineRunOptions',
+    declaration: 'export interface EngineRunOptions {\n    readonly runId?: string;\n    readonly parent?: {\n        readonly runId: string;\n        readonly stepKey: string;\n    };\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'EngineRunStatus',
+    declaration: 'export type EngineRunStatus = {\n    readonly state: \'running\';\n} | {\n    readonly state: \'waiting\';\n    readonly gate: string;\n} | {\n    readonly state: \'done\';\n} | {\n    readonly state: \'failed\';\n    readonly error: unknown;\n} | {\n    readonly state: \'cancelled\';\n    readonly cause?: string;\n};',
+  },
+  {
+    name: 'EngineStepCtx',
+    declaration: 'export interface EngineStepCtx {\n    readonly runId: string;\n    readonly signal: AbortSignal;\n    step<T>(name: string, fn: () => Promise<T>, opts?: EngineStepOptions): Promise<T>;\n    waitFor<T = unknown>(gate: string, opts?: WaitForOptions<T>): Promise<GateResolution<T>>;\n    sleep(durationMs: number): Promise<void>;\n    slot(kind: \'sleep\' | \'spawn\'): string;\n    steers(): readonly unknown[];\n    awaitSteer(known: number): Promise<void>;\n}',
+  },
+  {
+    name: 'EngineStepOptions',
+    declaration: 'export interface EngineStepOptions {\n    readonly key?: string;\n}',
+  },
+  {
+    name: 'EngineWireFace',
+    declaration: 'export interface EngineWireFace {\n    readonly inputKind: \'text\' | \'json\';\n    readonly parseInput: (value: unknown) => Json;\n}',
+  },
+  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    tools?: ToolSchema[];\n    system?: never;\n}',
   },
@@ -5020,6 +5138,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FsWriteOutcome',
     declaration: 'export interface FsWriteOutcome {\n    operation: \'create\' | \'update\';\n    version: FsVersion;\n    before: string | null;\n    after: string;\n}',
+  },
+  {
+    name: 'GateResolution',
+    declaration: 'export type GateResolution<T = unknown> = {\n    readonly state: \'resolved\';\n    readonly value: T;\n} | {\n    readonly state: \'rejected\';\n    readonly reason: string;\n} | {\n    readonly state: \'timedout\';\n} | {\n    readonly state: \'cancelled\';\n};',
+  },
+  {
+    name: 'GateResolutionSource',
+    declaration: 'export type GateResolutionSource = PromiseResolutionSource;',
   },
   {
     name: 'GenerateOptions',
@@ -5280,6 +5406,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'JobView',
     declaration: 'export interface JobView {\n    readonly id: JobId;\n    readonly kind: string;\n    readonly label: string;\n    readonly owner?: SessionId;\n    readonly outputLimitBytes?: number;\n    readonly status: JobStatus;\n    readonly progress?: string;\n    readonly detail?: string;\n    readonly startedAt: number;\n    readonly finishedAt?: number;\n    readonly output: {\n        readonly total: number;\n        readonly earliest: number;\n        readonly spillPaths?: readonly string[];\n    };\n}',
+  },
+  {
+    name: 'JournalKindDb',
+    declaration: 'export type JournalKindDb = \'step\' | \'segment\';',
+  },
+  {
+    name: 'JournalRow',
+    declaration: 'export interface JournalRow {\n    readonly run_id: string;\n    readonly step_key: string;\n    readonly name: string;\n    readonly occurrence: number;\n    readonly kind: JournalKindDb;\n    readonly status: JournalStatusDb;\n    readonly value_json: string | null;\n    readonly error_json: string | null;\n    readonly attempt: number;\n    readonly session_id: string | null;\n    readonly session_seq: number | null;\n    readonly started_at: number;\n    readonly finished_at: number | null;\n}',
+  },
+  {
+    name: 'JournalStatusDb',
+    declaration: 'export type JournalStatusDb = \'started\' | \'completed\' | \'failed\';',
+  },
+  {
+    name: 'Json',
+    declaration: 'export type Json = null | boolean | number | string | Json[] | {\n    [key: string]: Json;\n};',
   },
   {
     name: 'JsonSchemaNode',
@@ -5774,6 +5916,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ProjectionSnapshot {\n    asOfSeq: SessionSeqCursor;\n    values: Partial<SessionProjectionMap>;\n}',
   },
   {
+    name: 'PromiseResolutionSource',
+    declaration: 'export type PromiseResolutionSource = \'sdk\' | \'manager\' | \'webhook\';',
+  },
+  {
     name: 'PromptAssembly',
     declaration: 'export interface PromptAssembly {\n    sections: AssembledSection[];\n    contexts: AssembledContext[];\n    tools: ToolSchema[];\n    variables: Record<string, string | undefined>;\n}',
   },
@@ -5974,8 +6120,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type RpcId = Branded<\'rpc-id\'>;',
   },
   {
+    name: 'RunDefKind',
+    declaration: 'export type RunDefKind = \'workflow\' | \'agent\';',
+  },
+  {
+    name: 'RunLineage',
+    declaration: 'export interface RunLineage {\n    readonly run: RunRow | null;\n    readonly parent: RunRow | null;\n    readonly children: readonly RunRow[];\n}',
+  },
+  {
+    name: 'RunListFilter',
+    declaration: 'export interface RunListFilter {\n    readonly status?: RunStatusDb;\n}',
+  },
+  {
     name: 'RunnerFailureRule',
     declaration: 'export interface RunnerFailureRule {\n    allowedExitCodes?: readonly number[];\n    fatalSignatures: readonly string[];\n    informationalLines?: readonly string[];\n}',
+  },
+  {
+    name: 'RunRow',
+    declaration: 'export interface RunRow {\n    readonly run_id: string;\n    readonly def_kind: RunDefKind;\n    readonly def_name: string;\n    readonly def_version: string;\n    readonly input_json: string;\n    readonly status: RunStatusDb;\n    readonly waiting_gate: string | null;\n    readonly parent_run_id: string | null;\n    readonly parent_step_key: string | null;\n    readonly attempt: number;\n    readonly retried_from_run_id: string | null;\n    readonly output_json: string | null;\n    readonly error_json: string | null;\n    readonly cancel_cause: string | null;\n    readonly claimed_by: string | null;\n    readonly claimed_at: number | null;\n    readonly created_at: number;\n    readonly updated_at: number;\n    readonly finished_at: number | null;\n}',
+  },
+  {
+    name: 'RunStatusDb',
+    declaration: 'export type RunStatusDb = \'running\' | \'waiting\' | \'done\' | \'failed\' | \'cancelled\';',
   },
   {
     name: 'SandboxEnforcement',
@@ -6834,6 +7000,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SshStreamEndpoint = z.infer<typeof streamEndpointSchema>;',
   },
   {
+    name: 'StartRunRequest',
+    declaration: 'export interface StartRunRequest {\n    readonly defName: string;\n    readonly defVersion?: string;\n    readonly input: Json;\n    readonly runId?: string;\n}',
+  },
+  {
     name: 'StorageBackend',
     declaration: 'export interface StorageBackend {\n    readonly kv?: KvFacet;\n    close(): Promise<void>;\n}',
   },
@@ -7463,7 +7633,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'WebBootEntry',
-    declaration: 'export interface WebBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n    external?: string[];\n}',
+    declaration: 'export interface WebBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n    external?: string[];\n    config?: unknown;\n}',
   },
   {
     name: 'WebBootGraph',
