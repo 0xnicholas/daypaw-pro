@@ -16,7 +16,7 @@
 
 ### 3. 参数面三轴 + 声明制 config
 
-lane 选项 = bundle 层（base 可覆写 + web 层）、transport 装配（carrier 钩子工厂；缺省 = `?fixture` 自选）、钉制标题。config 转发是共享能力而非参数：行携带 config 且包声明 `dsh.client.config` 才进图（#105 声明制），上游车道零行为变化。locale 钉制（`en-US`）两车道相同，住进共享 module。
+lane 选项 = bundle 层（base 可覆写 + web 层）、remote 场景工厂（逐挂载铸造世界并以其 `rpc` 为页面载体；`{ rpc }` 是上游原生载体通道，2026-09-24 sync 换体后手写信封桥退役）、钉制标题。config 转发是共享能力而非参数：行携带 config 且包声明 `dsh.client.config` 才进图（#105 声明制），上游车道零行为变化。locale 钉制（`en-US`）两车道相同，住进共享 module。
 
 ### 4. 上游形态 = 保形 + 退役触发
 
@@ -29,6 +29,6 @@ lane 选项 = bundle 层（base 可覆写 + web 层）、transport 装配（carr
 ## 后果
 
 - 上游 lane 的 stub import 一个 fork 包；CI 两车道照跑，机械无碍。drift（config 通道）收敛为一份；注入/展开形态统一为上游现行条件展开（两车道金样实证零行为变化）。
-- sync 重放语义变化：上游重构该脚手架 = stub 冲突 → 取上游新本体替换共享 module 本体、重穿三缝；选项不变即零重放。
+- sync 重放语义变化：上游重构该脚手架 = stub 冲突 → 取上游新本体替换共享 module 本体、重穿三缝；选项不变即零重放。2026-09-24 sync 实证一次换体：上游新本体（声明式 patch、`{exclude, remote}` 挂载选项、`{ rpc }` 原生载体、teardown unmatched 断言）入驻共享包，三缝重读为「bundle 层 / remote 场景 / 标题」。
 - 新包入 per-file 100% 覆盖率门（非 `ui-` 前缀）；组合半边导出为可测单元，微花名册 fixture 承载分支矩阵，不靠整图启动。
 - core touch 登记：`apps/web/tests/assembled-boot.ts`（可提）、`apps/web/package.json`（加性 devDep）；`tsconfig.client.json` 与两 app 工程引用追入既有登记行。
