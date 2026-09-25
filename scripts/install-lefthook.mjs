@@ -13,8 +13,22 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
-import lefthookPackage from 'lefthook/package.json' with { type: 'json' }
+/**
+ * Read the installed lefthook manifest, or nothing when the package is absent.
+ * A production install (`pnpm deploy --prod`, the release smoke's closure)
+ * omits devDependencies; the hook installer serves development worktrees and
+ * must not fail such an install, so resolution failure is the absent answer.
+ * @returns the lefthook manifest, or undefined when lefthook is not installed.
+ */
+function readLefthookPackage() {
+  try {
+    return createRequire(import.meta.url)('lefthook/package.json')
+  } catch {
+    return undefined
+  }
+}
 
 const MINIMUM_GIT = [2, 26, 0]
 const HOOKS_DIRECTORY = 'dsh-hooks'
@@ -704,7 +718,8 @@ function probePairingMergeDriver(root) {
 
 async function main() {
   if (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true') return
-  if (typeof lefthookPackage.bin?.lefthook !== 'string') return
+  const lefthookPackage = readLefthookPackage()
+  if (typeof lefthookPackage?.bin?.lefthook !== 'string') return
   const probe = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' })
   if (probe.status !== 0) return
   const root = stripGitLineTerminator(probe.stdout)

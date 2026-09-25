@@ -9,10 +9,12 @@
 // sync), so the vendored front door calls the exported runCli explicitly.
 import { seedDaypawProfile, seedStarterAgent, withDefaultProfile } from './lib/index.js'
 
-await seedDaypawProfile().catch((error) => {
+try {
+  seedDaypawProfile()
+} catch (error) {
   console.error(`daypaw: ${error instanceof Error ? error.message : String(error)}`)
   process.exit(1)
-})
+}
 seedStarterAgent()
 
 process.argv = [...process.argv.slice(0, 2), ...withDefaultProfile(process.argv.slice(2))]

@@ -14,11 +14,11 @@
  */
 
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { basename, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { completeClosure, findWorkspacePackage, readManifest, writeManifest } from './daypaw-closure.ts'
@@ -556,17 +556,20 @@ class DaypawRelease {
       },
     })
     // First-run seeding materialized the daypaw profile from the shipped
-    // template and healed the daypaw family into the flat installation
-    // fallback; the ledger under the launch cwd proves the seeded engine row
-    // mounted with its template config before the shell came up.
+    // template and linked the private shell bundle into the profile, so the
+    // launcher's runtime resolution carries the whole daypaw family; the
+    // ledger under the launch cwd proves the seeded engine row mounted with
+    // its template config before the shell came up.
     const profileDir = join(home, 'profiles', 'daypaw')
     const seededPatch = await readFile(join(profileDir, 'cordis.patch.yml'), 'utf8')
-    const fallback = join(home, 'profiles', 'node_modules', '@daypaw')
+    const bundleManifest = join(profileDir, 'node_modules', '@daypaw', 'web-app', 'package.json')
+    const linked = existsSync(bundleManifest) ? realpathSync(bundleManifest) : undefined
+    const family = linked === undefined ? undefined : dirname(linked)
     const missing = [
       ...seededPatch.includes('daypaw-engine') ? [] : ['engine row'],
-      ...existsSync(join(fallback, 'engine', 'package.json')) ? [] : ['engine fallback link'],
-      ...existsSync(join(fallback, 'web-app', 'package.json')) ? [] : ['web-app fallback link'],
-      ...existsSync(join(fallback, 'web-frontend', 'dist', 'index.html')) ? [] : ['frontend dist'],
+      ...linked === undefined ? ['web-app profile link'] : [],
+      ...family !== undefined && existsSync(join(family, '..', 'engine', 'package.json')) ? [] : ['engine package'],
+      ...family !== undefined && existsSync(join(family, '..', 'web-frontend', 'dist', 'index.html')) ? [] : ['frontend dist'],
       ...existsSync(join(scratch, 'daypaw', 'ledger.db')) ? [] : ['engine ledger'],
     ]
     if (missing.length > 0) {

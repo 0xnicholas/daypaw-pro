@@ -1,11 +1,11 @@
 /**
  * First-run seeding and launcher-argv defaulting for the `daypaw` bin:
  * materialize the `daypaw` profile from the shipped product-shell template,
- * migrate a profile seeded by the prior CLI to it, and keep the flat
- * installation fallback healed for the daypaw family. Seeding runs on every
- * launch before the vendored dsh bin, so every subcommand sees the same
- * profile; it is idempotent and never overwrites an existing file — user edits
- * to the seeded profile stick.
+ * migrate a profile seeded by the prior CLI to it, and link the private
+ * daypaw bundle into the profile so the launcher's runtime resolution carries
+ * the whole fork family. Seeding runs on every launch before the vendored dsh
+ * bin, so every subcommand sees the same profile; it is idempotent and never
+ * overwrites an existing file — user edits to the seeded profile stick.
  *
  * The daypaw template does not live in the dsh launcher's `PROFILE_TEMPLATES`
  * (an upstream file): the template ships inside this package and this module
@@ -14,17 +14,19 @@
  * `cordis.patch.yml` — the product composition rides the user layer by
  * design, so a customer can retune or remove it like any other override.
  *
- * The launcher's own fallback heal anchors on the dsh app manifest, whose
- * closure the daypaw family is not part of, so this module heals the same
- * flat directory from THIS package's manifest: every `@daypaw` row the
- * composed tree names (engine, the shell bundle, the roster packages) then
- * resolves from any profile through Node's ordinary parent-walk, and a pnpm
- * operation inside one profile cannot prune the links.
+ * The launcher's runtime resolution anchors on the dsh app manifest, whose
+ * closure the daypaw family is not part of, so this module links the private
+ * bundle from THIS package's closure into the seeded profile's own
+ * `node_modules`: the launcher reads those links as profile-scope roots and
+ * collects the bundle's dependency closure, which carries every `@daypaw` row
+ * the composed tree names (engine, the shell bundle, the roster packages).
  * @module @daypaw/cli
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   initProfile,
   PROFILE_PATCH_FILENAME,
@@ -63,6 +65,32 @@ const DAYPAW_PROFILE_PATCH = `# The daypaw CLI seeded this file on first run; it
         # Relative to the directory you run \`daypaw\` from.
         path: daypaw/ledger.db
 `
+
+/** This package's manifest: the anchor whose dependency closure is the delivered installation. */
+const CLI_MANIFEST = fileURLToPath(new URL('../package.json', import.meta.url))
+
+/**
+ * The profile's private bundle, resolved from this CLI's closure: the profile
+ * carries a profile-local link so the launcher's runtime resolution collects
+ * the bundle and its dependency closure (the whole `@daypaw` family) as
+ * profile-scope packages.
+ */
+const PROFILE_LOCAL_BUNDLES = ['@daypaw/web-app'] as const
+
+/**
+ * Materialize the profile-local links for the private bundles, idempotently.
+ * @param dir - the profile directory.
+ */
+function linkProfileBundles(dir: string): void {
+  const require = createRequire(CLI_MANIFEST)
+  for (const name of PROFILE_LOCAL_BUNDLES) {
+    const target = dirname(require.resolve(`${name}/package.json`))
+    const link = join(dir, 'node_modules', ...name.split('/'))
+    mkdirSync(dirname(link), { recursive: true })
+    rmSync(link, { recursive: true, force: true })
+    symlinkSync(target, link, 'junction')
+  }
+}
 
 /**
  * The starter agent the CLI seeds into the workspace on first run (ruling
@@ -155,6 +183,7 @@ export function seedDaypawProfile(home: string = resolveDshHome()): void {
   } else {
     migrateShippedBundles(dir)
   }
+  linkProfileBundles(dir)
 }
 
 /**
