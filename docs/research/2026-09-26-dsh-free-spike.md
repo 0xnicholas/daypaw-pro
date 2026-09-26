@@ -90,7 +90,7 @@ journal: model:1#0 completed · tool:1:… completed · model:2#0 completed · t
 
 结论的边界必须写清：**spike 只证明引擎那半可以活在 dsh 之外，不证明产品壳那半可以。** 壳的 5.6k 行 `ui-*`（任务板 / 收件箱 / 设置 / agent 目录 / 品牌主题）全部建立在 dsh 的客户端插件系统上（slot 环、locale、renderer、primitives、remote wire），`packages/daypaw/ui-inbox` 一个包就 import 15 个 `@deepseek-ai/*` 包。spike 对那一半一句结论也没有。
 
-因此真正的分岔不是「引擎要不要离开 dsh」，而是**壳怎么办**：
+因此真正的分岔不是「引擎要不要离开 dsh」，而是**壳怎么办**——该分岔已由 [ADR 0020](../adr/0020-shell-stays-on-dsh.md) 裁决：壳留在 dsh，换轴只在写死的触发条件命中时复议。三条路的相对分量如下，供复议时取用：
 
 1. **壳留在 dsh 上，引擎走出去**：引擎作为独立库 + 自己的宿主（本次 spike 的形态），壳继续用 dsh 的浏览器面。代价是两套世界并存，产物形态分裂。
 2. **壳一起重写**：按 M1 的实测比例（引擎侧 90 行 vs 今日 478 行绑定），壳侧的重写量是 5.6k 行 src + 9k 行测试，且要自己补 slot 环 / locale / primitives / 主题 / remote wire。
