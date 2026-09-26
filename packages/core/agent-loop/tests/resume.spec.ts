@@ -221,13 +221,16 @@ describe('the session-persistence Agent Note: AgentLoop factory create/resume', 
     const { ctx } = await persistentHarness(new MockAdapter([textResponse('hi')]))
     const sessionId = SessionId('drain-both-fail')
     const handle = await ctx.agents.create({ sessionId })
-    const stored = [...(ctx.sessionPersistence as unknown as {
+    const tracker = (ctx.sessionPersistence as unknown as {
       tracker: { openHandles: Set<SessionHandle> }
-    }).tracker.openHandles].find(open => open.id === sessionId && open.access === 'write')
+    }).tracker
+    const stored = [...tracker.openHandles].find(open => open.id === sessionId && open.access === 'write')
     if (stored === undefined) throw new Error('missing owned write handle')
     const machine = handle.agent as Agent & { scope: { dispose: () => Promise<void> } }
     vi.spyOn(machine.scope, 'dispose').mockRejectedValue(new Error('scope exploded'))
-    vi.spyOn(stored, 'close').mockRejectedValue(new Error('close exploded'))
+    // One refusal only: teardown's sweep performs the real close, so the write
+    // lock and the in-process claim are still released.
+    vi.spyOn(stored, 'close').mockRejectedValueOnce(new Error('close exploded'))
 
     const failure = await handle.dispose().then(() => undefined, (error: unknown) => error)
     if (!(failure instanceof AggregateError)) throw new Error('expected an AggregateError rejection')
@@ -235,6 +238,7 @@ describe('the session-persistence Agent Note: AgentLoop factory create/resume', 
     expect(failure.errors.map(error => (error as Error).message)).toEqual(['scope exploded', 'close exploded'])
     expect(ctx.agents.get(sessionId)).toBeUndefined()
     await ctx.fiber.dispose()
+    expect(tracker.openHandles.has(stored)).toBe(false)
   })
 
   it('agent dispose releases write ownership of its stored session', async () => {

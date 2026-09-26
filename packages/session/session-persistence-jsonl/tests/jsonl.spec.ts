@@ -1957,7 +1957,9 @@ describe('JsonlSessionPersistence: durability and crash semantics', () => {
     const reported = vi.spyOn(ctx2.logger, 'error').mockImplementation(() => undefined)
     const handle = await ctx2.sessionPersistence.create(meta('dispose-fail'))
     const failure = new Error('close exploded')
-    vi.spyOn(handle, 'close').mockRejectedValue(failure)
+    // One refusal only: the close after the assertions is the real one, which
+    // releases the write lock the refused attempt left held.
+    vi.spyOn(handle, 'close').mockRejectedValueOnce(failure)
     await fiber.dispose()
     // Cordis contains effect-disposal failures and reports them; the backend's
     // teardown aggregate names every handle that refused to close.
@@ -1966,6 +1968,8 @@ describe('JsonlSessionPersistence: durability and crash semantics', () => {
       .find((value): value is AggregateError => value instanceof AggregateError)
     expect(aggregate?.message).toContain('session-persistence-jsonl dispose failed')
     expect(aggregate?.errors).toEqual([failure])
+    await handle.close()
+    await expect(handle.append([])).rejects.toThrow(/closed handle/)
   })
 
   it('omits a listed artifact removed after discovery', async () => {

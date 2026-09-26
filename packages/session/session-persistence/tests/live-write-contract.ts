@@ -178,13 +178,17 @@ export function runLiveWritePathContract(
       if (session === undefined) throw new Error('session was not created')
       const handle = await ctx.sessionPersistence.create(session.header)
       const warned = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => undefined)
-      vi.spyOn(handle, 'close').mockRejectedValue(new Error('drain exploded'))
+      // One refusal only: the close below is the real one, which still owes the
+      // retained buffer its drain and the write lock its release.
+      vi.spyOn(handle, 'close').mockRejectedValueOnce(new Error('drain exploded'))
       session.append('turn/start', { turn: 1 })
       await owner.dispose()
       await vi.waitFor(() => {
         expect(warned.mock.calls.join('\n')).toContain('final drain for session "disposed-drain-fails" failed')
       })
       warned.mockRestore()
+      await handle.close()
+      await expect(handle.append([])).rejects.toThrow(/closed handle/)
       await ctx.fiber.dispose()
     })
 
