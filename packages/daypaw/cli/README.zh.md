@@ -9,10 +9,10 @@ kind: "package-reference"
 
 ## 安装与运行
 
-需要 Node `^22.19.0 || >=24.0.0` 与一个 DeepSeek API key（[platform.deepseek.com](https://platform.deepseek.com)）——壳用你的 key 调模型，计费到你的账户。
+需要 Node `^22.19.0 || >=24.0.0` 与一个 DeepSeek API key（[platform.deepseek.com](https://platform.deepseek.com)）——壳用你的 key 调模型，计费到你的账户。`@daypaw/cli` 以 tarball 交付，不发公开 registry。
 
 ```sh
-npm i -g @daypaw/cli
+npm i -g ./daypaw-cli-<version>.tgz
 daypaw
 ```
 

@@ -1,6 +1,6 @@
 # ADR 0011: 客户自跑交付形态——产物分层与版本契约
 
-- **状态**：已接受（2026-08-22，[客户自跑交付形态裁决：产物分层与版本契约](https://github.com/0xnicholas/daypaw-pro/issues/33)）
+- **状态**：已接受（2026-08-22，[客户自跑交付形态裁决：产物分层与版本契约](https://github.com/0xnicholas/daypaw-pro/issues/33)）；**§1 的产物分层与渠道裁决于 2026-09-26 被 [ADR 0021](0021-bespoke-delivery.md) 取代**（交付形态改为按客户定制的构建、tarball 通道），§2、§3 继续有效
 - **前置**：ADR 0001（上游同步与 checkpoint）、ADR 0008（落地批次）、ADR 0009（自用约束——本 ADR 修订其「无公开 API 稳定性承诺」一条）
 - **事实底座**：`docs/research/deliverable-artifacts.md`（[dsh 可交付产物机制清点](https://github.com/0xnicholas/daypaw-pro/issues/32)）——npm bundle+CLI 机制最成熟（bundle 对包来源无约束、CLI 上游已实操 npm 发布）；单文件 exe 唯一有端到端证据（yao-pkg `--sea`，~174MB，无 Windows）；容器镜像零基础。
 
@@ -9,6 +9,8 @@
 ## 决策
 
 ### 1. v1 产物分层：npm 两层，同一发布线
+
+> **已取代（[ADR 0021](0021-bespoke-delivery.md)）**：交付形态改为按客户定制的构建、tarball 通道；公开 registry 休眠。以下为原决策。
 
 - **库层 `@daypaw/sdk` 自含单包**——画像：有 Node 工程能力、把 durable execution 嵌进自己应用的开发者。
 - **CLI 层自含单包**（`@daypaw/cli`，bin `daypaw`）——画像：不嵌代码、直接运营 agent 平台的使用者；安装收敛为 `npm i -g` 一条命令，daypaw profile 模板随包自带、首跑自初始化。
