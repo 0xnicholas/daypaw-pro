@@ -41,7 +41,7 @@ pnpm dev:daypaw       # 在空闲端口拉起产品壳（默认 3080），打印
 
 `dev:daypaw` 须在仓库根运行；可加 `--build`（先跑全量构建）、`--open`（打开浏览器）、`--port N`、`--key <DEEPSEEK_API_KEY>`。模型 key 解析顺序 `--key` > `DEEPSEEK_API_KEY` > 根 `.env`；缺 key 可启动，模型调用按请求失败。
 
-外部自跑交付（ADR 0011）：CLI 层 `@daypaw/cli`（直接运营平台的使用者）、库层 `@daypaw/sdk`（嵌入自己应用的开发者）；发布流程入口 `pnpm run release:daypaw`；首次发布／换 token 的凭据设置走向导 `bash scripts/release/publish-daypaw.wizard.sh`。
+外部自跑交付（ADR 0011）：CLI 层 `@daypaw/cli`（直接运营平台的使用者）、库层 `@daypaw/sdk`（嵌入自己应用的开发者）；发布流程入口 `pnpm run release:daypaw`；首次发布／换 token 的凭据设置走向导 `bash scripts/release/publish-daypaw.wizard.sh`。本机跑完 `release:daypaw` 要补跑一次 `pnpm install`：pnpm deploy 的 hoist 残留会让下一次 `pnpm run` 要求交互式 purge（CI 每次全新检出，不受影响）。
 
 ## 导览
 
