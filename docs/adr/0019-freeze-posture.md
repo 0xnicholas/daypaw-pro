@@ -10,7 +10,7 @@
 
 **第 1 层（零动作）**：dependabot security updates。`.github/dependabot.yml` 逐 ecosystem 的 `open-pull-requests-limit: 0` 只抑制版本更新；安全更新读仓库设置而非该文件，保持启用并直接更新 lockfile。
 
-**第 2 层（按需 cherry-pick）**：范围钉死两块——`packages/llm/**` 的 provider 适配提交（模型 API 变化是本仓库无法自行承担的外部依赖），与安全类提交（`packages/sandbox/**`、`packages/shell/**`、`packages/session/**` 的解析与校验修复）。触发方式为被动（坏再挑）加每季度一次 30 分钟盘点（`git log upstream/master --since=<三个月前> -- packages/llm/`）。挑进的提交必须过 `check:ci:daypaw-hosted` 全门。
+**第 2 层（按需 cherry-pick）**：范围钉死两块——`packages/llm/**` 的 provider 适配提交（模型 API 变化是本仓库无法自行承担的外部依赖），与安全类提交（`packages/sandbox/**`、`packages/shell/**`、`packages/session/**` 的解析与校验修复）；依赖抬版见 §6。触发方式为被动（坏再挑）加每季度一次 30 分钟盘点（`git log upstream/master --since=<三个月前> -- packages/llm/`）。挑进的提交必须过 `check:ci:daypaw-hosted` 全门。
 
 **第 3 层（永不）**：整体 merge。确需吸收一个窗口的上游改动时，开一次性手术分支完成、随后删除；不恢复日常仪式。
 
@@ -29,6 +29,14 @@
 ### 5. roster 检查降级为自洽检查
 
 `scripts/verify-cordis-config.ts` 的 roster 镜像检查改为自洽检查：每条浏览器行指向的包必须在 workspace 中存在并声明 `dsh.client`；`ROSTER_TRIMS` 从「相对上游的有意裁剪」变为普通 roster 数据。上游 bundle 文件仍在树内（冻结的一部分），不再作为比较基准。
+
+### 6. 依赖安全修复的落点
+
+2026-09-26 审计（[#158](https://github.com/0xnicholas/daypaw-pro/issues/158)）：dependabot 的 47 条 open alert（19 high / 25 medium / 3 low）全部无已发布修复版本，安全更新通道开着但无票可开；其中 10 个包在 `@daypaw/cli` 的 643 包生产闭包内（`@hono/node-server`、`fast-uri`、`fflate`、`hono`、`ip-address`、`js-yaml`、`protobufjs`、`qs`、`sharp`、`undici`）。这些包的消失路径是依赖抬版，而上游的依赖 bump 落在 `pnpm-lock.yaml` 与各 manifest——不在 §1 第 2 层的范围内。
+
+- 缺省动作：**本仓库 `pnpm.overrides` 抬版**（`pnpm-workspace.yaml`），不依赖上游；先例已在该文件里（`extract-zip>yauzl`、`@deepseek-ai/cosmokit` 等）。
+- 协调性多包大 bump：走 §1 第 2 层的手术通道，cherry-pick 上游的依赖提交。
+- 季度盘点在 §1 第 2 层的 30 分钟内一并看 open alert 里新增了多少条已有 patched 版本的，按上述两条处理；全部无修复时不做动作，只记录。
 
 ## 考虑过的替代方案
 
