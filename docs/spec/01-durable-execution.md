@@ -154,7 +154,7 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 - **崩溃/重放双层**（keyless）：主力 = 进程内故障注入——包装 journal 写入层，穷举「每个 append 点前后抛异常」，注入时钟跨「重启」推进 durable timer；断言每 effect 恰执行一次、重放不重不漏、step 去重、gate 状态机五态、boot 扫描、claim 夺权；同一包装面覆盖 steer 追加点（段列出 / 段插入 / parked 等待的轮询观察，含行消失、他处终态、重复 park 各分支）。补充 = 真 SIGKILL——tsx spawn 子进程跑 run、杀掉、重启验恢复（半写路径/文件锁）；steerable agent 场景：run 在 parked 态被杀，重启后凭已落账段续跑到 done、journal 留下 `steer:1` 段行；如需进上游 `processBoundTests` 单列 lane 则逐条 core-touch 登记。
 - **golden 库迁移 fixture**：§4 逐段比对。
 - **契约断言清单**：step 恰一次、幂等键去重（自动派生 + `opts.key` 逃生口）、boot 复活不需原调用者、单写者拒绝双驱动、promise 幂等 resolve（first-wins）+ 超时终态、timer overdue 补发、attach 三态（在驱动/已完成/跨进程轮询）、steer loud 失败三态 + 段按记录序消费 + parked run 崩溃复活后消费已落账段不重复投递、**取消级联**（未完结子孙递归、已完结子孙不动、已终态父的孤儿清扫、调用方信号路径、重入幂等）、**spawn**（确定性子 id 与父链落账、re-drive attach 不重复、失败不进父面）、**键作用域化**（步内发起的原语不错取外层序号）。
-- **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader；canonical example（walking skeleton 宿主，`examples/daypaw-*`）拥有 keyless 验收 + with-key smoke（无 key 自跳）。
+- **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader；canonical example（walking skeleton 宿主，`packages/examples/daypaw-*`）拥有 keyless 验收 + with-key smoke（无 key 自跳）。
 - **invariant companion**：engine 包**不发布** `src/invariant.ts`——core 有意不依赖 Cordis（无事件流可挂），journal 追加性、runs/journal 引用完整性、run/promise 状态机合法迁移由上一层的故障注入套件在每个 append 点断言；逐包理由见 [engine README](../../packages/daypaw/engine/README.md)，`scripts/test-invariants.spec.ts` 钉住 `packages/daypaw/*` 测试路径不映射 companion。
 - **覆盖率**：per-file 100% 门，`packages/*/*` glob 零配置纳入。
 

@@ -98,9 +98,17 @@ journal: model:1#0 completed · tool:1:… completed · model:2#0 completed · t
 
 ## 6. 证据留存
 
-spike 代码在 gitignored 的 `daypaw/spike/`（`loop.ts` / `tools.ts` / `d1.ts` / `durable.ts` + `sandbox/`），不在版本控制内。若需要留档（例如作为换轴决策的凭证），需要单独裁决其家（`docs/research/` 附近、或一个 tracked 的 `packages/examples/` 目录），本 spike 不做该决定。
+spike 是一文性工作区：四个文件（`loop.ts` / `tools.ts` / `d1.ts` / `durable.ts`，249 行）当时住在 gitignored 的 `daypaw/spike/`。跑完即删，不进版本控制——它的结论已落在本文 M1–M4 与 [ADR 0020 §1](../adr/0020-shell-stays-on-dsh.md)，而它的选项现在处于停车位（ADR 0020 §2 的触发条件）；为一个停着的选项保留一份无门看护、必然腐烂的副本不值当。
 
-复现命令：
+复现按本文 §0 的四项测量与 §1 的环境重写一次即可（一日量）；下面是与当时目录结构对应的原始命令，供重写时对照：
+
+```sh
+node --import tsx daypaw/spike/d1.ts                                  # D1：裸循环
+rm -f daypaw/spike/sandbox/spike-ledger.db* daypaw/spike/sandbox/summary.txt
+node --import tsx daypaw/spike/durable.ts --delay 8000 &              # D2b：开崩溃窗口
+# 等 [step] tool:1 出现后 kill -9
+node --import tsx daypaw/spike/durable.ts --revive                    # D2b：boot 扫描续跑
+```
 
 ```sh
 node --import tsx daypaw/spike/d1.ts                                  # D1：裸循环

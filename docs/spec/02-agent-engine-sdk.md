@@ -232,7 +232,7 @@ preset / composition / session / subagent seam / `session/event` ↔ 新模型�
 
 - **崩溃/重放双层**（engine 本体，keyless）：主力 = 进程内故障注入——包装 ledger 写入层，穷举「每个 append 点前后抛异常」，配注入时钟跨「重启」推进 durable timer；断言每 effect 恰执行一次、重放不重不漏、step 去重、gate 状态机、boot 扫描。补充 = 真 SIGKILL——tsx spawn 子进程跑 run、杀掉、重启验恢复（半写路径/文件锁）；取消级联与键作用域化的契约断言见 spec 01 §9。如需进上游 `processBoundTests` 单列 lane 则逐条 core-touch 登记。
 - **SDK 行为面**：跑真 engine（进程内 + 临时目录 SQLite，mock 边界仅 LLM/时钟）；五原语各配契约测试（含确定性子 runId 派生、`opts.key` 逃生口、GateResolution/RunStatus 判别联合、`ctx.spawn` 的派生 id / re-drive attach / 父取消随动 / 未绑定 loud）、steerable 多段生命周期（submit-less turn park、段边界投递、parked/死期落账/中断 turn 三种复活分支、序数去重）；tsc 类型面独立断言套件（[SDK API 表面草图](https://github.com/0xnicholas/daypaw-pro/issues/10)原型路径）。
-- **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader 的组合测试；canonical example（walking skeleton 宿主，`examples/daypaw-*`）拥有 keyless snapshot + with-key smoke（无 key 自跳）。
+- **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader 的组合测试；canonical example（walking skeleton 宿主，`packages/examples/daypaw-*`）拥有 keyless snapshot + with-key smoke（无 key 自跳）。
 - **invariant companion**：engine 包**不带** `src/invariant.ts`——上游 glob 约定会接入不变量宿主，而本族的判定是观测面不独立（engine core 不依赖 Cordis，sdk 与 store 不持有自身状态机）；逐包理由见各包 README 的 Runtime invariant 句，`scripts/test-invariants.spec.ts` 钉住空结果。
 - **覆盖率**：per-file 100% 门（CI ci-coverage lane）。
 - 待写：§4 生命周期 ↔ ledger 事件序列对表的逐条断言清单；故障注入包装器在 engine 包内的 seam 设计。

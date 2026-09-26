@@ -21,7 +21,7 @@
 ### 3. 真实入口路径：全套沿用
 
 - **per-plugin REAL-composition 测试**：product-visible daypaw 插件配测试专用 `cordis.yml` 走真 Loader 启动的组合测试；mock 边界仅 LLM / 网络 / 时钟，不许手搓 `ctx.plugin(...)` 了事。
-- **canonical example 拥有产品验收**：一个可运行 example（住 `examples/daypaw-*`，纯新增零冲突，即 walking skeleton 宿主——形态归[落地顺序与 walking skeleton](https://github.com/0xnicholas/daypaw-pro/issues/13)票设计），拥有 keyless snapshot + with-key smoke（真模型一发，无 key 自跳）。
+- **canonical example 拥有产品验收**：一个可运行 example（住 `packages/examples/daypaw-*`，纯新增零冲突，即 walking skeleton 宿主——形态归[落地顺序与 walking skeleton](https://github.com/0xnicholas/daypaw-pro/issues/13)票设计），拥有 keyless snapshot + with-key smoke（真模型一发，无 key 自跳）。
 - **built-artifact 冒烟**：ship `bin` 的包（如 manager host 的 `daypaw manage`）用构建后 `lib/` 在纯 Node 下跑冒烟。
 
 ### 4. 四支柱测试形状
