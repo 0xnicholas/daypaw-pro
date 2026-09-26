@@ -155,7 +155,7 @@ engine 内部接口，v1 进程内实现，日后换 provider 即 daemon 化（A
 - **golden 库迁移 fixture**：§4 逐段比对。
 - **契约断言清单**：step 恰一次、幂等键去重（自动派生 + `opts.key` 逃生口）、boot 复活不需原调用者、单写者拒绝双驱动、promise 幂等 resolve（first-wins）+ 超时终态、timer overdue 补发、attach 三态（在驱动/已完成/跨进程轮询）、steer loud 失败三态 + 段按记录序消费 + parked run 崩溃复活后消费已落账段不重复投递、**取消级联**（未完结子孙递归、已完结子孙不动、已终态父的孤儿清扫、调用方信号路径、重入幂等）、**spawn**（确定性子 id 与父链落账、re-drive attach 不重复、失败不进父面）、**键作用域化**（步内发起的原语不错取外层序号）。
 - **REAL-composition**：`ctx.durable` 插件族配测试专用 `cordis.yml` 走真 Loader；canonical example（walking skeleton 宿主，`examples/daypaw-*`）拥有 keyless 验收 + with-key smoke（无 key 自跳）。
-- **invariant companion**：engine 包 `src/invariant.ts`（journal 追加性、runs/journal 引用完整性、run/promise 状态机合法迁移）。
+- **invariant companion**：engine 包**不发布** `src/invariant.ts`——core 有意不依赖 Cordis（无事件流可挂），journal 追加性、runs/journal 引用完整性、run/promise 状态机合法迁移由上一层的故障注入套件在每个 append 点断言；逐包理由见 [engine README](../../packages/daypaw/engine/README.md)，`scripts/test-invariants.spec.ts` 钉住 `packages/daypaw/*` 测试路径不映射 companion。
 - **覆盖率**：per-file 100% 门，`packages/*/*` glob 零配置纳入。
 
 ## 10. 运维注记

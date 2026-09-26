@@ -23,11 +23,11 @@ daypaw-pro 是 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harnes
 
 ## 与上游 dsh 的关系
 
-- **同步仪式**（ADR 0001）：每 2–4 周或里程碑开工前从 upstream merge、全量测试、打 `daypaw-sync/<日期>` checkpoint tag；tag 注释携带所合并上游 sha，是「当前基线」的唯一权威记录。
-- **core-touch 纪律**：默认禁止修改上游文件；一切例外登记在 [docs/fork/CORE_TOUCHES.md](docs/fork/CORE_TOUCHES.md)，每次 sync 逐条重放验证。
+- **冻结姿态**（[ADR 0019](docs/adr/0019-freeze-posture.md)）：上游是依赖而非权威，整体 merge 不再执行。准入只有三层：dependabot 安全更新（直接进 lockfile）、按需 cherry-pick（`packages/llm/**` 的 provider 适配与安全类提交）、永不执行的定期 merge。`upstream` remote 保留为 fetch-only；`daypaw-sync/<日期>` 四个 tag 保留为历史记录。
+- **core-touch 记录**：默认仍不修改上游文件；一切例外登记在 [docs/fork/CORE_TOUCHES.md](docs/fork/CORE_TOUCHES.md)，标注性质（`通用改进` / `fork 取舍` / `fork 登记`）。登记是差异记录，没有重放义务。
 - **经缝扩展**：新包族、merge-extensible 事件、patch-layer（`cordis.patch.yml`）组合是首选挂载点。
 - **交付独立**（ADR 0011）：`@daypaw/*` 走独立 0.x 版本线；`@daypaw/cli` 与 `@daypaw/sdk` 为自含单包（上游 `@deepseek-ai/*` 依赖打包进包、零改名）。
-- **依赖更新**：fork 停用 dependabot 版本更新（`.github/dependabot.yml` 三个 ecosystem 各一行 `open-pull-requests-limit: 0`）；依赖版本随上游的依赖升级经同步仪式进入，安全更新保留（[ADR 0017](docs/adr/0017-dependency-update-posture.md)）。
+- **依赖更新**：fork 停用 dependabot 版本更新（`.github/dependabot.yml` 三个 ecosystem 各一行 `open-pull-requests-limit: 0`）；安全更新保留并直接进 lockfile，其余依赖经 ADR 0019 §1 第 2 层人工评估进入（[ADR 0017](docs/adr/0017-dependency-update-posture.md)）。
 
 ## 快速上手
 

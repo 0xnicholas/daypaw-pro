@@ -1,6 +1,6 @@
 # ADR 0017: fork 的依赖更新姿态——版本更新逐 ecosystem 抑制（`open-pull-requests-limit: 0`）
 
-- **状态**：已接受（2026-09-21，[依赖政策复议：fork 停用 dependabot 版本更新](https://github.com/0xnicholas/daypaw-pro/issues/141)）；2026-09-23 §3 补安全更新两族的裁法（[安全更新 PR 的裁法](https://github.com/0xnicholas/daypaw-pro/issues/145)）
+- **状态**：已接受（2026-09-21，[依赖政策复议：fork 停用 dependabot 版本更新](https://github.com/0xnicholas/daypaw-pro/issues/141)）；2026-09-23 §3 补安全更新两族的裁法（[安全更新 PR 的裁法](https://github.com/0xnicholas/daypaw-pro/issues/145)）；2026-09-26 §4 补冻结后条款，§2 与 §3 中子目录家族的「随同步仪式进入」随之作废（[ADR 0019](0019-freeze-posture.md)）
 - **前置**：ADR 0001（同步策略与 fork 卫生——§1 merge 策略、§4 core 触碰三问、§5 既有机制取舍）
 - **事实底座**：`.github/dependabot.yml` 是上游文件（fork 差异 = 决策 1 的三行抑制），每日 04:00 CST 运行、每轮开出约 10 张版本更新 PR；上游全史 18,059 条提交中 dependabot 署名 8 条，全部落在该文件首次配置起 24 小时内，其后 11,318 条提交零条；上游 `/pulls` 面不可读（`open_issues_count: 0`），其未合并的依赖票无从观察；上游 30 天内 `pnpm-lock.yaml` 635 次提交、`.github/workflows` 114 次提交；上游对该文件全史 5 次编辑，最近一次 2026-08-08；Advanced Security 页对 "Dependabot version updates" 无 Disable 开关（只有 Enable/Configure），官方文档的整体关闭途径是删除该文件。
 
@@ -13,6 +13,8 @@
 ### 2. 依赖版本随上游的依赖升级经同步仪式进入
 
 fork 不自行接受版本更新票。上游的依赖升级以人工提交为主，随同步仪式（ADR 0001 §1）进入 fork；上游未升的包在 fork 里保持旧版本。fork 自有包（`packages/daypaw/*`、`apps/daypaw-web`）需要动依赖时直接改自己的 manifest——不经登记、不与上游冲突。
+
+**2026-09-26 起（ADR 0019）**：同步仪式不再执行，本条的进入通道改为 §4。
 
 ### 3. 安全更新保留
 
@@ -41,3 +43,12 @@ Dependabot alerts 与 security updates 保持开启（仓库设置；前置条�
 - fork 的依赖版本取决于上游何时手改依赖：上游未升的包在 fork 里保持旧版本，fork 侧需要提前升级时手改自有 manifest。
 - `.github/dependabot.yml` 是 fork 改过的上游文件（三行抑制 + 文件头三行理由注释），随同步仪式重放；上游编辑该文件时按相邻 hunk 冲突处理。若上游将来重新消费 dependabot 版本更新，本决策不受影响——抑制只作用于本 fork 的仓库面。
 - 安全更新面留有两个常备动作：根家族票只在发布时长窗口上是红的，窗口过后重跑 fork 车道即并；子目录家族票关闭并指向本条 §3。
+
+## 补条（2026-09-26，ADR 0019 冻结姿态）
+
+### 4. 冻结后：依赖不再随上游走动
+
+- **进入通道收窄为两条**：第 1 层的 dependabot security updates（仓库设置，直接更新 lockfile），与第 2 层的人工 cherry-pick（`packages/llm/**` 的 provider 适配提交 + 安全类提交），细则见 [ADR 0019](0019-freeze-posture.md) §1。
+- **§2 的同步通道作废**：上游的依赖升级不再自动进入本仓库。上游未升的包继续停在当前版本，需要提前升级时改自有 manifest。
+- **§3 子目录家族的指向改变**：原先「修复随上游的依赖升级经同步仪式进入」，现改为「等待第 2 层的人工评估」——该面不在本仓库交付物内（release 只打 `@daypaw/cli` + `@daypaw/sdk`），仍按信号处理。
+- **`.github/dependabot.yml` 的三行抑制**由 core touch 转为永久分歧，登记性质改变见 [CORE_TOUCHES](../fork/CORE_TOUCHES.md)。

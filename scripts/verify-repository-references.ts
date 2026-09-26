@@ -19,7 +19,7 @@ const excludedPrefixes = ['vendor/', '.agents/notes/archived/']
 // rather than links. Upstream files keep the full policy.
 const forkRecordPrefixes = [
   'docs/adr/', 'docs/fork/', 'docs/reports/', 'docs/research/', 'docs/spec/',
-  'packages/daypaw/', 'scripts/fork/', 'CONTEXT.md',
+  'packages/daypaw/', 'CONTEXT.md',
 ]
 // Agent Notes are dated historical records: they cite the landing commit as
 // evidence. The disallowed organization URL stays rejected there.

@@ -18,15 +18,15 @@ fork 叙事的四个能力族：**Durable Execution**（跨 turn/跨进程的持
 
 ### 同步仪式（Sync Ritual）
 
-每 2–4 周或里程碑开工前，从上游 merge、全量测试、打 checkpoint tag 的例行流程。见 ADR 0001。
+已停止的历史例行流程：每 2–4 周从上游 merge、全量测试、打 checkpoint tag。ADR 0019 于 2026-09-26 冻结上游后不再执行；术语保留为历史词。
 
 ### Checkpoint
 
-`daypaw-sync/<日期>` annotated tag，注释携带所合并的上游 commit sha。「当前基线」的唯一权威记录。
+`daypaw-sync/<日期>` annotated tag，注释携带当时合并的上游 commit sha。四个 tag 保留为历史记录，不再是「当前基线」的权威——当前基线由 ADR 0019 的冻结姿态定义。
 
 ### Core-touch
 
-对上游既有文件的任何修改。默认禁止；例外须登记 `docs/fork/CORE_TOUCHES.md`。与 seam 扩展（新 package、merge-extensible 事件、profile 覆盖）相对。
+对上游既有文件的任何修改。默认禁止；例外须登记 `docs/fork/CORE_TOUCHES.md` 并标注性质（`通用改进` / `fork 取舍` / `fork 登记`）。与 seam 扩展（新 package、merge-extensible 事件、profile 覆盖）相对。ADR 0019 起登记是差异记录，没有重放义务。
 
 ### Seam
 dsh 的可替换能力缝：Service Definition / Provider / Consumer 三角色。daypaw 的扩展首选挂载点。

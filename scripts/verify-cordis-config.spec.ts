@@ -14,7 +14,7 @@ import {
   metadataExpressionErrors,
   packageTestFixtureDependencyErrors,
   packageTestPluginDependencyErrors,
-  rosterMirrorViolations,
+  rosterPackageViolations,
   type RosterRow,
 } from './verify-cordis-config.ts'
 
@@ -91,42 +91,34 @@ describe('workspace Bundle discovery and product dependency closures', () => {
   })
 })
 
-describe('fork browser roster mirrors the upstream web bundle', () => {
-  const upstreamFile = 'packages/bundle/web-app/cordis.patch.yml'
+describe('fork browser roster resolves to workspace packages', () => {
   const forkFile = 'packages/daypaw/web-app/cordis.patch.yml'
-  const mirroredRow: RosterRow = { file: upstreamFile, id: 'ui-theme', packageName: '@deepseek-ai/dsh-client-ui-theme' }
-  const mirrorRow: RosterRow = { file: forkFile, id: 'ui-theme', packageName: '@deepseek-ai/dsh-client-ui-theme' }
-  const trimmedRow: RosterRow = {
-    file: upstreamFile,
-    id: 'ui-sidebar',
-    packageName: '@deepseek-ai/dsh-client-ui-sidebar',
-  }
+  const daypawRow: RosterRow = { file: forkFile, id: 'ui-tasks-daypaw', packageName: '@daypaw/ui-tasks' }
+  const upstreamRow: RosterRow = { file: forkFile, id: 'ui-theme', packageName: '@deepseek-ai/dsh-client-ui-theme' }
 
-  it('accepts a mirrored row and a trimmed row', () => {
-    expect(rosterMirrorViolations([mirroredRow, trimmedRow], [mirrorRow], ['@deepseek-ai/dsh-client-ui-sidebar'])).toEqual([])
+  it('accepts rows whose packages are workspace manifests', () => {
+    expect(rosterPackageViolations(
+      [daypawRow, upstreamRow],
+      new Set(['@daypaw/ui-tasks', '@deepseek-ai/dsh-client-ui-theme']),
+    )).toEqual([])
   })
 
-  it('rejects an upstream client row the fork neither mirrors nor trims (sync missed it)', () => {
-    expect(rosterMirrorViolations([trimmedRow], [], [])).toEqual([
-      `${upstreamFile}: row "ui-sidebar" mounts @deepseek-ai/dsh-client-ui-sidebar, which declares dsh.client; `
-        + `the fork roster must mirror it — add the row to ${forkFile} `
-        + 'or extend ROSTER_TRIMS in scripts/verify-cordis-config.ts with its reason',
+  it('rejects a fork row whose package left the workspace', () => {
+    expect(rosterPackageViolations([daypawRow], new Set(['@deepseek-ai/dsh-client-ui-theme']))).toEqual([
+      `${forkFile}: row "ui-tasks-daypaw" mounts @daypaw/ui-tasks, which no workspace manifest declares`,
     ])
   })
 
-  it('rejects a mirrored row the fork roster dropped', () => {
-    expect(rosterMirrorViolations([mirroredRow], [], [])).toEqual([
-      `${upstreamFile}: row "ui-theme" mounts @deepseek-ai/dsh-client-ui-theme, which declares dsh.client; `
-        + `the fork roster must mirror it — add the row to ${forkFile} `
-        + 'or extend ROSTER_TRIMS in scripts/verify-cordis-config.ts with its reason',
+  it('rejects a row whose package name is misspelled in a workspace namespace', () => {
+    const typo: RosterRow = { file: forkFile, id: 'ui-task', packageName: '@daypaw/ui-task' }
+    expect(rosterPackageViolations([typo], new Set(['@daypaw/ui-tasks']))).toEqual([
+      `${forkFile}: row "ui-task" mounts @daypaw/ui-task, which no workspace manifest declares`,
     ])
   })
 
-  it('rejects a trim whose upstream row is gone', () => {
-    expect(rosterMirrorViolations([], [], ['@deepseek-ai/dsh-client-ui-brand-official'])).toEqual([
-      'scripts/verify-cordis-config.ts ROSTER_TRIMS: @deepseek-ai/dsh-client-ui-brand-official '
-        + `has no row in ${upstreamFile} anymore — remove the stale trim entry`,
-    ])
+  it('ignores rows outside the workspace namespaces', () => {
+    const external: RosterRow = { file: forkFile, id: 'third-party', packageName: 'some-external-plugin' }
+    expect(rosterPackageViolations([external], new Set())).toEqual([])
   })
 })
 

@@ -1,6 +1,7 @@
 # Agent Note: daypaw roster 镜像门
 
 Status: implemented
+Archived: 2026-09-26
 
 [English](2026-09-18-daypaw-roster-mirror-gate.md) | 中文
 

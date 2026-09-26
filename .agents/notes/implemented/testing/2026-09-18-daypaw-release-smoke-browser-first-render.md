@@ -33,6 +33,6 @@ The served shell's browser build never executed anywhere. The assembled goldens 
 ## Consequences
 
 - Every PR and main push executes the served vite dist in a real browser inside `Release (daypaw)`; the lane gains roughly one to two minutes of Chromium install and the smoke's probe budget rises to 120 s.
-- The complementary faces around the served shell now close: roster mirror gate = coverage, assembled golden gate = activation, release closure smoke = dependency closure, release browser boot = execution ([roster mirror gate](../process/2026-09-18-daypaw-roster-mirror-gate.md)).
+- The complementary faces around the served shell now close: roster resolution gate = coverage, assembled golden gate = activation, release closure smoke = dependency closure, release browser boot = execution ([ADR 0019](../../../../docs/adr/0019-freeze-posture.md) §5).
 - Residual: the fork product shell has no real-browser product-flow replay (the upstream `apps/web` e2e equivalent for fork flows); map fog, trigger = the first real-browser-only product break or the first flow jsdom goldens cannot express.
 - The marker holds the starter's business name (`通用助手`), so the seeded starter's display title and the banner chain must keep that value; the timeout error names both the marker and the wait.

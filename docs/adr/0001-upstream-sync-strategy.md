@@ -1,11 +1,13 @@
 # ADR 0001: 上游同步策略与 fork 卫生
 
-- **状态**：已接受（2026-08-30，[上游同步策略与 fork 卫生](https://github.com/0xnicholas/daypaw-pro/issues/5)）
+- **状态**：已接受（2026-08-30，[上游同步策略与 fork 卫生](https://github.com/0xnicholas/daypaw-pro/issues/5)）；**§1 与 §4 于 2026-09-26 被 [ADR 0019](0019-freeze-posture.md) 取代**（同步仪式停止，core-touch 重放义务作废），§2、§3、§5 继续有效
 - **背景约束**：上游 deepseek-harness 处于 dev-preview：无 tag / 无 release、约 200 commit/天、明确承诺 breaking changes；本仓库为其 fork + in-tree 四支柱扩展（Durable Execution / Agent Engine+SDK / Manager / EVO）。
 
 ## 决策
 
 ### 1. 同步节奏：定期 merge + checkpoint
+
+> **已取代（[ADR 0019](0019-freeze-posture.md)）**：同步仪式不再执行。以下为原决策。
 
 每 2–4 周（且每个支柱里程碑开工前**强制**）执行一次同步仪式：
 
@@ -35,7 +37,9 @@ git tag -a daypaw-sync/$(date +%F) -m "upstream: deepseek-ai/deepseek-harness@<s
 
 1. 能否用**新 package + seam** 表达？（注意 `SessionEventMap` 是 merge-extensible，新增事件类型不需要碰 core。）
 2. 能否用 `cordis.patch.yml` / 自定义 profile/bundle 覆盖？
-3. 都不行 → 允许改，但必须：登记 `docs/fork/CORE_TOUCHES.md`（文件、原因、「上游 PR 候选？」标记），且每次 sync 逐个重放验证。
+3. 都不行 → 允许改，但必须：登记 `docs/fork/CORE_TOUCHES.md`（文件、原因、性质三类），且每次 sync 逐个重放验证。
+
+> **标记已于 [ADR 0019](0019-freeze-posture.md) 改写**：重放义务作废，登记性质由「上游 PR 候选？」改为「性质」；允许改动的三问不变。
 
 四支柱的组合通过自有 profile 表达（如 `daypaw` profile = dsh-base + daypaw bundles），不修改上游 base bundle 的内容。
 
@@ -43,7 +47,7 @@ git tag -a daypaw-sync/$(date +%F) -m "upstream: deepseek-ai/deepseek-harness@<s
 
 - `vendor/`（上游 pin Cordis 的机制）：**不用于**同步策略，跟随上游。
 - `patches/node-pty`：跟随上游。
-- 上游回赠：core-touch 中标记为 PR 候选的改动，成熟后向 deepseek-harness 提 PR；被接受的改动在下一次 sync 后从 CORE_TOUCHES.md 划掉。
+- 上游回赠：**无通道（[ADR 0015](0015-assembled-boot-shared-scaffold-home.md) §4、[ADR 0019](0019-freeze-posture.md)）**——`CONTRIBUTING.md` 声明不接受外部 PR，官方通道是发布 `dsh-plugin` 主题的社区插件；core-touch 中的通用改进仍是永久分歧。
 - dependabot 版本更新：**不采用**——fork 侧在 `.github/dependabot.yml` 逐 ecosystem 以 `open-pull-requests-limit: 0` 抑制（三行差异，登记 CORE_TOUCHES），依赖版本随上游的依赖升级经 sync 进入（[ADR 0017](0017-dependency-update-posture.md)）。
 
 ## 后果
@@ -51,3 +55,5 @@ git tag -a daypaw-sync/$(date +%F) -m "upstream: deepseek-ai/deepseek-harness@<s
 - 冲突面被压到：CORE_TOUCHES 登记项 × profile 接线处 × README 索引（后者可选择不更新）。
 - 同步成本可预测：每次 sync 的工时 ∝ 登记的 core-touch 数量，而非上游 commit 量。
 - 若某次 sync 冲突失控，逃生通道是退回上一个 checkpoint tag 重切。
+
+> **§1/§4 取代后的实际后果（[ADR 0019](0019-freeze-posture.md)）**：上面的三条随同步仪式一并停止；登记行只剩「新改动落地时追加一行」这一项维护动作。

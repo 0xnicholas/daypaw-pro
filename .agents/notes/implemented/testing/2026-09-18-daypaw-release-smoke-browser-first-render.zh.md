@@ -33,6 +33,6 @@ Status: implemented
 ## 后果
 
 - 每个 PR 与 main push 都在 `Release (daypaw)` 内用真浏览器执行被伺服的 vite dist;车道多付约一到两分钟 Chromium 安装,冒烟 probe 预算升至 120 s。
-- 被伺服壳四周的互补面自此闭合:roster 镜像门 = 覆盖面、组装 golden 门 = 激活面、release 闭包冒烟 = 依赖闭包面、release 浏览器 boot = 执行面（[roster 镜像门](../process/2026-09-18-daypaw-roster-mirror-gate.zh.md)）。
+- 被伺服壳四周的互补面自此闭合:roster 包解析检查 = 覆盖面、组装 golden 门 = 激活面、release 闭包冒烟 = 依赖闭包面、release 浏览器 boot = 执行面（[ADR 0019](../../../../docs/adr/0019-freeze-posture.md) §5）。
 - 残余:fork 产品壳没有真浏览器产品流 replay(上游 `apps/web` e2e 的 fork 流程等价物);地图雾区,触发 = 首个真浏览器专属产品断裂,或首个 jsdom 金样表达不了的流程。
 - 标记承载 starter 业务名(`通用助手`),故播种 starter 的显示标题与黄卡链路必须保持该值;超时红文同时指名标记与等待。

@@ -1,6 +1,6 @@
 # Cookbook: adding a `@daypaw/*` package
 
-新 `@daypaw/<pkg>` 包的逐文件机械清单。对应上游规范：`docs/cookbook/adding-a-package.md`（dsh 侧）；本清单以 `store` / `engine` / `sdk` 三次落地验证并就地修正（沿用上游 cookbook 立场）。决策依据：ADR 0001（命名/版本/fork 卫生）、ADR 0006（包切分与方向铁律）、ADR 0007（测试门）、ADR 0008（落地顺序）。
+新 `@daypaw/<pkg>` 包的逐文件机械清单。对应上游规范：`docs/cookbook/adding-a-package.md`（dsh 侧）；本清单以 `store` / `engine` / `sdk` 三次落地验证并就地修正（沿用上游 cookbook 立场）。决策依据：ADR 0001（命名/版本/fork 卫生）、ADR 0019（冻结姿态；core-touch 登记无重放义务）、ADR 0006（包切分与方向铁律）、ADR 0007（测试门）、ADR 0008（落地顺序）。
 
 模板包：`packages/core/tools`（上游）。
 
@@ -45,7 +45,7 @@ packages/daypaw/<pkg>/
 | `tsconfig.host.json` / `tsconfig.client.json` | 每包加 `{ "path": "./packages/daypaw/<pkg>" }` 引用；engine/store/sdk 归 host 聚合，ui-* 与客户端纯库归 client（聚合唯一，不同属两端） |
 | `docs/config-catalog.md`(+`.zh.md`) | 新包会进「库包（无插件入口）」清单——`pnpm run gen-config-catalog` 再生**英文侧**，中文侧按配对流程随动并重录 sidecar（生成器只写英文） |
 
-**ui-\* 浏览器插件包另有两步登记**（各有其门）：`packages/daypaw/web-app/cordis.patch.yml` 加 roster 行（门：`verify-cordis-config` 的 roster 镜像检查——上游 `dsh.client` 行必须被镜像或入其 `ROSTER_TRIMS` 裁剪清单；fork 自有行自由添加，但缺行即整面缺席）与 `packages/daypaw/web-app/package.json` 加依赖行（门：同一脚本的 bundle 依赖闭包检查）。
+**ui-\* 浏览器插件包另有两步登记**（各有其门）：`packages/daypaw/web-app/cordis.patch.yml` 加 roster 行（门：`verify-cordis-config` 的 roster 包解析检查——行的包必须在 workspace manifest 中存在并声明 `dsh.client`；缺行即整面缺席）与 `packages/daypaw/web-app/package.json` 加依赖行（门：同一脚本的 bundle 依赖闭包检查）。
 
 零改动（glob/发现机制自动覆盖，已核实）：`pnpm-workspace.yaml`（`packages/*/*`）、vitest projects 与覆盖率 globs、`scripts/publint-all.ts`、根 `tsdown.config.ts`（客户端包仍需自己的包级配置，见 §1）、`.oxlintrc.json`。`scripts/check-workspace-constraints.ts` 的 release-member 规则已登记 core touch（daypaw 组排除，保 private 姿态）。
 
@@ -67,4 +67,4 @@ packages/daypaw/<pkg>/
 
 ## 6. core-touch 登记
 
-`docs/fork/CORE_TOUCHES.md` 于批次 C 首触时建档。每条登记：文件、原因、「上游 PR 候选？」标记；每次同步仪式逐个重放验证（ADR 0001 §4）。本清单预期的登记项：`tsconfig.base.json` paths 行、`tsconfig.host.json`/`tsconfig.client.json` references 行、（如用）README whitelist 条目。
+`docs/fork/CORE_TOUCHES.md` 于批次 C 首触时建档。每条登记：文件、改动、原因、性质（`通用改进` / `fork 取舍` / `fork 登记`）；ADR 0019 起是差异记录，没有同步重放义务。本清单预期的登记项：`tsconfig.base.json` paths 行、`tsconfig.host.json`/`tsconfig.client.json` references 行、（如用）README whitelist 条目。
