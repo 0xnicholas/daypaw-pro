@@ -3,9 +3,10 @@
 # by id, with the profile's own cordis.patch.yml and any --patch overlays still
 # to come.
 #
-# The browser roster below keeps the upstream implementation rows as
-# placeholders: removing the rows the product shell does not ship (and swapping
-# in the rewritten ones) is scoped to the later board issues, not this scaffold.
+# The browser roster below starts from the upstream implementation rows. It
+# does not mirror the upstream web bundle (ADR 0019 §5): rows the product shell
+# does not ship are trimmed and the rewritten ones replace their originals. The
+# shipped set follows spec 05 §4.
 #
 # A patch replaces the targeted row's whole `config`, so each row below
 # restates every key it owns.
@@ -50,11 +51,6 @@
 # `dsh.client` rows are the browser roster the modules node half scans into
 # window.__DSH_BOOT__; the modules row is simultaneously a host row.
 - insert:
-    - id: message-feedback
-      name: '@deepseek-ai/dsh-message-feedback'
-      config:
-        maxNoteBytes: 8192
-
     # Browser Session export: `/export` command plus the shared download dialog.
     - id: session-log-download
       name: '@deepseek-ai/dsh-session-log-export'
@@ -110,11 +106,6 @@
     # Workspace commands and reconnect-safe projection over Typert Remote.
     - id: workspace-controller
       name: '@deepseek-ai/dsh-api-workspace-controller'
-
-    # Client jobs service (upstream web bundle parity): ui-jobs waits on
-    # `ctx.jobs`, whose client half this row installs.
-    - id: job-controller
-      name: '@deepseek-ai/dsh-api-job-controller'
 
     # Terminal control face (upstream web bundle parity): the terminal
     # observation stream the sidebar terminal tab consumes.
@@ -298,9 +289,6 @@
     - id: ui-settings-models
       name: '@deepseek-ai/dsh-client-ui-settings-models'
 
-    - id: ui-settings-plugin-inventory
-      name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
-
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'
 
@@ -373,25 +361,13 @@
       name: '@deepseek-ai/dsh-client-ui-schedule'
       disabled: true
 
-    # Background jobs: the session-header list over the jobsBySession mirror.
-    - id: ui-jobs
-      name: '@deepseek-ai/dsh-client-ui-jobs'
-
     # Goal surface: GoalBar in the input dock over the goal session projection.
     - id: ui-goal
       name: '@deepseek-ai/dsh-client-ui-goal'
 
-    # Per-message feedback: Like/Dislike plus an optional note in the
-    # assistant-message action strip, over the messageFeedback Remote.
-    - id: ui-message-feedback
-      name: '@deepseek-ai/dsh-client-ui-message-feedback'
-
     # Model selection: the /model popupSelect + composer seat over session.models.
     - id: ui-model-selection
       name: '@deepseek-ai/dsh-client-ui-model-selection'
-
-    - id: ui-permission
-      name: '@deepseek-ai/dsh-client-ui-permission-presets'
 
     # The agent-preset surfaces retire to the upstream compatibility layer
     # (ADR 0012 §4): shell-started tasks are engine runs and never compose a
@@ -402,11 +378,6 @@
     - id: ui-agent-preset
       name: '@deepseek-ai/dsh-client-ui-agent-preset'
       disabled: true
-
-    # Plugin configuration: the host-plane sections a user owns, as expandable
-    # cards. A namespace this deployment does not expose renders nothing.
-    - id: ui-settings-plugins
-      name: '@deepseek-ai/dsh-client-ui-settings-plugins'
 
     # Plugin manager page (upstream web bundle parity): install/uninstall and
     # per-plugin configuration, past the read-only inventory tab.

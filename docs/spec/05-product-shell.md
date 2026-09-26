@@ -60,8 +60,8 @@ IA 定案 = **变体 C 收件箱工作台**，三栏：
 | ui-model-selection | 整包沿用 dsh 形态 | 与「非技术业务用户」画像的张力挂 §8 对账 |
 | ui-user-questions | 原样复用 | 定位重审 [#100](https://github.com/0xnicholas/daypaw-pro/issues/100) 取消 #36 重写裁决（形态中性，原样即专业面）；业务皮肤化挂账待客户反馈 |
 | ui-deliverables | 进 v1，原样复用 | 同上（#36 重写取消） |
-| ui-jobs | 不进 v1 | dsh 进程内 jobs ≠ durable run；壳词汇只认 run |
-| ui-message-feedback | 不进 v1 | EVO 远期；宿主侧关联层已接，捡回零成本 |
+| ui-jobs | 不进 v1 | dsh 进程内 jobs ≠ durable run；壳词汇只认 run（宿主供主行同批裁撤） |
+| ui-message-feedback | 不进 v1 | EVO 远期；宿主侧关联行同批裁撤（捡回 = 一行 roster + 一行依赖） |
 | ui-settings-general | 收口 | ledger 机械留、壳体重画，见 §3 |
 | ui-permission-presets | 不进 v1 | 见 §6 |
 

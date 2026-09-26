@@ -7286,9 +7286,6 @@ importers:
       '@deepseek-ai/dsh-agent-preset':
         specifier: workspace:*
         version: link:../../preset/agent-preset
-      '@deepseek-ai/dsh-api-job-controller':
-        specifier: workspace:*
-        version: link:../../api/job-controller
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
         version: link:../../api/remotes
@@ -7364,21 +7361,12 @@ importers:
       '@deepseek-ai/dsh-client-ui-input-trigger':
         specifier: workspace:*
         version: link:../../client/ui-input-trigger
-      '@deepseek-ai/dsh-client-ui-jobs':
-        specifier: workspace:*
-        version: link:../../client/ui-jobs
       '@deepseek-ai/dsh-client-ui-layout':
         specifier: workspace:*
         version: link:../../client/ui-layout
-      '@deepseek-ai/dsh-client-ui-message-feedback':
-        specifier: workspace:*
-        version: link:../../client/ui-message-feedback
       '@deepseek-ai/dsh-client-ui-model-selection':
         specifier: workspace:*
         version: link:../../client/ui-model-selection
-      '@deepseek-ai/dsh-client-ui-permission-presets':
-        specifier: workspace:*
-        version: link:../../client/ui-permission-presets
       '@deepseek-ai/dsh-client-ui-plan':
         specifier: workspace:*
         version: link:../../client/ui-plan
@@ -7412,12 +7400,6 @@ importers:
       '@deepseek-ai/dsh-client-ui-settings-models':
         specifier: workspace:*
         version: link:../../client/ui-settings-models
-      '@deepseek-ai/dsh-client-ui-settings-plugin-inventory':
-        specifier: workspace:*
-        version: link:../../client/ui-settings-plugin-inventory
-      '@deepseek-ai/dsh-client-ui-settings-plugins':
-        specifier: workspace:*
-        version: link:../../client/ui-settings-plugins
       '@deepseek-ai/dsh-client-ui-settings-shell':
         specifier: workspace:*
         version: link:../../client/ui-settings-shell
@@ -7487,9 +7469,6 @@ importers:
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:*
         version: link:../../host/webserver
-      '@deepseek-ai/dsh-message-feedback':
-        specifier: workspace:*
-        version: link:../../feedback/message-feedback
       '@deepseek-ai/dsh-session-log-export':
         specifier: workspace:*
         version: link:../../session-query/session-log-export
