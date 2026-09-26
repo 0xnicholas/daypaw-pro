@@ -2,6 +2,9 @@
   "name": "@daypaw/cli",
   "description": "Self-contained daypaw CLI (bin `daypaw`): the dsh CLI with its full vendored runtime closure in one npm package",
   "version": "0.1.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "publishConfig": {
     "access": "public"
   },

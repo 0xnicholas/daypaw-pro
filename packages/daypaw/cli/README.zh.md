@@ -7,6 +7,21 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
+## 安装与运行
+
+需要 Node `^22.19.0 || >=24.0.0` 与一个 DeepSeek API key（[platform.deepseek.com](https://platform.deepseek.com)）——壳用你的 key 调模型，计费到你的账户。
+
+```sh
+npm i -g @daypaw/cli
+daypaw
+```
+
+裸 `daypaw` 命令会起壳并打印带启动令牌的 URL。
+
+打开打印出来的 `daypaw web: http://127.0.0.1:<port>/?token=…` 整行：不带令牌的裸 origin 会被壳拒绝。首跑会在 `$DSH_HOME/profiles/daypaw` 物化 profile，并在启动目录下 `daypaw/ledger.db` 旁播种 `daypaw/agents/starter-assistant.mjs`。没有 key 也能起壳：模型调用按请求失败，壳里的首跑卡片会向你要 key。
+
+壳在你的机器上跑 agent：它够得到的工具会执行命令、写文件，敏感操作会先进收件箱等你审批再执行。
+
 ## 概述
 
 ## 目录

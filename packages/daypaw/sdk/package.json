@@ -2,6 +2,9 @@
   "name": "@daypaw/sdk",
   "description": "Typed facade over the daypaw durable engine: defineWorkflow, bind, idempotent start-or-attach, typed RunHandle",
   "version": "0.1.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "publishConfig": {
     "access": "public"
   },

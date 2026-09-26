@@ -7,6 +7,21 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+## Install and run
+
+Requires Node `^22.19.0 || >=24.0.0` and a DeepSeek API key ([platform.deepseek.com](https://platform.deepseek.com)) — the shell calls the model on your key, billed to your account.
+
+```sh
+npm i -g @daypaw/cli
+daypaw
+```
+
+The bare `daypaw` command boots the shell and prints its launch-token URL.
+
+Open the printed `daypaw web: http://127.0.0.1:<port>/?token=…` line: the shell rejects a bare origin without the token. The first run materializes `$DSH_HOME/profiles/daypaw` and seeds `daypaw/agents/starter-assistant.mjs` beside the ledger at `daypaw/ledger.db` under the launch directory. Without a key the shell still boots, model calls fail per request, and the first-run card asks for one.
+
+The shell runs an agent on your machine: it reaches tools that execute commands and write files, and sensitive operations wait for your approval in the inbox before they run.
+
 ## Summary
 
 ## Table of Contents
